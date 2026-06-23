@@ -12,7 +12,10 @@ import {
   queryWantsImageSearch,
   searchHistoricalImages,
 } from "@/lib/imageSearch";
-import { myronAngelImages } from "@/personas/myron-angel/images";
+import {
+  availableMyronAngelImages,
+  filterServeableImages,
+} from "@/lib/imageAvailability";
 import type {
   ChatMessage,
   EvidenceLabel,
@@ -139,9 +142,9 @@ let imageEmbeddingJob: Promise<number[][]> | null = null;
 
 async function ensureImageEmbeddings(): Promise<number[][]> {
   if (imageEmbeddings) return imageEmbeddings;
-  if (myronAngelImages.length === 0) return (imageEmbeddings = []);
+  if (availableMyronAngelImages.length === 0) return (imageEmbeddings = []);
   if (!imageEmbeddingJob) {
-    const texts = myronAngelImages.map(
+    const texts = availableMyronAngelImages.map(
       (img) => `${img.topics.join(", ")}: ${img.caption}`
     );
     imageEmbeddingJob = embedMany(texts).then((vectors) => {
@@ -237,9 +240,9 @@ function buildRetrievalQuery(history: ChatMessage[]): {
 /** Pin library images whose topics strongly match the question. */
 function pinTopicImages(topicHay: string, localCandidates: ImageAsset[]): ImageAsset[] {
   const hay = topicHay.toLowerCase();
-  let pinned = myronAngelImages.filter((img) => imageMatchScore(img, hay) >= 3);
+  let pinned = availableMyronAngelImages.filter((img) => imageMatchScore(img, hay) >= 3);
   if (isMissionQuery(hay)) {
-    const mission = myronAngelImages.filter(
+    const mission = availableMyronAngelImages.filter(
       (img) => isMissionImage(img) && imageMatchScore(img, hay) >= 2
     );
     pinned = [...mission, ...pinned];
@@ -310,7 +313,7 @@ async function retrieveContext(
 
   // Rank local library images by retrieval embedding; the model picks from these
   // plus any live search hits (Wikimedia Commons, public domain / CC).
-  let localCandidates = myronAngelImages
+  let localCandidates = availableMyronAngelImages
     .map((img, i) => ({ img, score: cosine(queryEmbedding, imgEmbeddings[i]) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, IMAGE_CANDIDATES)
@@ -324,7 +327,7 @@ async function retrieveContext(
   // Intro / meta: identity questions always get the portrait; other meta gets none.
   if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
     if (isIdentityQuery(userQuery)) {
-      const portrait = myronAngelImages.find((img) => img.id === "img-portrait");
+      const portrait = availableMyronAngelImages.find((img) => img.id === "img-portrait");
       localCandidates = portrait ? [portrait] : [];
     } else {
       const wantsPortrait = /\b(?:look like|appearance|portrait|likeness)\b/i.test(
@@ -344,7 +347,7 @@ async function retrieveContext(
     candidateImages.push(img);
   }
 
-  return { sources, candidateImages };
+  return { sources, candidateImages: filterServeableImages(candidateImages) };
 }
 
 function isRepetitionComplaint(userQuery: string): boolean {
@@ -806,7 +809,7 @@ export async function answerQuestion(
   if (images.length === 0 && isIdentityQuery(userQuery)) {
     const portrait =
       candidateImages.find((img) => img.id === "img-portrait") ??
-      myronAngelImages.find((img) => img.id === "img-portrait");
+      availableMyronAngelImages.find((img) => img.id === "img-portrait");
     if (portrait) {
       images = [portrait];
     }
@@ -847,6 +850,6 @@ export async function answerQuestion(
     evidenceLabel,
     usedSourceIds: usedIds,
     sources: displaySources,
-    images,
+    images: filterServeableImages(images),
   };
 }

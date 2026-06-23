@@ -8,6 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import https from "node:https";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,15 +35,35 @@ const DOWNLOADS = {
   "mission-view-south-1904.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-1820.jpg",
 };
 
-async function download(name, url) {
+function download(name, url) {
   const dest = path.join(OUT_DIR, name);
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`${name}: HTTP ${res.status} from ${url}`);
+  if (fs.existsSync(dest) && fs.statSync(dest).size > 512) {
+    console.log(`· ${name} (already present)`);
+    return Promise.resolve();
   }
-  const buf = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(dest, buf);
-  console.log(`✓ ${name} (${Math.round(buf.length / 1024)} KB)`);
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, { rejectUnauthorized: false }, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode} from ${url}`));
+          res.resume();
+          return;
+        }
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const buf = Buffer.concat(chunks);
+          if (buf.length <= 512) {
+            reject(new Error(`file too small (${buf.length} bytes)`));
+            return;
+          }
+          fs.writeFileSync(dest, buf);
+          console.log(`✓ ${name} (${Math.round(buf.length / 1024)} KB)`);
+          resolve();
+        });
+      })
+      .on("error", reject);
+  });
 }
 
 async function main() {

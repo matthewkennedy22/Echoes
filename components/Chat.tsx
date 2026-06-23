@@ -35,6 +35,38 @@ function AssistantRoleTag({ name }: { name: string }) {
   );
 }
 
+function ChatFigure({ img }: { img: ImageAsset }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+
+  return (
+    <figure className="figure">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={img.src}
+        alt={img.alt}
+        loading="lazy"
+        onError={() => setBroken(true)}
+      />
+      <figcaption>
+        <span className="fig-caption">{img.caption}</span>
+        <span className="fig-cite">
+          {img.citation}
+          {img.url && (
+            <>
+              {" "}
+              <a href={img.url} target="_blank" rel="noreferrer">
+                [source]
+              </a>
+            </>
+          )}{" "}
+          · {img.license}
+        </span>
+      </figcaption>
+    </figure>
+  );
+}
+
 /** Tiny silent MP3 — played synchronously on tap so iOS/Android allow later playback. */
 const SILENT_MP3 =
   "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAABAAADhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjQ5AAAAAAAAAAAAAAAAJAAAAAAAAAAAA4SmZmgg";
@@ -449,25 +481,7 @@ export default function Chat() {
               {m.role === "assistant" && m.images && m.images.length > 0 && (
                 <div className="figures">
                   {m.images.map((img) => (
-                    <figure key={img.id} className="figure">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.src} alt={img.alt} loading="lazy" />
-                      <figcaption>
-                        <span className="fig-caption">{img.caption}</span>
-                        <span className="fig-cite">
-                          {img.citation}
-                          {img.url && (
-                            <>
-                              {" "}
-                              <a href={img.url} target="_blank" rel="noreferrer">
-                                [source]
-                              </a>
-                            </>
-                          )}{" "}
-                          · {img.license}
-                        </span>
-                      </figcaption>
-                    </figure>
+                    <ChatFigure key={img.id} img={img} />
                   ))}
                 </div>
               )}
