@@ -1,16 +1,27 @@
 import { ttsStream } from "@/lib/llm";
+import { createTtsPlayToken } from "@/lib/ttsToken";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const { text } = await req.json();
+    const { text, format } = await req.json();
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "Missing 'text'." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    // Fast path for Safari/iOS: return a play URL immediately so the browser
+    // can stream audio progressively via a plain <audio src> request.
+    if (format === "url") {
+      const token = createTtsPlayToken(text);
+      return new Response(JSON.stringify({ url: `/api/tts/play?token=${token}` }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const stream = await ttsStream(text);
     return new Response(stream, {
       headers: {
