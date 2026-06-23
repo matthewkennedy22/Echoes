@@ -29,7 +29,7 @@ const DOWNLOADS = {
   "railroad-slo-1906.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-7510.jpg",
   "mission-south-1888.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-94.jpg",
   "mission-front-1880.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-971.jpg",
-  "mission-arcade-1870.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-5008.jpg",
+  "mission-arcade-1870.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-2962.jpg",
   "mission-exterior.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-46670.jpg",
   "mission-view-south-1904.jpg": "https://thumbnails.digitallibrary.usc.edu/CHS-1820.jpg",
 };

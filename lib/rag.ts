@@ -562,7 +562,7 @@ The visitor wants a visual for what you **already discussed** — they do not ne
 - Chumash / native peoples → img-chumash-musicians-1873 when listed.
 - Old town / downtown → img-slo-street-1905 when listed, not a distant valley view.
 - Mission San Luis Obispo → pick the **most specific** mission id (facade: img-mission-front-1880,
-  arcade: img-mission-arcade-1870, south wing: img-mission-south-1888, south street view:
+  arcade: img-mission-arcade-1870 (portico columns), south wing: img-mission-south-1888, south street view:
   img-mission-view-south-1904, engraving from my book: img-mission-1883, color postcard:
   img-mission-1900, general exterior: img-mission-exterior). Do not repeat an id already shown.
 - Refer to the image as already before the visitor; never ask "would that interest you?"
