@@ -62,10 +62,10 @@ function commonsId(title: string): string {
 }
 
 function isAllowedLicense(license: string, copyrighted: string): boolean {
-  const lic = license.toLowerCase();
+  const lic = String(license ?? "").toLowerCase();
   if (ALLOWED_LICENSE.test(lic)) return true;
   if (/copyrighted|all rights reserved|fair use|non-free/i.test(lic)) return false;
-  if (copyrighted.toLowerCase() === "false") return true;
+  if (String(copyrighted ?? "").toLowerCase() === "false") return true;
   return false;
 }
 
@@ -253,7 +253,7 @@ export function buildImageSearchQuery(
 }
 
 function scoreResult(title: string, caption: string, topic: string): number {
-  const topicTerms = topic
+  const topicTerms = String(topic ?? "")
     .toLowerCase()
     .split(/\s+/)
     .filter((t) => t.length >= 3);

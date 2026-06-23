@@ -394,15 +394,33 @@ function isMissionImage(img: ImageAsset): boolean {
   return img.id.startsWith("img-mission-");
 }
 
-function normId(id: string): string {
-  return id.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
+function normId(id: unknown): string {
+  const s =
+    typeof id === "string" ? id : typeof id === "number" ? String(id) : "";
+  if (!s) return "";
+  return s.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
+}
+
+function asStringIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((id) =>
+      typeof id === "string"
+        ? id.trim()
+        : typeof id === "number"
+          ? String(id)
+          : ""
+    )
+    .filter(Boolean);
 }
 
 function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
   const shown = new Set<string>();
   for (const m of history) {
-    if (m.role === "assistant" && m.imageIds?.length) {
-      for (const id of m.imageIds) shown.add(normId(id));
+    if (m.role !== "assistant") continue;
+    for (const id of asStringIds(m.imageIds)) {
+      const norm = normId(id);
+      if (norm) shown.add(norm);
     }
   }
   return shown;
@@ -411,6 +429,7 @@ function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
 function imageMatchScore(img: ImageAsset, topicHay: string): number {
   let score = 0;
   for (const t of img.topics) {
+    if (typeof t !== "string") continue;
     const term = t.toLowerCase();
     if (term.length < 4 || GENERIC_IMAGE_TOPICS.has(term)) continue;
     if (!topicHay.includes(term)) continue;
@@ -743,15 +762,13 @@ export async function answerQuestion(
 
   // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
   // so match on a normalized form rather than exact string equality.
-  const usedIds = Array.isArray(parsed.used_source_ids)
-    ? parsed.used_source_ids
-    : [];
-  const usedNorm = new Set(usedIds.map(normId));
+  const usedIds = asStringIds(parsed.used_source_ids);
+  const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
   const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
   const topicHay = `${topicContext} ${retrievalQuery} ${parsed.answer ?? ""}`.toLowerCase();
-  const imageIds = Array.isArray(parsed.image_ids) ? parsed.image_ids : [];
-  const imageNorm = new Set(imageIds.map(normId));
+  const imageIds = asStringIds(parsed.image_ids);
+  const imageNorm = new Set(imageIds.map(normId).filter(Boolean));
   let images = candidateImages.filter((img) => imageNorm.has(normId(img.id)));
 
   // Drop images that fail period, relevance, or repeat checks.

@@ -373,7 +373,14 @@ export default function Chat() {
           evidenceLabel: data.evidenceLabel,
           sources: data.sources,
           images: data.images,
-          imageIds: data.images?.map((img: ImageAsset) => img.id),
+          imageIds: Array.isArray(data.images)
+            ? data.images
+                .map((img: ImageAsset) => img?.id)
+                .filter(
+                  (id: string | undefined): id is string =>
+                    typeof id === "string" && id.length > 0
+                )
+            : undefined,
         },
       ]);
       if (voiceOn && data.answer) {
