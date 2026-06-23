@@ -54,6 +54,8 @@ export interface PersonaPublic {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  /** Image ids already shown with this assistant turn (for deduping). */
+  imageIds?: string[];
 }
 
 /** The structured answer returned by the model + server. */

@@ -16,9 +16,9 @@ export const myronAngelPublic: PersonaPublic = {
     "You are speaking with an AI simulation of Myron Angel, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
     "Who are you, and why does San Luis Obispo matter to you?",
-    "How did you come to found the Polytechnic School?",
-    "What was San Luis Obispo like when you arrived in 1883?",
-    "Why do you believe so much in 'learning by doing'?",
-    "Tell me about your book, the History of San Luis Obispo County.",
+    "Tell me about the Chumash who were native to this area.",
+    "What did the town look like when you arrived in 1883?",
+    "What is the history of the Mission San Luis Obispo?",
+    "Tell me about the railroad and how it changed San Luis Obispo.",
   ],
 };

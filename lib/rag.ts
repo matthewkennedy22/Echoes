@@ -234,15 +234,16 @@ function buildRetrievalQuery(history: ChatMessage[]): {
   };
 }
 
-/** Pin library images whose topics appear in the ongoing conversation. */
+/** Pin library images whose topics strongly match the question. */
 function pinTopicImages(topicHay: string, localCandidates: ImageAsset[]): ImageAsset[] {
   const hay = topicHay.toLowerCase();
-  const pinned = myronAngelImages.filter((img) =>
-    img.topics.some((t) => {
-      const term = t.toLowerCase();
-      return term.length >= 4 && hay.includes(term);
-    })
-  );
+  let pinned = myronAngelImages.filter((img) => imageMatchScore(img, hay) >= 3);
+  if (isMissionQuery(hay)) {
+    const mission = myronAngelImages.filter(
+      (img) => isMissionImage(img) && imageMatchScore(img, hay) >= 2
+    );
+    pinned = [...mission, ...pinned];
+  }
   const seen = new Set<string>();
   const merged: ImageAsset[] = [];
   for (const img of [...pinned, ...localCandidates]) {
@@ -379,18 +380,82 @@ const GENERIC_IMAGE_TOPICS = new Set([
   "1905",
 ]);
 
+/** Panorama / generic town views — only when the visitor asks about a vista. */
+const GENERIC_ONLY_IMAGES = new Set(["img-slo-view-1900"]);
+
+function isMissionQuery(topicHay: string): boolean {
+  if (/\bbuenaventura\b/i.test(topicHay)) return false;
+  return /\b(?:mission san luis|san luis obispo de tolosa|mission de tolosa|the mission|our mission|mission church|mission history|founded 1772|franciscan padres)\b/i.test(
+    topicHay
+  );
+}
+
+function isMissionImage(img: ImageAsset): boolean {
+  return img.id.startsWith("img-mission-");
+}
+
+function normId(id: string): string {
+  return id.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
+}
+
+function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
+  const shown = new Set<string>();
+  for (const m of history) {
+    if (m.role === "assistant" && m.imageIds?.length) {
+      for (const id of m.imageIds) shown.add(normId(id));
+    }
+  }
+  return shown;
+}
+
+function imageMatchScore(img: ImageAsset, topicHay: string): number {
+  let score = 0;
+  for (const t of img.topics) {
+    const term = t.toLowerCase();
+    if (term.length < 4 || GENERIC_IMAGE_TOPICS.has(term)) continue;
+    if (!topicHay.includes(term)) continue;
+    score += term.includes(" ") ? 4 : term.length >= 10 ? 3 : 2;
+  }
+  if (
+    /\b(?:old town|downtown|main street|higuera|monterey street|storefront|commercial street)\b/i.test(
+      topicHay
+    )
+  ) {
+    if (
+      img.topics.some((t) =>
+        /downtown|old town|street|shops|storefronts|monterey/i.test(t)
+      )
+    ) {
+      score += 2;
+    }
+  }
+  return score;
+}
+
 /** Avoid auto-showing a generic town panorama when the topic needs something specific. */
 function isStrongImageMatch(img: ImageAsset, topicHay: string): boolean {
-  const specific = img.topics.filter(
-    (t) => t.length >= 4 && !GENERIC_IMAGE_TOPICS.has(t.toLowerCase())
-  );
-  if (specific.some((t) => topicHay.includes(t.toLowerCase()))) return true;
-  if (/\b(?:old town|downtown|main street|higuera|street)\b/i.test(topicHay)) {
-    return img.topics.some((t) =>
-      /downtown|old town|street|shops|storefronts/i.test(t)
+  if (GENERIC_ONLY_IMAGES.has(img.id)) {
+    return /\b(?:panorama|view of (?:the )?town|town spread|valley view|beneath.*peaks|looking north)\b/i.test(
+      topicHay
     );
   }
-  return false;
+  const score = imageMatchScore(img, topicHay);
+  if (isMissionImage(img) && isMissionQuery(topicHay)) return score >= 2;
+  return score >= 3;
+}
+
+function imageAllowedForQuery(
+  img: ImageAsset,
+  userQuery: string,
+  topicHay: string
+): boolean {
+  if (img.id === "img-portrait") {
+    return (
+      isIdentityQuery(userQuery) ||
+      /\b(?:look like|appearance|portrait|likeness)\b/i.test(userQuery)
+    );
+  }
+  return isStrongImageMatch(img, topicHay);
 }
 
 function buildGroundingPrompt(
@@ -403,6 +468,7 @@ function buildGroundingPrompt(
     isShortFollowUp?: boolean;
     isFunFactQuery?: boolean;
     conversationBrief?: string;
+    shownImageIds?: string[];
   }
 ): string {
   const sourceBlock = sources
@@ -445,16 +511,21 @@ ${sourceBlock}
   rather than drawing on 20th-century knowledge. Label "unknown" only if truly unsupported.
 
 # IMAGES YOU MAY SHOW
-You may show at most ONE image per reply. **Prefer including a relevant image** when
-one clearly illustrates the specific historical subject you are discussing — it helps
-keep museum visitors engaged. Default to empty image_ids only when no listed image
-truly fits. Pick from these ids (local verified photos and live Wikimedia Commons results):
+You may show at most ONE image per reply. Include an image only when one **clearly and
+specifically** illustrates the exact place, building, person, or event you are discussing.
+When in doubt, use empty image_ids — a mismatched image is worse than none. Pick from:
 ${imageBlock}
+${
+  opts?.shownImageIds?.length
+    ? `
+Already shown this session — do NOT repeat these ids: ${opts.shownImageIds.join(", ")}
+`
+    : ""
+}
 Rules for images:
-- **Look for a match first:** If your answer focuses on a **specific place, building,
-  landmark, mission, rancho, event, or historical figure** and one of the listed images
-  clearly depicts that exact subject from **Myron's era** (roughly 1770s–1910s), include
-  it in image_ids and weave it into your narrative.
+- **High bar for a match:** The image must depict the **same subject** you are narrating
+  (e.g. Mission photo for mission history, courthouse for county government, railroad
+  photo for the Southern Pacific). Generic town panoramas do not fit specific stories.
 - **Skip when none fit:** Use empty image_ids for introductions, abstract county pride,
   pure opinions, or topics with no good visual in the list (e.g. an outlaw tale with no
   bandit photograph available). Never force an unrelated image.
@@ -475,6 +546,8 @@ Rules for images:
   middle years — though in 1905 I am an aged gentleman of seventy-eight, white-haired…"
 - Bad example: "...If you wish, I can show you a likeness." (while also setting image_ids)
 - Bad example: showing img-slo-view-1900 when answering about Jack Powers — unrelated.
+- Mission questions: choose the **most specific** mission image (facade, arcade, south wing,
+  street view, engraving, postcard) — six verified views exist; do not default to a town panorama.
 ${
   opts?.isImageFollowUp
     ? `
@@ -488,6 +561,10 @@ The visitor wants a visual for what you **already discussed** — they do not ne
   an unrelated town panorama.
 - Chumash / native peoples → img-chumash-musicians-1873 when listed.
 - Old town / downtown → img-slo-street-1905 when listed, not a distant valley view.
+- Mission San Luis Obispo → pick the **most specific** mission id (facade: img-mission-front-1880,
+  arcade: img-mission-arcade-1870, south wing: img-mission-south-1888, south street view:
+  img-mission-view-south-1904, engraving from my book: img-mission-1883, color postcard:
+  img-mission-1900, general exterior: img-mission-exterior). Do not repeat an id already shown.
 - Refer to the image as already before the visitor; never ask "would that interest you?"
 `
     : ""
@@ -629,11 +706,18 @@ export async function answerQuestion(
   const { userQuery, retrievalQuery, topicContext, isImageFollowUp } =
     buildRetrievalQuery(history);
   const conversationBrief = buildConversationBrief(history);
+  const shownImageIds = collectPreviouslyShownImageIds(history.slice(0, -1));
 
-  const { sources: retrieved, candidateImages } = await retrieveContext(
+  let { sources: retrieved, candidateImages } = await retrieveContext(
     retrievalQuery,
     { userQuery, topicContext, isImageFollowUp }
   );
+
+  candidateImages = candidateImages.filter((img) => {
+    if (!shownImageIds.has(normId(img.id))) return true;
+    return img.id === "img-portrait" && isIdentityQuery(userQuery);
+  });
+
   const system = buildGroundingPrompt(retrieved, candidateImages, {
     isImageFollowUp,
     topicContext,
@@ -641,6 +725,7 @@ export async function answerQuestion(
     isShortFollowUp: isShortFollowUp(userQuery),
     isFunFactQuery: isFunFactQuery(userQuery),
     conversationBrief,
+    shownImageIds: [...shownImageIds],
   });
   let raw = await chatJSON(system, history);
   let parsed = parseModelAnswer(raw);
@@ -658,29 +743,28 @@ export async function answerQuestion(
 
   // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
   // so match on a normalized form rather than exact string equality.
-  const norm = (id: string) =>
-    id.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
   const usedIds = Array.isArray(parsed.used_source_ids)
     ? parsed.used_source_ids
     : [];
-  const usedNorm = new Set(usedIds.map(norm));
-  const usedSources = retrieved.filter((s) => usedNorm.has(norm(s.id)));
+  const usedNorm = new Set(usedIds.map(normId));
+  const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
+  const topicHay = `${topicContext} ${retrievalQuery} ${parsed.answer ?? ""}`.toLowerCase();
   const imageIds = Array.isArray(parsed.image_ids) ? parsed.image_ids : [];
-  const imageNorm = new Set(imageIds.map(norm));
-  let images = candidateImages.filter((img) => imageNorm.has(norm(img.id)));
+  const imageNorm = new Set(imageIds.map(normId));
+  let images = candidateImages.filter((img) => imageNorm.has(normId(img.id)));
 
-  // Drop images that fail period or relevance checks.
+  // Drop images that fail period, relevance, or repeat checks.
   images = images.filter((img) => {
     if (!isHistoricalImageAsset(img)) return false;
     if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp && img.id !== "img-portrait")
       return false;
-    return true;
+    if (shownImageIds.has(normId(img.id)) && img.id !== "img-portrait") return false;
+    return imageAllowedForQuery(img, userQuery, topicHay);
   });
 
-  // When the model skips a strong visual match, pin one proactively (not for meta/complaints).
+  // Fallback: strong match only, never repeat (except portrait on identity).
   if (images.length === 0 && candidateImages.length > 0) {
-    const topicHay = `${topicContext} ${retrievalQuery} ${parsed.answer ?? ""}`.toLowerCase();
     const skipProactive =
       (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) ||
       isRepetitionComplaint(userQuery) ||
@@ -689,7 +773,11 @@ export async function answerQuestion(
 
     if (!skipProactive) {
       const pinned = candidateImages.find(
-        (img) => isStrongImageMatch(img, topicHay) && isHistoricalImageAsset(img)
+        (img) =>
+          !shownImageIds.has(normId(img.id)) &&
+          isHistoricalImageAsset(img) &&
+          imageAllowedForQuery(img, userQuery, topicHay) &&
+          imageMatchScore(img, topicHay) >= 4
       );
       if (pinned) {
         images = [pinned];

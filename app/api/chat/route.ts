@@ -46,7 +46,13 @@ export async function POST(req: Request) {
           ((m as ChatMessage).role === "user" ||
             (m as ChatMessage).role === "assistant")
       )
-      .map((m: ChatMessage) => ({ role: m.role, content: m.content }));
+      .map((m: ChatMessage) => ({
+        role: m.role,
+        content: m.content,
+        ...(Array.isArray(m.imageIds) && m.imageIds.length
+          ? { imageIds: m.imageIds.filter((id) => typeof id === "string") }
+          : {}),
+      }));
 
     const result = await answerQuestion(history);
     return NextResponse.json(result);
