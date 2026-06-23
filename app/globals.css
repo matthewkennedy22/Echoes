@@ -435,13 +435,193 @@ body {
 }
 
 @media (max-width: 600px) {
-  .masthead h1 {
-    font-size: 30px;
+  .app {
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
   }
-  .bubble {
-    font-size: 15px;
+
+  .brandbar {
+    margin-left: calc(-1 * max(14px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(14px, env(safe-area-inset-right)));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-top: max(8px, env(safe-area-inset-top));
   }
+
   .brand-logo {
     height: 34px;
+  }
+
+  .masthead {
+    padding: 14px 0 12px;
+  }
+
+  .masthead .kicker {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .masthead h1 {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .masthead .sub {
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 0 4px;
+  }
+
+  .persona {
+    gap: 12px;
+    padding: 14px 0;
+  }
+
+  .persona .portrait {
+    width: 72px;
+    height: 72px;
+    font-size: 28px;
+  }
+
+  .persona .meta h2 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .persona .meta p {
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  .disclosure {
+    font-size: 12px;
+    padding: 10px;
+    margin: 12px 0;
+  }
+
+  .starters {
+    flex-direction: column;
+    gap: 10px;
+    margin: 6px 0 12px;
+  }
+
+  .starter {
+    width: 100%;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.4;
+    border-radius: 12px;
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  .voicebar {
+    padding: 4px 0 2px;
+  }
+
+  .voice-toggle {
+    font-size: 13px;
+    padding: 8px 14px;
+    min-height: 40px;
+  }
+
+  .chat {
+    gap: 16px;
+    padding: 6px 0 12px;
+  }
+
+  .msg {
+    max-width: 100%;
+  }
+
+  .msg.user {
+    max-width: 92%;
+  }
+
+  .msg.assistant {
+    max-width: 100%;
+  }
+
+  .bubble {
+    font-size: 16px;
+    line-height: 1.55;
+    padding: 12px 14px;
+  }
+
+  .msg.assistant .bubble {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .role-tag {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .role-avatar {
+    width: 22px;
+    height: 22px;
+  }
+
+  .evidence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-top: 10px;
+  }
+
+  .evidence-toggle {
+    font-size: 13px;
+    margin-left: 0;
+    padding: 6px 2px;
+    min-height: 36px;
+  }
+
+  .figure {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .figure .fig-caption {
+    font-size: 12.5px;
+  }
+
+  .figure .fig-cite {
+    font-size: 10.5px;
+  }
+
+  .composer {
+    gap: 10px;
+    padding: 10px 0 max(16px, calc(10px + env(safe-area-inset-bottom)));
+    margin-left: calc(-1 * max(14px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(14px, env(safe-area-inset-right)));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+
+  .composer textarea {
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+    min-height: 48px;
+    padding: 12px 14px;
+  }
+
+  .send {
+    flex-shrink: 0;
+    min-width: 72px;
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: 16px;
+  }
+
+  .footer {
+    font-size: 10.5px;
+    line-height: 1.45;
+    padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+  }
+
+  .error {
+    font-size: 13px;
   }
 }

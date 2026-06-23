@@ -7,6 +7,12 @@ export const metadata: Metadata = {
     "Converse with Myron Angel, the father of Cal Poly and chronicler of San Luis Obispo — an AI simulation grounded in historical sources.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: {
