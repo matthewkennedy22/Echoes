@@ -185,7 +185,7 @@ export function queryWantsImageSearch(
     return true;
   }
   const combined = `${userQuery} ${contextQuery}`.trim();
-  return /\b(?:tell me about|what is|what was|show me|picture of|photo of|look like|who was|who is|mission|rancho|adobe|rock|beach|creek|town|downtown|nipomo|avila|morro|pismo|arroyo|paso|chumash|vaquero|ranch|harbor|wharf|port|polytechnic|cal poly|courthouse|railroad|street|landmark|figure|native|indigenous|chumash)\b/i.test(
+  return /\b(?:tell me about|what is|what was|what happened|show me|picture of|photo of|look like|who was|who is|mission|rancho|adobe|rock|beach|creek|town|downtown|nipomo|avila|morro|pismo|arroyo|paso|chumash|vaquero|ranch|harbor|wharf|port|polytechnic|cal poly|courthouse|railroad|street|landmark|figure|native|indigenous|bandit|outlaw|vigilante|pioneer|history|county|settlement|farming|agriculture)\b/i.test(
     combined
   );
 }

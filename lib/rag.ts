@@ -315,12 +315,10 @@ async function retrieveContext(
     .slice(0, IMAGE_CANDIDATES)
     .map((x) => x.img);
 
-  if (isImageFollowUp || topicContext) {
-    localCandidates = pinTopicImages(
-      `${topicContext} ${retrievalQuery}`,
-      localCandidates
-    );
-  }
+  localCandidates = pinTopicImages(
+    `${topicContext} ${retrievalQuery} ${sourceHints.join(" ")}`,
+    localCandidates
+  );
 
   // Intro / meta questions: only offer portrait when the visitor asks about appearance.
   if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
@@ -442,28 +440,34 @@ ${sourceBlock}
   rather than drawing on 20th-century knowledge. Label "unknown" only if truly unsupported.
 
 # IMAGES YOU MAY SHOW
-You may show at most ONE image, and only when it directly illustrates the specific
-historical subject you are discussing in this reply. Default to an empty array.
-Pick from these ids (local verified photos and live Wikimedia Commons search results):
+You may show at most ONE image per reply. **Prefer including a relevant image** when
+one clearly illustrates the specific historical subject you are discussing — it helps
+keep museum visitors engaged. Default to empty image_ids only when no listed image
+truly fits. Pick from these ids (local verified photos and live Wikimedia Commons results):
 ${imageBlock}
-Rules for images (strict):
-- **Default: show NO image.** Most answers need no image at all.
-- Only include an image when your answer focuses on a **specific place, building,
-  landmark, rancho, mission, event, or historical figure** AND one of the listed
-  images clearly depicts that exact subject from **Myron's era** (roughly 1770s–1910s).
-- Do NOT show images for introductions, general county pride, or broad overviews.
-  "Who are you" / "why does SLO matter" → empty image_ids unless discussing your
-  own portrait and img-portrait is listed.
-- Do NOT show modern photographs, contemporary scenes, or images whose caption does
-  not match what you are actually describing.
+Rules for images:
+- **Look for a match first:** If your answer focuses on a **specific place, building,
+  landmark, mission, rancho, event, or historical figure** and one of the listed images
+  clearly depicts that exact subject from **Myron's era** (roughly 1770s–1910s), include
+  it in image_ids and weave it into your narrative.
+- **Skip when none fit:** Use empty image_ids for introductions, abstract county pride,
+  pure opinions, or topics with no good visual in the list (e.g. an outlaw tale with no
+  bandit photograph available). Never force an unrelated image.
+- Do NOT show images for "who are you" / "why does SLO matter" → empty image_ids unless
+  discussing your own portrait and img-portrait is listed.
+- Do NOT show modern photographs, contemporary scenes, or images whose caption does not
+  match what you are actually describing.
 - Prefer at most ONE image. Do not invent image ids; use only the ids listed above.
 - **Integration rule (critical):** If image_ids is not empty, the image renders **above**
   your answer text. Write as though the visitor is already looking at it — one unified
   moment. Never offer to show an image you are simultaneously including. Never end with
   "if you wish" when the image is already in image_ids.
+- Good example (mission history with img-mission-1883 listed): "Observe here the Mission
+  as it stood in my day — the adobe walls weathered by decades of faithful labor…"
 - Good example (with img-portrait): "As this likeness shows, I wore a dark beard in my
   middle years — though in 1905 I am an aged gentleman of seventy-eight, white-haired…"
 - Bad example: "...If you wish, I can show you a likeness." (while also setting image_ids)
+- Bad example: showing img-slo-view-1900 when answering about Jack Powers — unrelated.
 ${
   opts?.isImageFollowUp
     ? `
@@ -648,14 +652,22 @@ export async function answerQuestion(
     return true;
   });
 
-  // Image follow-up: only auto-show when there is a strong topic match (not generic town views).
-  if (images.length === 0 && isImageFollowUp && candidateImages.length > 0) {
-    const topicHay = `${topicContext} ${retrievalQuery}`.toLowerCase();
-    const pinned = candidateImages.find(
-      (img) => isStrongImageMatch(img, topicHay) && isHistoricalImageAsset(img)
-    );
-    if (pinned) {
-      images = [pinned];
+  // When the model skips a strong visual match, pin one proactively (not for meta/complaints).
+  if (images.length === 0 && candidateImages.length > 0) {
+    const topicHay = `${topicContext} ${retrievalQuery} ${parsed.answer ?? ""}`.toLowerCase();
+    const skipProactive =
+      (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) ||
+      isRepetitionComplaint(userQuery) ||
+      (isShortFollowUp(userQuery) && !isImageFollowUp) ||
+      evidenceLabel === "unknown";
+
+    if (!skipProactive) {
+      const pinned = candidateImages.find(
+        (img) => isStrongImageMatch(img, topicHay) && isHistoricalImageAsset(img)
+      );
+      if (pinned) {
+        images = [pinned];
+      }
     }
   }
 
