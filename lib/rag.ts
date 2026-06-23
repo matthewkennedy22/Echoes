@@ -553,11 +553,13 @@ Labeling rules (important):
 # OUTPUT FORMAT (STRICT)
 Respond with a single JSON object, nothing else:
 {
-  "answer": "<your reply, in Myron Angel's 1905 voice unless asked if you are real>",
+  "answer": "<plain-text reply only — NO Markdown, NO image links, NO URLs for pictures>",
   "evidence_label": "documented" | "inference" | "contested" | "unknown",
   "used_source_ids": ["<id>", ...],
   "image_ids": ["<img-id>", ...]
 }
+The "answer" field is shown as plain text. Images listed in image_ids render automatically
+above your reply — never embed ![...](...) syntax, HTML, or wikimedia URLs in "answer".
 `.trim();
 }
 
@@ -605,6 +607,20 @@ function parseModelAnswer(raw: string): {
   } catch {
     return { answer: raw };
   }
+}
+
+/** Strip markdown/HTML image embeds the model sometimes adds despite image_ids. */
+function sanitizeAnswerText(answer: string): string {
+  return answer
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/<img\b[^>]*>/gi, "")
+    .replace(
+      /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
+      ""
+    )
+    .replace(/^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export async function answerQuestion(
@@ -719,9 +735,10 @@ export async function answerQuestion(
   }
 
   return {
-    answer:
+    answer: sanitizeAnswerText(
       parsed.answer?.trim() ||
-      "Forgive me — I find I cannot put words to that just now.",
+        "Forgive me — I find I cannot put words to that just now."
+    ),
     evidenceLabel,
     usedSourceIds: usedIds,
     sources: displaySources,

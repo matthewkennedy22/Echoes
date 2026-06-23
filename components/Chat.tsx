@@ -20,6 +20,20 @@ const LABEL_TEXT: Record<EvidenceLabel, string> = {
   unknown: "Not in the sources",
 };
 
+function AssistantRoleTag({ name }: { name: string }) {
+  return (
+    <div className="role-tag">
+      {persona.portraitImage ? (
+        <span className="role-avatar" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={persona.portraitImage} alt="" />
+        </span>
+      ) : null}
+      {name}
+    </div>
+  );
+}
+
 /** Tiny silent MP3 — played synchronously on tap so iOS/Android allow later playback. */
 const SILENT_MP3 =
   "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAABAAADhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjQ5AAAAAAAAAAAAAAAAJAAAAAAAAAAAA4SmZmgg";
@@ -379,9 +393,11 @@ export default function Chat() {
       <div className="chat">
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
-            <div className="role-tag">
-              {m.role === "user" ? "You" : persona.name}
-            </div>
+            {m.role === "user" ? (
+              <div className="role-tag user">You</div>
+            ) : (
+              <AssistantRoleTag name={persona.name} />
+            )}
             <div className="bubble">
               {m.role === "assistant" && m.images && m.images.length > 0 && (
                 <div className="figures">
@@ -464,7 +480,7 @@ export default function Chat() {
 
         {loading && (
           <div className="msg assistant">
-            <div className="role-tag">{persona.name}</div>
+            <AssistantRoleTag name={persona.name} />
             <div className="typing">consulting the records…</div>
           </div>
         )}
