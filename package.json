@@ -1,0 +1,26 @@
+{
+  "name": "echoes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ECHOES — local history, made conversational. Hero persona: Myron Angel (San Luis Obispo).",
+  "scripts": {
+    "dev": "next dev",
+    "dev:clean": "rm -rf .next && next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "ingest": "node scripts/ingest-book.mjs"
+  },
+  "dependencies": {
+    "next": "^15.3.0",
+    "openai": "^4.77.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}
