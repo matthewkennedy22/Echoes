@@ -320,14 +320,19 @@ async function retrieveContext(
     localCandidates
   );
 
-  // Intro / meta questions: only offer portrait when the visitor asks about appearance.
+  // Intro / meta: identity questions always get the portrait; other meta gets none.
   if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
-    const wantsPortrait = /\b(?:look like|appearance|portrait|likeness)\b/i.test(
-      userQuery
-    );
-    localCandidates = wantsPortrait
-      ? localCandidates.filter((img) => img.id === "img-portrait")
-      : [];
+    if (isIdentityQuery(userQuery)) {
+      const portrait = myronAngelImages.find((img) => img.id === "img-portrait");
+      localCandidates = portrait ? [portrait] : [];
+    } else {
+      const wantsPortrait = /\b(?:look like|appearance|portrait|likeness)\b/i.test(
+        userQuery
+      );
+      localCandidates = wantsPortrait
+        ? localCandidates.filter((img) => img.id === "img-portrait")
+        : [];
+    }
   }
 
   const seen = new Set<string>();
@@ -453,8 +458,10 @@ Rules for images:
 - **Skip when none fit:** Use empty image_ids for introductions, abstract county pride,
   pure opinions, or topics with no good visual in the list (e.g. an outlaw tale with no
   bandit photograph available). Never force an unrelated image.
-- Do NOT show images for "who are you" / "why does SLO matter" → empty image_ids unless
-  discussing your own portrait and img-portrait is listed.
+- Do NOT show images for "what is echoes" / "are you AI" meta questions.
+- For **"who are you"** and other identity introductions → **always** include img-portrait
+  when it is listed, and refer to the likeness in your answer.
+- Do NOT show images for "why does SLO matter" unless a listed image directly fits.
 - Do NOT show modern photographs, contemporary scenes, or images whose caption does not
   match what you are actually describing.
 - Prefer at most ONE image. Do not invent image ids; use only the ids listed above.
@@ -520,6 +527,9 @@ When the visitor asks who you are or why San Luis Obispo matters to you, ground 
 answer in the biographical sources above (ids starting with bio-, calpoly-, or
 philosophy-). Label "documented", cite the ids you relied on, and do NOT use "unknown"
 for a standard self-introduction — those biographical sources exist precisely for this.
+When the visitor asks **who you are**, **introduce yourself**, or **tell me about yourself**,
+you MUST include img-portrait in image_ids and weave the likeness into your reply — as
+though you have just set your portrait before them on the table.
 
 # HOW TO LABEL YOUR ANSWER
 Choose exactly one "evidence_label", judged by the MAIN factual claims of your answer:
@@ -668,6 +678,16 @@ export async function answerQuestion(
       if (pinned) {
         images = [pinned];
       }
+    }
+  }
+
+  // "Who are you" / self-introduction: always show the portrait.
+  if (images.length === 0 && isIdentityQuery(userQuery)) {
+    const portrait =
+      candidateImages.find((img) => img.id === "img-portrait") ??
+      myronAngelImages.find((img) => img.id === "img-portrait");
+    if (portrait) {
+      images = [portrait];
     }
   }
 
