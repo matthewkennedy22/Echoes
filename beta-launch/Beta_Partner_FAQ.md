@@ -39,6 +39,10 @@ No. ECHOES is a **web link and a QR code**, with nothing to install, no integrat
 accounts for the public. You could place a QR code beside an exhibit, add a link to your
 website, or simply use it internally.
 
+**How do we try it?**
+Open the live beta link: **https://echoes-inky-zeta.vercel.app/** — works on any phone or
+computer. Matthew can also walk you through a 15-minute demo in person or by phone.
+
 **Who owns our materials and content?**
 We use **only public-domain, your-own, or explicitly permissioned** material, and **you
 approve anything drawn from your collection before it goes live.** You retain all your

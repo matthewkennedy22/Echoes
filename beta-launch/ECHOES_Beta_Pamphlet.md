@@ -1,4 +1,5 @@
 # ECHOES
+
 ## Talk with San Luis Obispo's history.
 
 **ECHOES** is an interactive way for your visitors to have a real conversation with a
@@ -18,13 +19,28 @@ invented. It is history that is **accountable to the evidence.**
 - **Ask a question** in plain language, or tap a suggested one.
 - **Myron answers in character**, grounded in real sources about our county.
 - **Every answer is labeled by evidence:** Documented · Reasonable inference · Contested ·
-  Not in the sources.
+Not in the sources.
 - **"Show evidence"** reveals the exact citations; **"Hear this"** reads the reply aloud in
-  an aged, period voice.
+an aged, period voice.
 - **He shows historic photographs:** the Mission, Morro Rock, old downtown, Port Harford,
-  the early Polytechnic, the Chumash, the rancho era, and more.
+the early Polytechnic, the Chumash, the rancho era, and more.
 - **When the sources don't support an answer, he says so.** It shows its work, so it
-  teaches source-checking instead of replacing it.
+teaches source-checking instead of replacing it.
+
+---
+
+### Try it now (live beta)
+
+**https://echoes-inky-zeta.vercel.app/**
+
+![Scan to try ECHOES](echoes-qr-code-production.png)
+
+Open on any phone or computer — no app, no account. Print the QR code above for an exhibit or front desk.
+
+**Note:** The first question may take 30–60 seconds while Myron's source library loads — like opening a heavy archive volume. After that, replies are much faster.
+
+Suggested questions: *Who were you?* · *Tell me about the mission.* · *What did San Luis
+Obispo look like in your time?*
 
 ---
 
@@ -48,8 +64,8 @@ return:
 
 - **Free use of the chatbot during the beta** (no licensing fee).
 - You cover **only the small AI usage cost**: a fraction of a cent per conversation
-  (typically just a few dollars a month), billed **at cost** with an optional **monthly
-  cap** so there are never surprises.
+(typically just a few dollars a month), billed **at cost** with an optional **monthly
+cap** so there are never surprises.
 - A **direct hand in shaping the product** before it goes fully live.
 
 **No software to install. No IT work.** Access is a simple web link or a QR code you can
@@ -70,18 +86,10 @@ Obispo stories we tell next.
 
 I'd be glad to show you a **15-minute live demo**, in person or by phone, whenever suits you.
 
-<table>
-  <tr>
-    <td style="vertical-align: middle; padding-right: 16px;">
-      <img src="matthew-kennedy.jpg" alt="Matthew Kennedy" width="88" height="88" style="border-radius: 50%; object-fit: cover; display: block;" />
-    </td>
-    <td style="vertical-align: middle;">
-      <strong>Matthew Kennedy · ECHOES</strong><br>
-      Cal Poly MSBA alumnus · Six-year SLO resident<br>
-      📧 matthewkennedy22@gmail.com · 📞 (925) 285-2090
-    </td>
-  </tr>
-</table>
+
+                                                                                                          
+| **Matthew Kennedy · ECHOES** Cal Poly MSBA alumnus · Six-year SLO resident 📧 matthewkennedy22@gmail.com · 📞 (925) 285-2090 |
+
 
 *ECHOES is an AI simulation grounded in public-domain historical sources. Answers are
 labeled by evidence and may contain errors, which is exactly why your expertise matters.*

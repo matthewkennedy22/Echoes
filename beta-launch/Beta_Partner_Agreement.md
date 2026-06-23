@@ -17,6 +17,7 @@ small at-cost AI usage. Either side may end the beta at any time.
 
 - **Free access** to the ECHOES chatbot (Myron Angel) for the duration of the beta.
 - A simple **web link and/or QR code**, with no installation or IT work required.
+- **Live demo URL:** https://echoes-inky-zeta.vercel.app/
 - All technical work, setup, maintenance, and updates.
 - **Evidence-labeled, source-grounded** answers with visible citations.
 - Use of **only public-domain, partner-owned, or permissioned** source material.

@@ -20,16 +20,52 @@ const LABEL_TEXT: Record<EvidenceLabel, string> = {
   unknown: "Not in the sources",
 };
 
+/** Tiny silent MP3 — played synchronously on tap so iOS/Android allow later playback. */
+const SILENT_MP3 =
+  "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAABAAADhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjQ5AAAAAAAAAAAAAAAAJAAAAAAAAAAAA4SmZmgg";
+
+function prefersBlobPlayback(): boolean {
+  if (typeof window === "undefined") return true;
+  const ua = navigator.userAgent;
+  return (
+    /iPhone|iPad|iPod|Android/i.test(ua) ||
+    (/Safari/i.test(ua) && !/Chrome|CriOS|Chromium/i.test(ua))
+  );
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState(true);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playerRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  function getPlayer(): HTMLAudioElement {
+    if (!playerRef.current) {
+      const audio = new Audio();
+      audio.preload = "auto";
+      playerRef.current = audio;
+    }
+    return playerRef.current;
+  }
+
+  /** Must run synchronously inside a click/tap handler, before any await. */
+  function unlockAudio() {
+    if (audioUnlockedRef.current) return;
+    const audio = getPlayer();
+    audio.src = SILENT_MP3;
+    void audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      audioUnlockedRef.current = true;
+    });
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,16 +76,30 @@ export default function Chat() {
       abortRef.current.abort();
       abortRef.current = null;
     }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.removeAttribute("src");
-      audioRef.current = null;
+    const audio = playerRef.current;
+    if (audio) {
+      audio.onended = null;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
     }
     setSpeakingIndex(null);
   }
 
+  async function playBlob(audio: HTMLAudioElement, blob: Blob, index: number) {
+    const url = URL.createObjectURL(blob);
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      setSpeakingIndex((cur) => (cur === index ? null : cur));
+    };
+    audio.src = url;
+    audio.load();
+    await audio.play();
+  }
+
   async function speak(text: string, index: number) {
     stopAudio();
+    setVoiceError(null);
     setSpeakingIndex(index);
 
     const controller = new AbortController();
@@ -62,81 +112,100 @@ export default function Chat() {
         body: JSON.stringify({ text }),
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
+        let detail = "Voice unavailable right now.";
+        try {
+          const data = await res.json();
+          if (data?.error) detail = data.error;
+        } catch {
+          /* not JSON */
+        }
+        setVoiceError(detail);
         setSpeakingIndex(null);
         return;
       }
 
       const mime = "audio/mpeg";
       const canStream =
+        !prefersBlobPlayback() &&
         typeof window !== "undefined" &&
         "MediaSource" in window &&
         window.MediaSource.isTypeSupported(mime);
 
-      // Progressive playback: start as soon as the first chunk arrives.
-      if (canStream) {
+      const audio = getPlayer();
+
+      // Desktop: progressive playback via MediaSource.
+      if (canStream && res.body) {
         const mediaSource = new MediaSource();
         const url = URL.createObjectURL(mediaSource);
-        const audio = new Audio();
         audio.src = url;
-        audioRef.current = audio;
         audio.onended = () => {
           URL.revokeObjectURL(url);
           setSpeakingIndex((cur) => (cur === index ? null : cur));
         };
 
-        mediaSource.addEventListener("sourceopen", () => {
-          const sourceBuffer = mediaSource.addSourceBuffer(mime);
-          const reader = res.body!.getReader();
-          const queue: Uint8Array[] = [];
-          let done = false;
+        await new Promise<void>((resolve, reject) => {
+          mediaSource.addEventListener(
+            "sourceopen",
+            () => {
+              const sourceBuffer = mediaSource.addSourceBuffer(mime);
+              const reader = res.body!.getReader();
+              const queue: Uint8Array[] = [];
+              let done = false;
 
-          const flush = () => {
-            if (sourceBuffer.updating) return;
-            if (queue.length > 0) {
-              sourceBuffer.appendBuffer(queue.shift()! as BufferSource);
-            } else if (done && mediaSource.readyState === "open") {
-              try {
-                mediaSource.endOfStream();
-              } catch {
-                /* already ended */
-              }
-            }
-          };
+              const flush = () => {
+                if (sourceBuffer.updating) return;
+                if (queue.length > 0) {
+                  sourceBuffer.appendBuffer(queue.shift()! as BufferSource);
+                } else if (done && mediaSource.readyState === "open") {
+                  try {
+                    mediaSource.endOfStream();
+                  } catch {
+                    /* already ended */
+                  }
+                }
+              };
 
-          sourceBuffer.addEventListener("updateend", flush);
+              sourceBuffer.addEventListener("updateend", flush);
 
-          (async () => {
-            try {
-              while (true) {
-                const { value, done: streamDone } = await reader.read();
-                if (streamDone) break;
-                if (value) queue.push(value);
-                flush();
-              }
-            } catch {
-              /* aborted or network error */
-            } finally {
-              done = true;
-              flush();
-            }
-          })();
+              void (async () => {
+                try {
+                  while (true) {
+                    const { value, done: streamDone } = await reader.read();
+                    if (streamDone) break;
+                    if (value) queue.push(value);
+                    flush();
+                  }
+                } catch {
+                  /* aborted or network error */
+                } finally {
+                  done = true;
+                  flush();
+                }
+              })();
+              resolve();
+            },
+            { once: true }
+          );
+          mediaSource.addEventListener(
+            "error",
+            () => reject(new Error("MediaSource failed")),
+            { once: true }
+          );
         });
 
         await audio.play();
         return;
       }
 
-      // Fallback (e.g. Safari): wait for the full file, then play.
-      const url = URL.createObjectURL(await res.blob());
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        setSpeakingIndex((cur) => (cur === index ? null : cur));
-      };
-      await audio.play();
-    } catch {
+      // Mobile / Safari: wait for the full file, then play on the unlocked element.
+      await playBlob(audio, await res.blob(), index);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setVoiceError("Tap Hear this again to allow audio on this device.");
+      } else if (!(err instanceof DOMException && err.name === "AbortError")) {
+        setVoiceError("Could not play audio. Check your volume and try again.");
+      }
       setSpeakingIndex((cur) => (cur === index ? null : cur));
     }
   }
@@ -145,7 +214,9 @@ export default function Chat() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
+    unlockAudio();
     setError(null);
+    setVoiceError(null);
     stopAudio();
     const nextMessages: UiMessage[] = [
       ...messages,
@@ -205,7 +276,14 @@ export default function Chat() {
       {messages.length === 0 && (
         <div className="starters">
           {persona.starters.map((s) => (
-            <button key={s} className="starter" onClick={() => send(s)}>
+            <button
+              key={s}
+              className="starter"
+              onClick={() => {
+                unlockAudio();
+                void send(s);
+              }}
+            >
               {s}
             </button>
           ))}
@@ -216,6 +294,7 @@ export default function Chat() {
         <button
           className="voice-toggle"
           onClick={() => {
+            unlockAudio();
             const next = !voiceOn;
             setVoiceOn(next);
             if (!next) stopAudio();
@@ -268,9 +347,11 @@ export default function Chat() {
                 </span>
                 <button
                   className="evidence-toggle"
-                  onClick={() =>
-                    speakingIndex === i ? stopAudio() : speak(m.content, i)
-                  }
+                  onClick={() => {
+                    unlockAudio();
+                    if (speakingIndex === i) stopAudio();
+                    else void speak(m.content, i);
+                  }}
                 >
                   {speakingIndex === i ? "■ Stop" : "🔊 Hear this"}
                 </button>
@@ -314,6 +395,7 @@ export default function Chat() {
         )}
 
         {error && <div className="error">{error}</div>}
+        {voiceError && <div className="error">{voiceError}</div>}
         <div ref={bottomRef} />
       </div>
 
@@ -332,7 +414,10 @@ export default function Chat() {
         />
         <button
           className="send"
-          onClick={() => send(input)}
+          onClick={() => {
+            unlockAudio();
+            void send(input);
+          }}
           disabled={loading || !input.trim()}
         >
           Send
