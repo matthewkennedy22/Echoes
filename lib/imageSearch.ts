@@ -2,7 +2,10 @@ import crypto from "node:crypto";
 import type { ImageAsset } from "@/lib/types";
 
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
+const WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php";
 const SEARCH_ENABLED = process.env.IMAGE_SEARCH_ENABLED !== "false";
+const WIKI_USER_AGENT =
+  "ECHOES/0.1 (local history education; matthewkennedy22@gmail.com)";
 const SEARCH_MAX = Number(process.env.IMAGE_SEARCH_MAX || 4);
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -34,10 +37,19 @@ const PLACE_HINTS: Record<string, string[]> = {
   "arroyo grande": ["Arroyo Grande California historical"],
   cambria: ["Cambria California historical"],
   guadalupe: ["Guadalupe California historical"],
-  chumash: ["Chumash California historical"],
+  chumash: ["Chumash California historical", "Chumash tomol", "Chumash Indian Museum"],
+  tomol: ["Tomol Chumash plank canoe", "Chumash tomol crossing"],
+  "plank canoe": ["Tomol Chumash"],
+  acorn: ["Chumash Indian Museum acorn mortar"],
+  pictograph: ["Chumash Indian Museum pictograph Oakbrook"],
+  basket: ["Chumash Indian Museum basket weaving"],
 };
 
-const cache = new Map<string, { at: number; images: ImageAsset[] }>();
+import { detectCatalogTopics } from "@/personas/myron-angel/imageTopicCatalog";
+import {
+  resolveWikipediaArticlesFromHaystack,
+  wikipediaArticlesForTopicKeys,
+} from "@/personas/myron-angel/wikipediaTopics";
 
 function stripHtml(html: string): string {
   return html
@@ -228,6 +240,13 @@ export function isHistoricalImageAsset(img: ImageAsset): boolean {
   if (!img.id.startsWith("commons-")) return true;
 
   const subjectHay = `${img.caption} ${img.alt}`;
+  if (
+    /\b(?:tomol|chumash tomol|plank canoe|elye'wun|channel islands crossing)\b/i.test(
+      subjectHay
+    )
+  ) {
+    return true;
+  }
   if (MODERN_REJECT.test(subjectHay)) return false;
 
   const year = extractImageYear(subjectHay);
@@ -252,6 +271,32 @@ export function buildImageSearchQuery(
   return buildImageSearchQueries(userQuery, sourceHints)[0] ?? "";
 }
 
+/** Map a visitor topic to Wikipedia article titles whose gallery images we prefer. */
+export function resolveWikipediaArticles(
+  topic: string,
+  sourceHints: string[] = []
+): string[] {
+  const hay = `${topic} ${sourceHints.join(" ")}`;
+  const articles = new Set<string>(resolveWikipediaArticlesFromHaystack(hay));
+
+  const hayContains = (stack: string, term: string): boolean => {
+    const t = term.toLowerCase();
+    if (t.includes(" ")) return stack.includes(t);
+    return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(
+      stack
+    );
+  };
+
+  const catalogHits = detectCatalogTopics(hay.toLowerCase(), hayContains);
+  for (const { key } of catalogHits.slice(0, 6)) {
+    for (const title of wikipediaArticlesForTopicKeys([key])) articles.add(title);
+  }
+
+  return [...articles].slice(0, 8);
+}
+
+const cache = new Map<string, { at: number; images: ImageAsset[] }>();
+
 function scoreResult(title: string, caption: string, topic: string): number {
   const topicTerms = String(topic ?? "")
     .toLowerCase()
@@ -270,8 +315,17 @@ function scoreResult(title: string, caption: string, topic: string): number {
   if (/microfilm|blur|skew|tear|inherent to|\.pdf$/i.test(`${caption} ${title}`)) {
     score -= 12;
   }
-  if (/banner\.jpg|logo|icon|seal|locationof|202[0-9]|201[0-9]|200[0-9]|199[0-9]|19[89]\d|pickup|pick-up|truck|flag|protest|rally|color photo|digital/i.test(hay)) {
+  const tomolTopic = /\btomol/i.test(String(topic ?? ""));
+  if (
+    !tomolTopic &&
+    /banner\.jpg|logo|icon|seal|locationof|202[0-9]|201[0-9]|200[0-9]|199[0-9]|19[89]\d|pickup|pick-up|truck|flag|protest|rally|color photo|digital/i.test(
+      hay
+    )
+  ) {
     score -= 20;
+  }
+  if (tomolTopic && /\btomol|chumash canoe|plank canoe|elye'wun\b/i.test(hay)) {
+    score += 8;
   }
   if (/migrant|makeshift|regional park|arctostaphylos/i.test(hay)) {
     score -= 4;
@@ -289,7 +343,7 @@ function scoreResult(title: string, caption: string, topic: string): number {
   return score;
 }
 
-interface CommonsPage {
+interface WikiImagePage {
   title?: string;
   imageinfo?: Array<{
     thumburl?: string;
@@ -297,6 +351,100 @@ interface CommonsPage {
     descriptionurl?: string;
     extmetadata?: Record<string, { value?: string }>;
   }>;
+}
+
+function shouldSkipWikiFileTitle(title: string): boolean {
+  return (
+    !title.startsWith("File:") ||
+    /\.(?:svg|pdf|djvu|webm|ogv)$/i.test(title) ||
+    /\b(?:logo|icon|seal|flag|pog|commons-logo|edit-clear|question_book)\b/i.test(
+      title
+    )
+  );
+}
+
+function rankWikiImagePage(
+  page: WikiImagePage,
+  topic: string,
+  contextLabel: string,
+  scoreBonus = 0
+): { score: number; asset: ImageAsset } | null {
+  const title = page.title;
+  const info = page.imageinfo?.[0];
+  if (!title || !info || shouldSkipWikiFileTitle(title)) return null;
+
+  const src = info.thumburl || info.url;
+  if (!src) return null;
+
+  const ext = info.extmetadata;
+  const license =
+    metaValue(ext, "LicenseShortName") || metaValue(ext, "UsageTerms");
+  const copyrighted = metaValue(ext, "Copyrighted");
+  if (!isAllowedLicense(license, copyrighted)) return null;
+
+  const description = cleanCaption(metaValue(ext, "ImageDescription"), title);
+  const artist = metaValue(ext, "Artist") || metaValue(ext, "Credit");
+  const uploadDate =
+    metaValue(ext, "DateTimeOriginal") || metaValue(ext, "DateTime");
+  const subjectYear = extractImageYear(title, description);
+  const date =
+    subjectYear !== null
+      ? String(subjectYear)
+      : uploadDate.slice(0, 30) || undefined;
+  const score = scoreResult(title, description, topic) + scoreBonus;
+  if (score <= 0) return null;
+
+  const asset: ImageAsset = {
+    id: commonsId(title),
+    src,
+    caption: description,
+    alt: description.slice(0, 120) || "Historical photograph",
+    topics: [contextLabel],
+    dateRange: date,
+    citation: artist
+      ? `${artist}. Wikimedia Commons (via Wikipedia).`
+      : "Wikimedia Commons (via Wikipedia).",
+    url: info.descriptionurl,
+    license: license || "See Wikimedia Commons",
+  };
+  if (!isHistoricalImageAsset(asset)) return null;
+
+  return { score, asset };
+}
+
+async function fetchWikipediaArticleImages(
+  articleTitle: string,
+  topic: string
+): Promise<{ score: number; asset: ImageAsset }[]> {
+  const params = new URLSearchParams({
+    action: "query",
+    format: "json",
+    generator: "images",
+    titles: articleTitle,
+    gimlimit: "20",
+    prop: "imageinfo",
+    iiprop: "url|extmetadata",
+    iiurlwidth: "900",
+    origin: "*",
+  });
+
+  const res = await fetch(`${WIKIPEDIA_API}?${params.toString()}`, {
+    headers: { "User-Agent": WIKI_USER_AGENT },
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) return [];
+
+  const data = (await res.json()) as {
+    query?: { pages?: Record<string, WikiImagePage> };
+  };
+  const ranked: { score: number; asset: ImageAsset }[] = [];
+
+  for (const page of Object.values(data.query?.pages ?? {})) {
+    const item = rankWikiImagePage(page, topic, `Wikipedia:${articleTitle}`, 12);
+    if (item) ranked.push(item);
+  }
+
+  return ranked;
 }
 
 async function fetchCommonsSearch(
@@ -318,84 +466,27 @@ async function fetchCommonsSearch(
   });
 
   const res = await fetch(`${COMMONS_API}?${params.toString()}`, {
-    headers: {
-      "User-Agent":
-        "ECHOES/0.1 (local history education; matthewkennedy22@gmail.com)",
-    },
+    headers: { "User-Agent": WIKI_USER_AGENT },
     next: { revalidate: 3600 },
   });
   if (!res.ok) return [];
 
   const data = (await res.json()) as {
-    query?: { pages?: Record<string, CommonsPage> };
+    query?: { pages?: Record<string, WikiImagePage> };
   };
-  const pages = data.query?.pages ?? {};
   const ranked: { score: number; asset: ImageAsset }[] = [];
 
-  for (const page of Object.values(pages)) {
-    const title = page.title;
-    const info = page.imageinfo?.[0];
-    if (!title || !info) continue;
-    if (/\.pdf$/i.test(title)) continue;
-
-    const src = info.thumburl || info.url;
-    if (!src) continue;
-
-    const ext = info.extmetadata;
-    const license =
-      metaValue(ext, "LicenseShortName") || metaValue(ext, "UsageTerms");
-    const copyrighted = metaValue(ext, "Copyrighted");
-    if (!isAllowedLicense(license, copyrighted)) continue;
-
-    const description = cleanCaption(
-      metaValue(ext, "ImageDescription"),
-      title
-    );
-    const artist = metaValue(ext, "Artist") || metaValue(ext, "Credit");
-    const uploadDate =
-      metaValue(ext, "DateTimeOriginal") || metaValue(ext, "DateTime");
-    const subjectYear = extractImageYear(title, description);
-    const date =
-      subjectYear !== null
-        ? String(subjectYear)
-        : uploadDate.slice(0, 30) || undefined;
-    const score = scoreResult(title, description, topic);
-    if (score <= 0) continue;
-    if (!isHistoricalImageAsset({
-      id: commonsId(title),
-      src,
-      caption: description,
-      alt: description,
-      topics: [],
-      dateRange: date,
-      citation: "",
-      license: license || "",
-    })) continue;
-
-    ranked.push({
-      score,
-      asset: {
-        id: commonsId(title),
-        src,
-        caption: description,
-        alt: description.slice(0, 120) || "Historical photograph",
-        topics: [searchQuery],
-        dateRange: date,
-        citation: artist
-          ? `${artist}. Wikimedia Commons.`
-          : "Wikimedia Commons.",
-        url: info.descriptionurl,
-        license: license || "See Wikimedia Commons",
-      },
-    });
+  for (const page of Object.values(data.query?.pages ?? {})) {
+    const item = rankWikiImagePage(page, topic, searchQuery, 0);
+    if (item) ranked.push(item);
   }
 
   return ranked;
 }
 
 /**
- * Search Wikimedia Commons for public-domain / freely licensed historical images
- * related to the user's question. Results are cached briefly per query.
+ * Search Wikipedia article galleries and Wikimedia Commons for public-domain /
+ * freely licensed historical images related to the user's question.
  */
 export async function searchHistoricalImages(
   userQuery: string,
@@ -407,14 +498,16 @@ export async function searchHistoricalImages(
   if (!topic.trim()) return [];
 
   const queries = buildImageSearchQueries(userQuery, sourceHints);
-  const cacheKey = `${topic.toLowerCase()}|${queries.join(";")}`;
+  const wikiArticles = resolveWikipediaArticles(topic, sourceHints);
+  const cacheKey = `${topic.toLowerCase()}|wiki:${wikiArticles.join(",")}|${queries.join(";")}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.images;
 
   try {
-    const batches = await Promise.all(
-      queries.map((q) => fetchCommonsSearch(q, SEARCH_MAX, topic))
-    );
+    const batches = await Promise.all([
+      ...wikiArticles.map((a) => fetchWikipediaArticleImages(a, topic)),
+      ...queries.map((q) => fetchCommonsSearch(q, SEARCH_MAX, topic)),
+    ]);
 
     const merged = new Map<string, { score: number; asset: ImageAsset }>();
     for (const batch of batches) {

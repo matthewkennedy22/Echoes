@@ -15,10 +15,10 @@ export const myronAngelPublic: PersonaPublic = {
   disclosure:
     "You are speaking with an AI simulation of Myron Angel, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
-    "Who are you, and why does San Luis Obispo matter to you?",
-    "Tell me about the Chumash who were native to this area.",
-    "What did the town look like when you arrived in 1883?",
-    "What is the history of the Mission San Luis Obispo?",
-    "Tell me about the railroad and how it changed San Luis Obispo.",
+    "Introduce yourself — who is Myron Angel?",
+    "Who were the Chumash, and how did they live along this coast?",
+    "Paint me a picture of San Luis Obispo as you know it in 1905.",
+    "Tell me about Mission San Luis Obispo and the town that grew around it.",
+    "How did the railroad change life here on the Central Coast?",
   ],
 };

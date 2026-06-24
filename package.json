@@ -12,6 +12,7 @@
     "ingest": "node scripts/ingest-book.mjs",
     "fetch-images": "node scripts/fetch-images.mjs",
     "verify-images": "node scripts/verify-images.mjs",
+    "smoke-test": "node scripts/smoke-test-myron.mjs",
     "prebuild": "node scripts/verify-images.mjs"
   },
   "dependencies": {

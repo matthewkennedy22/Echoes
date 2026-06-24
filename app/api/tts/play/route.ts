@@ -2,6 +2,7 @@ import { ttsStream } from "@/lib/llm";
 import { verifyTtsPlayToken } from "@/lib/ttsToken";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token");

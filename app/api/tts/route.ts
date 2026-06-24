@@ -2,6 +2,7 @@ import { ttsStream } from "@/lib/llm";
 import { createTtsPlayToken } from "@/lib/ttsToken";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   try {

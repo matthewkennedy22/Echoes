@@ -103,6 +103,7 @@ export default function Chat() {
   const audioUnlockedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const playPromiseRef = useRef<Promise<void> | null>(null);
+  const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function isBenignPlayError(err: unknown): boolean {
     return (
@@ -161,7 +162,63 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  function clearStallTimer() {
+    if (stallTimerRef.current) {
+      clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
+  }
+
+  function clearAudioHandlers(audio: HTMLAudioElement) {
+    audio.onended = null;
+    audio.onplaying = null;
+    audio.onerror = null;
+    audio.onstalled = null;
+  }
+
+  /** Wire ended / error / stall handlers for a playback session. */
+  function attachPlaybackHandlers(
+    audio: HTMLAudioElement,
+    index: number,
+    onCleanup?: () => void
+  ) {
+    clearAudioHandlers(audio);
+    clearStallTimer();
+
+    const finish = () => {
+      clearStallTimer();
+      onCleanup?.();
+      setSpeakingIndex((cur) => (cur === index ? null : cur));
+      setVoicePreparingIndex(null);
+    };
+
+    const failPlayback = () => {
+      clearStallTimer();
+      onCleanup?.();
+      setVoiceError("Voice was cut short. Tap Hear this to try again.");
+      setSpeakingIndex((cur) => (cur === index ? null : cur));
+      setVoicePreparingIndex(null);
+    };
+
+    audio.onended = finish;
+    audio.onplaying = () => {
+      clearStallTimer();
+      setVoicePreparingIndex((cur) => (cur === index ? null : cur));
+    };
+    audio.onerror = failPlayback;
+    audio.onstalled = () => {
+      clearStallTimer();
+      stallTimerRef.current = setTimeout(() => {
+        stallTimerRef.current = null;
+        if (!audio.ended && audio.paused && audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+          failPlayback();
+        }
+      }, 6000);
+    };
+  }
+
   function stopAudio() {
+    clearStallTimer();
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
@@ -170,8 +227,7 @@ export default function Chat() {
     playPromiseRef.current = null;
     const audio = playerRef.current;
     if (audio) {
-      audio.onended = null;
-      audio.onplaying = null;
+      clearAudioHandlers(audio);
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
@@ -185,13 +241,7 @@ export default function Chat() {
     url: string,
     index: number
   ) {
-    audio.onended = () => {
-      setSpeakingIndex((cur) => (cur === index ? null : cur));
-      setVoicePreparingIndex(null);
-    };
-    audio.onplaying = () => {
-      setVoicePreparingIndex((cur) => (cur === index ? null : cur));
-    };
+    attachPlaybackHandlers(audio, index);
     audio.src = url;
     audio.load();
     await safePlay(audio);
@@ -199,10 +249,7 @@ export default function Chat() {
 
   async function playBlob(audio: HTMLAudioElement, blob: Blob, index: number) {
     const url = URL.createObjectURL(blob);
-    audio.onended = () => {
-      URL.revokeObjectURL(url);
-      setSpeakingIndex((cur) => (cur === index ? null : cur));
-    };
+    attachPlaybackHandlers(audio, index, () => URL.revokeObjectURL(url));
     audio.src = url;
     audio.load();
     await safePlay(audio);
@@ -272,15 +319,8 @@ export default function Chat() {
       if (canStreamMse() && res.body) {
         const mediaSource = new MediaSource();
         const url = URL.createObjectURL(mediaSource);
+        attachPlaybackHandlers(audio, index, () => URL.revokeObjectURL(url));
         audio.src = url;
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          setSpeakingIndex((cur) => (cur === index ? null : cur));
-          setVoicePreparingIndex(null);
-        };
-        audio.onplaying = () => {
-          setVoicePreparingIndex((cur) => (cur === index ? null : cur));
-        };
 
         await new Promise<void>((resolve, reject) => {
           mediaSource.addEventListener(

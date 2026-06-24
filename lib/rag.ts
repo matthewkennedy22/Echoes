@@ -16,6 +16,15 @@ import {
   availableMyronAngelImages,
   filterServeableImages,
 } from "@/lib/imageAvailability";
+import {
+  detectStoryThemes,
+  imageConflictsWithStory,
+  imageStoryMatchScore,
+  isStrongStoryMatch,
+  pickBestStoryImage,
+} from "@/lib/imageMatching";
+import { formatTopicCatalogForPrompt } from "@/personas/myron-angel/imageTopicCatalog";
+import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
 import type {
   ChatMessage,
   EvidenceLabel,
@@ -240,10 +249,12 @@ function buildRetrievalQuery(history: ChatMessage[]): {
 /** Pin library images whose topics strongly match the question. */
 function pinTopicImages(topicHay: string, localCandidates: ImageAsset[]): ImageAsset[] {
   const hay = topicHay.toLowerCase();
-  let pinned = availableMyronAngelImages.filter((img) => imageMatchScore(img, hay) >= 3);
+  let pinned = availableMyronAngelImages.filter(
+    (img) => imageStoryMatchScore(img, hay) >= 3
+  );
   if (isMissionQuery(hay)) {
     const mission = availableMyronAngelImages.filter(
-      (img) => isMissionImage(img) && imageMatchScore(img, hay) >= 2
+      (img) => isMissionImage(img) && imageStoryMatchScore(img, hay) >= 2
     );
     pinned = [...mission, ...pinned];
   }
@@ -312,7 +323,7 @@ async function retrieveContext(
       : [];
 
   // Rank local library images by retrieval embedding; the model picks from these
-  // plus any live search hits (Wikimedia Commons, public domain / CC).
+  // plus live Wikipedia / Wikimedia Commons search hits (public domain / CC).
   let localCandidates = availableMyronAngelImages
     .map((img, i) => ({ img, score: cosine(queryEmbedding, imgEmbeddings[i]) }))
     .sort((a, b) => b.score - a.score)
@@ -373,19 +384,6 @@ function buildConversationBrief(history: ChatMessage[]): string {
     .join("\n\n");
 }
 
-const GENERIC_IMAGE_TOPICS = new Set([
-  "town",
-  "city",
-  "view",
-  "landscape",
-  "san luis obispo",
-  "1900",
-  "1905",
-]);
-
-/** Panorama / generic town views — only when the visitor asks about a vista. */
-const GENERIC_ONLY_IMAGES = new Set(["img-slo-view-1900"]);
-
 function isMissionQuery(topicHay: string): boolean {
   if (/\bbuenaventura\b/i.test(topicHay)) return false;
   return /\b(?:mission san luis|san luis obispo de tolosa|mission de tolosa|the mission|our mission|mission church|mission history|founded 1772|franciscan padres)\b/i.test(
@@ -429,47 +427,11 @@ function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
   return shown;
 }
 
-function imageMatchScore(img: ImageAsset, topicHay: string): number {
-  let score = 0;
-  for (const t of img.topics) {
-    if (typeof t !== "string") continue;
-    const term = t.toLowerCase();
-    if (term.length < 4 || GENERIC_IMAGE_TOPICS.has(term)) continue;
-    if (!topicHay.includes(term)) continue;
-    score += term.includes(" ") ? 4 : term.length >= 10 ? 3 : 2;
-  }
-  if (
-    /\b(?:old town|downtown|main street|higuera|monterey street|storefront|commercial street)\b/i.test(
-      topicHay
-    )
-  ) {
-    if (
-      img.topics.some((t) =>
-        /downtown|old town|street|shops|storefronts|monterey/i.test(t)
-      )
-    ) {
-      score += 2;
-    }
-  }
-  return score;
-}
-
-/** Avoid auto-showing a generic town panorama when the topic needs something specific. */
-function isStrongImageMatch(img: ImageAsset, topicHay: string): boolean {
-  if (GENERIC_ONLY_IMAGES.has(img.id)) {
-    return /\b(?:panorama|view of (?:the )?town|town spread|valley view|beneath.*peaks|looking north)\b/i.test(
-      topicHay
-    );
-  }
-  const score = imageMatchScore(img, topicHay);
-  if (isMissionImage(img) && isMissionQuery(topicHay)) return score >= 2;
-  return score >= 3;
-}
-
-function imageAllowedForQuery(
+function imageAllowedForStory(
   img: ImageAsset,
   userQuery: string,
-  topicHay: string
+  storyHay: string,
+  storyThemes: ReturnType<typeof detectStoryThemes>
 ): boolean {
   if (img.id === "img-portrait") {
     return (
@@ -477,7 +439,7 @@ function imageAllowedForQuery(
       /\b(?:look like|appearance|portrait|likeness)\b/i.test(userQuery)
     );
   }
-  return isStrongImageMatch(img, topicHay);
+  return isStrongStoryMatch(img, storyHay, storyThemes);
 }
 
 function buildGroundingPrompt(
@@ -537,6 +499,11 @@ You may show at most ONE image per reply. Include an image only when one **clear
 specifically** illustrates the exact place, building, person, or event you are discussing.
 When in doubt, use empty image_ids — a mismatched image is worse than none. Pick from:
 ${imageBlock}
+
+# TOPIC → IMAGE GUIDE (match buzzwords in your answer to the best id)
+${formatTopicCatalogForPrompt()}
+
+${IMAGE_ACCURACY_PROMPT}
 ${
   opts?.shownImageIds?.length
     ? `
@@ -545,6 +512,7 @@ Already shown this session — do NOT repeat these ids: ${opts.shownImageIds.joi
     : ""
 }
 Rules for images:
+- **Match the story you tell, not loose keywords.** See TOPIC GUIDE and HISTORICAL ACCURACY above.
 - **High bar for a match:** The image must depict the **same subject** you are narrating
   (e.g. Mission photo for mission history, courthouse for county government, railroad
   photo for the Southern Pacific). Generic town panoramas do not fit specific stories.
@@ -581,7 +549,10 @@ The visitor wants a visual for what you **already discussed** — they do not ne
 - If a listed image matches the topic, include it in image_ids. If none truly fit (e.g. no
   bandit photo for an outlaw tale), say so honestly and use **empty image_ids** — do NOT show
   an unrelated town panorama.
-- Chumash / native peoples → img-chumash-musicians-1873 when listed.
+- Chumash → img-chumash-painted-cave, img-chumash-pictograph-oakbrook, img-chumash-musicians-1873,
+  img-chumash-mortars-exhibit (acorn), img-chumash-ap-replica (village), or tomol ids below.
+  Never img-choris-* for Chumash. Tomols → img-chumash-tomol-kihn (illustration),
+  img-chumash-tomol-elyewun-2006, or img-chumash-tomol-crossing-2015 (modern photos — note post-1905).
 - Old town / downtown → img-slo-street-1905 when listed, not a distant valley view.
 - Mission San Luis Obispo → pick the **most specific** mission id (facade: img-mission-front-1880,
   arcade: img-mission-arcade-1870 (portico columns), south wing: img-mission-south-1888, south street view:
@@ -769,21 +740,44 @@ export async function answerQuestion(
   const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
   const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
-  const topicHay = `${topicContext} ${retrievalQuery} ${parsed.answer ?? ""}`.toLowerCase();
+  const storyHay = (parsed.answer ?? "").toLowerCase();
+  const storyThemes = detectStoryThemes(storyHay);
   const imageIds = asStringIds(parsed.image_ids);
   const imageNorm = new Set(imageIds.map(normId).filter(Boolean));
   let images = candidateImages.filter((img) => imageNorm.has(normId(img.id)));
 
-  // Drop images that fail period, relevance, or repeat checks.
-  images = images.filter((img) => {
-    if (!isHistoricalImageAsset(img)) return false;
-    if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp && img.id !== "img-portrait")
-      return false;
-    if (shownImageIds.has(normId(img.id)) && img.id !== "img-portrait") return false;
-    return imageAllowedForQuery(img, userQuery, topicHay);
-  });
+  const eligibleCandidates = (pool: ImageAsset[]) =>
+    pool.filter((img) => {
+      if (!isHistoricalImageAsset(img)) return false;
+      if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp && img.id !== "img-portrait")
+        return false;
+      if (shownImageIds.has(normId(img.id)) && img.id !== "img-portrait") return false;
+      return imageAllowedForStory(img, userQuery, storyHay, storyThemes);
+    });
 
-  // Fallback: strong match only, never repeat (except portrait on identity).
+  // Drop images that fail story relevance, theme conflict, or repeat checks.
+  images = eligibleCandidates(images);
+
+  // If the model picked a weak/conflicting image, swap to the best story match.
+  if (images.length > 0) {
+    const chosen = images[0];
+    const chosenScore = imageStoryMatchScore(chosen, storyHay);
+    const best = pickBestStoryImage(
+      eligibleCandidates(candidateImages),
+      storyHay,
+      storyThemes,
+      3
+    );
+    const bestScore = best ? imageStoryMatchScore(best, storyHay) : 0;
+    if (
+      imageConflictsWithStory(chosen, storyThemes) ||
+      (best && bestScore >= chosenScore + 2 && best.id !== chosen.id)
+    ) {
+      images = best ? [best] : [];
+    }
+  }
+
+  // Fallback: strong story match only, never repeat (except portrait on identity).
   if (images.length === 0 && candidateImages.length > 0) {
     const skipProactive =
       (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) ||
@@ -792,12 +786,11 @@ export async function answerQuestion(
       evidenceLabel === "unknown";
 
     if (!skipProactive) {
-      const pinned = candidateImages.find(
-        (img) =>
-          !shownImageIds.has(normId(img.id)) &&
-          isHistoricalImageAsset(img) &&
-          imageAllowedForQuery(img, userQuery, topicHay) &&
-          imageMatchScore(img, topicHay) >= 4
+      const pinned = pickBestStoryImage(
+        eligibleCandidates(candidateImages),
+        storyHay,
+        storyThemes,
+        4
       );
       if (pinned) {
         images = [pinned];
