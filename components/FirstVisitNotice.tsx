@@ -43,7 +43,7 @@ export default function FirstVisitNotice() {
       >
         <p className="notice-kicker">Before you begin</p>
         <h2 id="first-visit-notice-title" className="notice-title">
-          Your first answer may take a little while
+          Your first answer may take a while
         </h2>
         <p id="first-visit-notice-body" className="notice-body">
           The first question can take about 30 seconds while the server wakes up

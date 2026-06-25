@@ -157,9 +157,10 @@ body {
 }
 .notice-title {
   margin: 0 0 10px;
-  font-size: 22px;
-  line-height: 1.25;
+  font-size: 17px;
+  line-height: 1.2;
   font-weight: normal;
+  letter-spacing: -0.01em;
 }
 .notice-body {
   margin: 0 0 18px;
