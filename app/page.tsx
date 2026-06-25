@@ -1,9 +1,11 @@
 import Chat from "@/components/Chat";
+import FirstVisitNotice from "@/components/FirstVisitNotice";
 import { myronAngelPublic as persona } from "@/personas/myron-angel/public";
 
 export default function Home() {
   return (
     <main className="app">
+      <FirstVisitNotice />
       <div className="brandbar">
         <a className="brand" href="/" aria-label="ECHOES — home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
