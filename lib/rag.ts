@@ -1,18 +1,42 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { embed, embedMany, chatJSON, EMBED_DIM } from "@/lib/llm";
-import { myronAngelSystemPrompt } from "@/personas/myron-angel/persona";
-import { myronAngelSources } from "@/personas/myron-angel/sources";
+import {
+  buildGroundingTemporalBlock,
+  detectAnachronism,
+  anachronismRetry,
+} from "@/lib/temporalPolicy";
 import {
   isContextualFollowUp,
   isHistoricalImageAsset,
   isImageFollowUpQuery,
   isIntroOrMetaQuery,
+  isPersonPortraitRequest,
   queryWantsImageSearch,
   searchHistoricalImages,
 } from "@/lib/imageSearch";
-import { myronAngelImages } from "@/personas/myron-angel/images";
+import {
+  filterServeableImages,
+  getAvailableLibraryImages,
+} from "@/lib/imageAvailability";
+import {
+  answerSupportsImage,
+  detectStoryThemes,
+  imageConflictsWithStory,
+  imageMatchesQueryIntent,
+  imageStoryMatchScore,
+  isStrongStoryMatch,
+  pickBestStoryImage,
+} from "@/lib/imageMatching";
+import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
+import { chatJSON, embed, embedMany, EMBED_DIM } from "@/lib/llm";
+import { withPersona } from "@/lib/activePersona";
+import {
+  DEFAULT_PERSONA_SLUG,
+  getPersonaPack,
+} from "@/personas";
+import { formatTopicCatalogForPrompt } from "@/personas/topicCatalog";
+import type { PersonaPack } from "@/personas/types";
 import type {
   ChatMessage,
   EvidenceLabel,
@@ -32,58 +56,97 @@ const EVIDENCE_LABELS: EvidenceLabel[] = [
   "unknown",
 ];
 
-const BOOK_PATH = path.join(
-  process.cwd(),
-  "personas",
-  "myron-angel",
-  "book-chunks.json"
-);
 const CACHE_DIR = path.join(process.cwd(), ".cache");
-const CACHE_PATH = path.join(CACHE_DIR, "myron-angel-embeddings.json");
 
-/** Load the ingested 1883 book chunks (if present) as SourceChunks. */
-function loadBookSources(): SourceChunk[] {
-  try {
-    const raw = fs.readFileSync(BOOK_PATH, "utf8");
-    const data = JSON.parse(raw) as SourceChunk[];
-    return data.map((d) => ({
-      id: d.id,
-      text: d.text,
-      topics: d.topics ?? ["san luis obispo history"],
-      dateRange: d.dateRange ?? "pre-1883",
-      sourceType: "primary",
-      citation: d.citation,
-      url: d.url,
-      reliability: d.reliability ?? "medium",
-    }));
-  } catch {
-    return [];
-  }
+interface PersonaIndex {
+  corpus: SourceChunk[];
+  curatedCount: number;
+  corpusEmbeddings: number[][] | null;
+  embeddingJob: Promise<number[][]> | null;
+  imageEmbeddings: number[][] | null;
+  imageEmbeddingJob: Promise<number[][]> | null;
+  hash: string;
 }
 
-// Build the combined corpus once. Curated facts come first.
-const bookSources = loadBookSources();
-const corpus: SourceChunk[] = [...myronAngelSources, ...bookSources];
-const curatedCount = myronAngelSources.length;
+const indexes = new Map<string, PersonaIndex>();
 
-function corpusHash(): string {
+function bookChunkPathsFor(pack: PersonaPack): string[] {
+  if (pack.bookChunksPaths?.length) return pack.bookChunksPaths;
+  if (pack.bookChunksPath) return [pack.bookChunksPath];
+  return [];
+}
+
+/** Load ingested book/OCR chunks (if present) as SourceChunks. */
+function loadBookSources(paths: string[]): SourceChunk[] {
+  const out: SourceChunk[] = [];
+  for (const bookChunksPath of paths) {
+    try {
+      const raw = fs.readFileSync(
+        path.join(process.cwd(), bookChunksPath),
+        "utf8"
+      );
+      const data = JSON.parse(raw) as SourceChunk[];
+      for (const d of data) {
+        out.push({
+          id: d.id,
+          text: d.text,
+          topics: d.topics ?? ["local history"],
+          dateRange: d.dateRange ?? "historical",
+          sourceType: "primary" as const,
+          citation: d.citation,
+          url: d.url,
+          reliability: d.reliability ?? "medium",
+        });
+      }
+    } catch {
+      /* missing or unreadable book file — skip */
+    }
+  }
+  return out;
+}
+
+function corpusHashFor(corpus: SourceChunk[]): string {
   const h = crypto.createHash("sha1");
   h.update(`dim:${EMBED_DIM}|n:${corpus.length}`);
   for (const c of corpus) h.update(`${c.id}:${c.text.length}|`);
   return h.digest("hex");
 }
 
-let corpusEmbeddings: number[][] | null = null;
-let embeddingJob: Promise<number[][]> | null = null;
+function getOrCreateIndex(pack: PersonaPack): PersonaIndex {
+  const slug = pack.public.slug;
+  let idx = indexes.get(slug);
+  if (idx) return idx;
 
-function tryLoadCache(): number[][] | null {
+  const bookSources = loadBookSources(bookChunkPathsFor(pack));
+  const corpus: SourceChunk[] = [...pack.sources, ...bookSources];
+  idx = {
+    corpus,
+    curatedCount: pack.sources.length,
+    corpusEmbeddings: null,
+    embeddingJob: null,
+    imageEmbeddings: null,
+    imageEmbeddingJob: null,
+    hash: corpusHashFor(corpus),
+  };
+  indexes.set(slug, idx);
+  return idx;
+}
+
+function cachePathFor(slug: string): string {
+  return path.join(CACHE_DIR, `${slug}-embeddings.json`);
+}
+
+function tryLoadCache(idx: PersonaIndex, slug: string): number[][] | null {
   try {
-    const raw = fs.readFileSync(CACHE_PATH, "utf8");
+    const raw = fs.readFileSync(cachePathFor(slug), "utf8");
     const cached = JSON.parse(raw) as {
       hash: string;
       vectors: number[][];
     };
-    if (cached.hash === corpusHash() && cached.vectors.length === corpus.length) {
+    if (
+      cached.hash === idx.hash &&
+      cached.vectors.length === idx.corpus.length
+    ) {
       return cached.vectors;
     }
   } catch {
@@ -92,12 +155,12 @@ function tryLoadCache(): number[][] | null {
   return null;
 }
 
-function saveCache(vectors: number[][]) {
+function saveCache(idx: PersonaIndex, slug: string, vectors: number[][]) {
   try {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
     fs.writeFileSync(
-      CACHE_PATH,
-      JSON.stringify({ hash: corpusHash(), vectors }),
+      cachePathFor(slug),
+      JSON.stringify({ hash: idx.hash, vectors }),
       "utf8"
     );
   } catch {
@@ -105,57 +168,66 @@ function saveCache(vectors: number[][]) {
   }
 }
 
-async function ensureEmbeddings(): Promise<number[][]> {
-  if (corpusEmbeddings) return corpusEmbeddings;
+async function ensureEmbeddings(pack: PersonaPack): Promise<number[][]> {
+  const idx = getOrCreateIndex(pack);
+  if (idx.corpusEmbeddings) return idx.corpusEmbeddings;
 
-  const cached = tryLoadCache();
+  const cached = tryLoadCache(idx, pack.public.slug);
   if (cached) {
-    corpusEmbeddings = cached;
+    idx.corpusEmbeddings = cached;
     return cached;
   }
 
-  if (!embeddingJob) {
-    const texts = corpus.map((c) => `${c.topics.join(", ")}: ${c.text}`);
+  if (!idx.embeddingJob) {
+    const texts = idx.corpus.map((c) => `${c.topics.join(", ")}: ${c.text}`);
     console.log(
-      `[ECHOES] Indexing ${texts.length} source chunks (one-time)…`
+      `[ECHOES] Indexing ${texts.length} source chunks for ${pack.public.slug}…`
     );
-    embeddingJob = embedMany(texts, (done, total) => {
+    idx.embeddingJob = embedMany(texts, (done, total) => {
       if (done % 480 === 0 || done === total) {
-        console.log(`[ECHOES] embedded ${done}/${total}`);
+        console.log(`[ECHOES] ${pack.public.slug}: embedded ${done}/${total}`);
       }
     }).then((vectors) => {
-      corpusEmbeddings = vectors;
-      saveCache(vectors);
-      console.log("[ECHOES] Index ready.");
+      idx.corpusEmbeddings = vectors;
+      saveCache(idx, pack.public.slug, vectors);
+      console.log(`[ECHOES] Index ready for ${pack.public.slug}.`);
       return vectors;
     });
   }
-  return embeddingJob;
+  return idx.embeddingJob;
 }
 
-// --- Image index (tiny: embedded once in memory) ---
-let imageEmbeddings: number[][] | null = null;
-let imageEmbeddingJob: Promise<number[][]> | null = null;
-
-async function ensureImageEmbeddings(): Promise<number[][]> {
-  if (imageEmbeddings) return imageEmbeddings;
-  if (myronAngelImages.length === 0) return (imageEmbeddings = []);
-  if (!imageEmbeddingJob) {
-    const texts = myronAngelImages.map(
+async function ensureImageEmbeddings(pack: PersonaPack): Promise<number[][]> {
+  const idx = getOrCreateIndex(pack);
+  if (idx.imageEmbeddings) return idx.imageEmbeddings;
+  const library = getAvailableLibraryImages();
+  if (library.length === 0) return (idx.imageEmbeddings = []);
+  if (!idx.imageEmbeddingJob) {
+    const texts = library.map(
       (img) => `${img.topics.join(", ")}: ${img.caption}`
     );
-    imageEmbeddingJob = embedMany(texts).then((vectors) => {
-      imageEmbeddings = vectors;
+    idx.imageEmbeddingJob = embedMany(texts).then((vectors) => {
+      idx.imageEmbeddings = vectors;
       return vectors;
     });
   }
-  return imageEmbeddingJob;
+  return idx.imageEmbeddingJob;
 }
 
 /** Pre-build the embedding index (used by the warm-up endpoint). */
-export async function warmIndex(): Promise<{ chunks: number; ready: boolean }> {
-  await Promise.all([ensureEmbeddings(), ensureImageEmbeddings()]);
-  return { chunks: corpus.length, ready: corpusEmbeddings !== null };
+export async function warmIndex(
+  personaSlug?: string
+): Promise<{ chunks: number; ready: boolean; persona: string }> {
+  const pack = getPersonaPack(personaSlug);
+  return withPersona(pack, async () => {
+    const idx = getOrCreateIndex(pack);
+    await Promise.all([ensureEmbeddings(pack), ensureImageEmbeddings(pack)]);
+    return {
+      chunks: idx.corpus.length,
+      ready: idx.corpusEmbeddings !== null,
+      persona: pack.public.slug,
+    };
+  });
 }
 
 function cosine(a: number[], b: number[]): number {
@@ -177,13 +249,19 @@ function isIdentityQuery(query: string): boolean {
   );
 }
 
+/** "What did you look like?", "show me your portrait", etc. — not places. */
+function isAppearanceQuery(query: string): boolean {
+  return isPersonPortraitRequest(query);
+}
+
 /** Always include verified biographical sources for self-introduction questions. */
-function pinIdentitySources(sources: SourceChunk[]): SourceChunk[] {
-  const pinned = myronAngelSources.filter(
-    (s) =>
-      s.id.startsWith("bio-") ||
-      s.id.startsWith("calpoly-") ||
-      s.id.startsWith("philosophy-")
+function pinIdentitySources(
+  pack: PersonaPack,
+  sources: SourceChunk[]
+): SourceChunk[] {
+  const prefixes = pack.identitySourceIdPrefixes ?? ["bio-"];
+  const pinned = pack.sources.filter((s) =>
+    prefixes.some((p) => s.id.startsWith(p))
   );
   const seen = new Set<string>();
   const merged: SourceChunk[] = [];
@@ -193,6 +271,10 @@ function pinIdentitySources(sources: SourceChunk[]): SourceChunk[] {
     merged.push(s);
   }
   return merged;
+}
+
+function portraitId(pack: PersonaPack): string {
+  return pack.portraitImageId ?? "img-portrait";
 }
 
 /** Blend recent turns into the retrieval query when the visitor says "this" / "images for that". */
@@ -234,15 +316,17 @@ function buildRetrievalQuery(history: ChatMessage[]): {
   };
 }
 
-/** Pin library images whose topics appear in the ongoing conversation. */
+/** Pin library images whose topics strongly match the question. */
 function pinTopicImages(topicHay: string, localCandidates: ImageAsset[]): ImageAsset[] {
+  const library = getAvailableLibraryImages();
   const hay = topicHay.toLowerCase();
-  const pinned = myronAngelImages.filter((img) =>
-    img.topics.some((t) => {
-      const term = t.toLowerCase();
-      return term.length >= 4 && hay.includes(term);
-    })
-  );
+  let pinned = library.filter((img) => imageStoryMatchScore(img, hay) >= 3);
+  if (isMissionQuery(hay)) {
+    const mission = library.filter(
+      (img) => isMissionImage(img) && imageStoryMatchScore(img, hay) >= 2
+    );
+    pinned = [...mission, ...pinned];
+  }
   const seen = new Set<string>();
   const merged: ImageAsset[] = [];
   for (const img of [...pinned, ...localCandidates]) {
@@ -254,6 +338,7 @@ function pinTopicImages(topicHay: string, localCandidates: ImageAsset[]): ImageA
 }
 
 async function retrieveContext(
+  pack: PersonaPack,
   retrievalQuery: string,
   opts: {
     userQuery: string;
@@ -262,42 +347,41 @@ async function retrieveContext(
   }
 ): Promise<{ sources: SourceChunk[]; candidateImages: ImageAsset[] }> {
   const { userQuery, topicContext, isImageFollowUp } = opts;
+  const idx = getOrCreateIndex(pack);
+  const library = getAvailableLibraryImages();
   const [embeddings, imgEmbeddings, [queryEmbedding]] = await Promise.all([
-    ensureEmbeddings(),
-    ensureImageEmbeddings(),
+    ensureEmbeddings(pack),
+    ensureImageEmbeddings(pack),
     embed([retrievalQuery]),
   ]);
 
-  const scored = corpus.map((chunk, i) => ({
+  const scored = idx.corpus.map((chunk, i) => ({
     index: i,
     score:
       cosine(queryEmbedding, embeddings[i]) +
-      (i < curatedCount ? CURATED_BOOST : 0),
+      (i < idx.curatedCount ? CURATED_BOOST : 0),
   }));
   scored.sort((a, b) => b.score - a.score);
   const topHits = scored.slice(0, TOP_K);
 
-  // Expand each book hit to include its page-adjacent neighbors, so context
-  // that continues across a chunk/page boundary is never truncated. Curated
-  // facts are discrete and are not expanded.
   const selected = new Set<number>();
   for (const hit of topHits) {
     selected.add(hit.index);
-    if (hit.index >= curatedCount) {
+    if (hit.index >= idx.curatedCount) {
       for (let d = 1; d <= NEIGHBOR_RADIUS; d++) {
         const before = hit.index - d;
         const after = hit.index + d;
-        if (before >= curatedCount) selected.add(before);
-        if (after < corpus.length) selected.add(after);
+        if (before >= idx.curatedCount) selected.add(before);
+        if (after < idx.corpus.length) selected.add(after);
       }
     }
   }
 
-  // Return in corpus order: curated facts first, then book passages in
-  // page/reading order, so the model sees a continuous narrative.
-  let sources = [...selected].sort((a, b) => a - b).map((i) => corpus[i]);
+  let sources = [...selected]
+    .sort((a, b) => a - b)
+    .map((i) => idx.corpus[i]);
   if (isIdentityQuery(userQuery)) {
-    sources = pinIdentitySources(sources);
+    sources = pinIdentitySources(pack, sources);
   }
 
   const sourceHints = sources.slice(0, 3).map((s) => s.text.slice(0, 100));
@@ -307,29 +391,33 @@ async function retrieveContext(
       ? await searchHistoricalImages(imageSearchQuery, sourceHints)
       : [];
 
-  // Rank local library images by retrieval embedding; the model picks from these
-  // plus any live search hits (Wikimedia Commons, public domain / CC).
-  let localCandidates = myronAngelImages
-    .map((img, i) => ({ img, score: cosine(queryEmbedding, imgEmbeddings[i]) }))
+  let localCandidates = library
+    .map((img, i) => ({
+      img,
+      score: imgEmbeddings[i]
+        ? cosine(queryEmbedding, imgEmbeddings[i])
+        : 0,
+    }))
     .sort((a, b) => b.score - a.score)
     .slice(0, IMAGE_CANDIDATES)
     .map((x) => x.img);
 
-  if (isImageFollowUp || topicContext) {
-    localCandidates = pinTopicImages(
-      `${topicContext} ${retrievalQuery}`,
-      localCandidates
-    );
-  }
+  localCandidates = pinTopicImages(
+    `${topicContext} ${retrievalQuery} ${sourceHints.join(" ")}`,
+    localCandidates
+  );
 
-  // Intro / meta questions: only offer portrait when the visitor asks about appearance.
+  const pid = portraitId(pack);
   if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
-    const wantsPortrait = /\b(?:look like|appearance|portrait|likeness)\b/i.test(
-      userQuery
-    );
-    localCandidates = wantsPortrait
-      ? localCandidates.filter((img) => img.id === "img-portrait")
-      : [];
+    if (isIdentityQuery(userQuery)) {
+      const portrait = library.find((img) => img.id === pid);
+      localCandidates = portrait ? [portrait] : [];
+    } else {
+      const wantsPortrait = isPersonPortraitRequest(userQuery);
+      localCandidates = wantsPortrait
+        ? localCandidates.filter((img) => img.id === pid)
+        : [];
+    }
   }
 
   const seen = new Set<string>();
@@ -340,7 +428,7 @@ async function retrieveContext(
     candidateImages.push(img);
   }
 
-  return { sources, candidateImages };
+  return { sources, candidateImages: filterServeableImages(candidateImages) };
 }
 
 function isRepetitionComplaint(userQuery: string): boolean {
@@ -355,42 +443,83 @@ function isShortFollowUp(userQuery: string): boolean {
 }
 
 /** Prior turns for the model — truncated so it knows what NOT to repeat. */
-function buildConversationBrief(history: ChatMessage[]): string {
+function buildConversationBrief(
+  history: ChatMessage[],
+  speakerLabel: string
+): string {
   if (history.length <= 1) return "";
   const prior = history.slice(0, -1).slice(-4);
   return prior
     .map((m) => {
-      const label = m.role === "user" ? "Visitor" : "You (Myron)";
+      const label = m.role === "user" ? "Visitor" : speakerLabel;
       return `${label}: ${m.content.trim().slice(0, 500)}`;
     })
     .join("\n\n");
 }
 
-const GENERIC_IMAGE_TOPICS = new Set([
-  "town",
-  "city",
-  "view",
-  "landscape",
-  "san luis obispo",
-  "1900",
-  "1905",
-]);
-
-/** Avoid auto-showing a generic town panorama when the topic needs something specific. */
-function isStrongImageMatch(img: ImageAsset, topicHay: string): boolean {
-  const specific = img.topics.filter(
-    (t) => t.length >= 4 && !GENERIC_IMAGE_TOPICS.has(t.toLowerCase())
+function isMissionQuery(topicHay: string): boolean {
+  if (/\bbuenaventura\b/i.test(topicHay)) return false;
+  return /\b(?:mission san luis|san luis obispo de tolosa|mission de tolosa|the mission|our mission|mission church|mission history|founded 1772|franciscan padres)\b/i.test(
+    topicHay
   );
-  if (specific.some((t) => topicHay.includes(t.toLowerCase()))) return true;
-  if (/\b(?:old town|downtown|main street|higuera|street)\b/i.test(topicHay)) {
-    return img.topics.some((t) =>
-      /downtown|old town|street|shops|storefronts/i.test(t)
+}
+
+function isMissionImage(img: ImageAsset): boolean {
+  return img.id.startsWith("img-mission-");
+}
+
+function normId(id: unknown): string {
+  const s =
+    typeof id === "string" ? id : typeof id === "number" ? String(id) : "";
+  if (!s) return "";
+  return s.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
+}
+
+function asStringIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((id) =>
+      typeof id === "string"
+        ? id.trim()
+        : typeof id === "number"
+          ? String(id)
+          : ""
+    )
+    .filter(Boolean);
+}
+
+function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
+  const shown = new Set<string>();
+  for (const m of history) {
+    if (m.role !== "assistant") continue;
+    for (const id of asStringIds(m.imageIds)) {
+      const norm = normId(id);
+      if (norm) shown.add(norm);
+    }
+  }
+  return shown;
+}
+
+function imageAllowedForStory(
+  pack: PersonaPack,
+  img: ImageAsset,
+  userQuery: string,
+  storyHay: string,
+  storyThemes: ReturnType<typeof detectStoryThemes>
+): boolean {
+  if (img.id === portraitId(pack)) {
+    return (
+      isIdentityQuery(userQuery) ||
+      isAppearanceQuery(userQuery) ||
+      /\bstore\b/i.test(userQuery)
     );
   }
-  return false;
+  return isStrongStoryMatch(img, storyHay, storyThemes) &&
+    imageMatchesQueryIntent(userQuery, img);
 }
 
 function buildGroundingPrompt(
+  pack: PersonaPack,
   sources: SourceChunk[],
   images: ImageAsset[],
   opts?: {
@@ -400,8 +529,12 @@ function buildGroundingPrompt(
     isShortFollowUp?: boolean;
     isFunFactQuery?: boolean;
     conversationBrief?: string;
+    shownImageIds?: string[];
   }
 ): string {
+  const year = pack.temporalYear ?? 1905;
+  const pid = portraitId(pack);
+  const accuracy = pack.accuracyPrompt ?? IMAGE_ACCURACY_PROMPT;
   const sourceBlock = sources
     .map(
       (s) =>
@@ -418,7 +551,7 @@ function buildGroundingPrompt(
       : "(none available)";
 
   return `
-${myronAngelSystemPrompt}
+${pack.systemPrompt}
 
 ${
   opts?.conversationBrief
@@ -429,54 +562,58 @@ ${opts.conversationBrief}
 }
 # SOURCES RETRIEVED FOR THIS QUESTION
 Use ONLY the facts below for historical claims. Each is tagged with an id like [bio-birth] or [book-0123].
-You are in **1905** — do NOT state events, dates, landmarks, or traditions from after 1905.
-If the visitor asks for a fun fact, pick one **from these sources only** (pre-1906 history).
-Some entries are dense 1883 prose transcribed by OCR; read them carefully and paraphrase clearly for the visitor.
+Some entries may be dense historical prose; paraphrase clearly for the visitor.
 ${sourceBlock}
 
-# TEMPORAL ENFORCEMENT (1905)
-- Every historical claim must be either (a) supported by a source above, or (b) general
-  knowledge plausible for 1905 (e.g. Mission founding 1772, Gold Rush, statehood 1850).
-- Never cite dates after **1905** for events you "know" firsthand. Never invent modern SLO trivia.
-- If sources do not support an interesting answer, share a documented fact from the sources
-  rather than drawing on 20th-century knowledge. Label "unknown" only if truly unsupported.
+${buildGroundingTemporalBlock(year)}
 
 # IMAGES YOU MAY SHOW
-You may show at most ONE image, and only when it directly illustrates the specific
-historical subject you are discussing in this reply. Default to an empty array.
-Pick from these ids (local verified photos and live Wikimedia Commons search results):
+You may show at most ONE image per reply. Include an image only when one **clearly and
+specifically** illustrates the exact place, building, person, or event you are discussing.
+When in doubt, use empty image_ids — a mismatched image is worse than none. Pick from:
 ${imageBlock}
-Rules for images (strict):
-- **Default: show NO image.** Most answers need no image at all.
-- Only include an image when your answer focuses on a **specific place, building,
-  landmark, rancho, mission, event, or historical figure** AND one of the listed
-  images clearly depicts that exact subject from **Myron's era** (roughly 1770s–1910s).
-- Do NOT show images for introductions, general county pride, or broad overviews.
-  "Who are you" / "why does SLO matter" → empty image_ids unless discussing your
-  own portrait and img-portrait is listed.
-- Do NOT show modern photographs, contemporary scenes, or images whose caption does
-  not match what you are actually describing.
+
+# TOPIC → IMAGE GUIDE (match buzzwords in your answer to the best id)
+${formatTopicCatalogForPrompt(pack.imageTopics)}
+
+${accuracy}
+${
+  opts?.shownImageIds?.length
+    ? `
+Already shown this session — do NOT repeat these ids: ${opts.shownImageIds.join(", ")}
+`
+    : ""
+}
+Rules for images:
+- **Match the story you tell, not loose keywords.** See TOPIC GUIDE and HISTORICAL ACCURACY above.
+- **High bar for a match:** The image must depict the **same subject** you are narrating.
+  Generic town panoramas do not fit specific stories.
+- **Skip when none fit:** Use empty image_ids when no listed image truly matches.
+- Do NOT show images for "what is echoes" / "are you AI" meta questions.
+- **Never** show ${pid} except for "who are you", introductions, or questions about **your**
+  likeness/appearance — not for places ("what did the marina look like").
+- For **"who are you"** and other identity introductions → **always** include ${pid}
+  when it is listed, and refer to the likeness (or store) in your answer.
+- Do NOT show images for "why does SLO matter" unless a listed image directly fits.
+- Do NOT show modern photographs, contemporary scenes, or images whose caption does not
+  match what you are actually describing.
 - Prefer at most ONE image. Do not invent image ids; use only the ids listed above.
 - **Integration rule (critical):** If image_ids is not empty, the image renders **above**
   your answer text. Write as though the visitor is already looking at it — one unified
   moment. Never offer to show an image you are simultaneously including. Never end with
   "if you wish" when the image is already in image_ids.
-- Good example (with img-portrait): "As this likeness shows, I wore a dark beard in my
-  middle years — though in 1905 I am an aged gentleman of seventy-eight, white-haired…"
+- Good example (mission history with img-mission-1883 listed): "Observe here the Mission
+  as it stood in my day — the adobe walls weathered by decades of faithful labor…"
 - Bad example: "...If you wish, I can show you a likeness." (while also setting image_ids)
+- Prefer the most specific listed image for the subject; do not default to a loose town view.
 ${
   opts?.isImageFollowUp
     ? `
 # IMAGE FOLLOW-UP (visitor asked for a picture about the ongoing topic)
 The visitor wants a visual for what you **already discussed** — they do not need the story again.
-- **Do NOT re-narrate** Jack Powers, vigilance committees, or any facts from your prior reply.
-- Give **2–5 sentences** about what the image shows and how it connects. Then optionally one
-  follow-up question about a **new** angle.
-- If a listed image matches the topic, include it in image_ids. If none truly fit (e.g. no
-  bandit photo for an outlaw tale), say so honestly and use **empty image_ids** — do NOT show
-  an unrelated town panorama.
-- Chumash / native peoples → img-chumash-musicians-1873 when listed.
-- Old town / downtown → img-slo-street-1905 when listed, not a distant valley view.
+- Give **2–5 sentences** about what the image shows and how it connects.
+- If a listed image matches the topic, include it in image_ids. If none truly fit, say so
+  honestly and use **empty image_ids**.
 - Refer to the image as already before the visitor; never ask "would that interest you?"
 `
     : ""
@@ -504,18 +641,21 @@ ${
   opts?.isFunFactQuery
     ? `
 # FUN FACT REQUEST
-Pick ONE surprising but **documented** fact from the sources above — mission history, rancho
-era, railroad, native peoples (from sources), your Polytechnic campaign, etc. It must be
-something you could know in **1905**. Do NOT use modern trivia (nothing from the 1910s onward).
+Pick ONE surprising but **documented** fact from the sources above. It must be
+something you could know in **${year}**. Do NOT use modern trivia from after ${year}.
+Unless the fact is specifically about a place, building, or event that one of the
+listed images depicts, use **empty image_ids** — a fun fact about naming, politics,
+or general history rarely needs a picture.
 `
     : ""
 }
 
 # IDENTITY QUESTIONS ("who are you", introductions)
-When the visitor asks who you are or why San Luis Obispo matters to you, ground your
-answer in the biographical sources above (ids starting with bio-, calpoly-, or
-philosophy-). Label "documented", cite the ids you relied on, and do NOT use "unknown"
-for a standard self-introduction — those biographical sources exist precisely for this.
+When the visitor asks who you are, ground your answer in the biographical sources above.
+Label "documented", cite the ids you relied on, and do NOT use "unknown" for a standard
+self-introduction. When the visitor asks **who you are**, **introduce yourself**, or
+**tell me about yourself**, you MUST include ${pid} in image_ids and weave that image
+into your reply — as though you have just set it before them.
 
 # HOW TO LABEL YOUR ANSWER
 Choose exactly one "evidence_label", judged by the MAIN factual claims of your answer:
@@ -539,11 +679,13 @@ Labeling rules (important):
 # OUTPUT FORMAT (STRICT)
 Respond with a single JSON object, nothing else:
 {
-  "answer": "<your reply, in Myron Angel's 1905 voice unless asked if you are real>",
+  "answer": "<plain-text reply only — NO Markdown, NO image links, NO URLs for pictures>",
   "evidence_label": "documented" | "inference" | "contested" | "unknown",
   "used_source_ids": ["<id>", ...],
   "image_ids": ["<img-id>", ...]
 }
+The "answer" field is shown as plain text. Images listed in image_ids render automatically
+above your reply — never embed ![...](...) syntax, HTML, or wikimedia URLs in "answer".
 `.trim();
 }
 
@@ -552,33 +694,6 @@ function isFunFactQuery(userQuery: string): boolean {
     userQuery
   );
 }
-
-/** Post-1905 references the 1905 persona should not make. */
-function detectAnachronism(text: string): boolean {
-  const lower = text.toLowerCase();
-  if (/\bbubble\s*gum|bubblegum alley\b/.test(lower)) return true;
-  if (
-    /\b(?:highway\s*101|us[\s-]?101|freeway|cal poly state|instagram|world war)\b/.test(
-      lower
-    )
-  )
-    return true;
-  if (/\b(19(?:1[1-9]|[2-9]\d)|20\d{2})s\b/.test(lower)) return true;
-  if (
-    /\b(?:in|since|from|beginning in|started in|opened in|dating to|tradition began in)\s+(19(?:0[6-9]|[1-9]\d)|20\d{2})\b/i.test(
-      text
-    )
-  )
-    return true;
-  return false;
-}
-
-const ANACHRONISM_RETRY = `
-CRITICAL: Your draft mentioned something from AFTER 1905 or not grounded in the sources.
-You are Myron Angel in 1905. Rewrite using ONLY the retrieved sources and knowledge
-plausible for December 1905. Do not mention Bubblegum Alley, mid-20th-century events,
-modern campus life, or any date after 1905 for things you claim to know.
-`.trim();
 
 function parseModelAnswer(raw: string): {
   answer?: string;
@@ -589,34 +704,105 @@ function parseModelAnswer(raw: string): {
   try {
     return JSON.parse(raw);
   } catch {
-    return { answer: raw };
+    /* fall through to salvage */
   }
+
+  // Salvage: trim to the outermost braces (models occasionally wrap JSON in prose).
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      /* fall through */
+    }
+  }
+
+  // Salvage: pull the "answer" string field out of malformed/truncated JSON so we
+  // never show raw JSON to the visitor.
+  const m = raw.match(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)/);
+  if (m) {
+    try {
+      const answer = JSON.parse(`"${m[1]}"`) as string;
+      const labelMatch = raw.match(/"evidence_label"\s*:\s*"([a-z]+)"/);
+      return { answer, evidence_label: labelMatch?.[1] };
+    } catch {
+      return { answer: m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') };
+    }
+  }
+
+  // Last resort: if it still looks like JSON, don't leak it verbatim.
+  if (raw.trim().startsWith("{")) {
+    return { answer: "" };
+  }
+  return { answer: raw };
+}
+
+/** Strip markdown/HTML image embeds the model sometimes adds despite image_ids. */
+function sanitizeAnswerText(answer: string): string {
+  return answer
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/<img\b[^>]*>/gi, "")
+    .replace(
+      /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
+      ""
+    )
+    .replace(/^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export async function answerQuestion(
+  history: ChatMessage[],
+  personaSlug?: string
+): Promise<GroundedAnswer> {
+  const pack = getPersonaPack(personaSlug ?? DEFAULT_PERSONA_SLUG);
+  return withPersona(pack, () => answerQuestionForPack(pack, history));
+}
+
+async function answerQuestionForPack(
+  pack: PersonaPack,
   history: ChatMessage[]
 ): Promise<GroundedAnswer> {
+  const pid = portraitId(pack);
   const { userQuery, retrievalQuery, topicContext, isImageFollowUp } =
     buildRetrievalQuery(history);
-  const conversationBrief = buildConversationBrief(history);
+  const conversationBrief = buildConversationBrief(
+    history,
+    pack.speakerLabel ?? `You (${pack.public.name})`
+  );
+  const shownImageIds = collectPreviouslyShownImageIds(history.slice(0, -1));
 
-  const { sources: retrieved, candidateImages } = await retrieveContext(
+  let { sources: retrieved, candidateImages } = await retrieveContext(
+    pack,
     retrievalQuery,
     { userQuery, topicContext, isImageFollowUp }
   );
-  const system = buildGroundingPrompt(retrieved, candidateImages, {
+
+  candidateImages = candidateImages.filter((img) => {
+    if (!shownImageIds.has(normId(img.id))) return true;
+    return (
+      img.id === pid && (isIdentityQuery(userQuery) || isAppearanceQuery(userQuery))
+    );
+  });
+
+  const system = buildGroundingPrompt(pack, retrieved, candidateImages, {
     isImageFollowUp,
     topicContext,
     isRepetitionComplaint: isRepetitionComplaint(userQuery),
     isShortFollowUp: isShortFollowUp(userQuery),
     isFunFactQuery: isFunFactQuery(userQuery),
     conversationBrief,
+    shownImageIds: [...shownImageIds],
   });
   let raw = await chatJSON(system, history);
   let parsed = parseModelAnswer(raw);
 
-  if (detectAnachronism(parsed.answer ?? raw)) {
-    raw = await chatJSON(`${system}\n\n${ANACHRONISM_RETRY}`, history);
+  if (detectAnachronism(parsed.answer ?? raw, pack.temporalYear ?? 1905)) {
+    raw = await chatJSON(
+      `${system}\n\n${anachronismRetry(pack)}`,
+      history
+    );
     parsed = parseModelAnswer(raw);
   }
 
@@ -628,34 +814,101 @@ export async function answerQuestion(
 
   // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
   // so match on a normalized form rather than exact string equality.
-  const norm = (id: string) =>
-    id.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
-  const usedIds = Array.isArray(parsed.used_source_ids)
-    ? parsed.used_source_ids
-    : [];
-  const usedNorm = new Set(usedIds.map(norm));
-  const usedSources = retrieved.filter((s) => usedNorm.has(norm(s.id)));
+  const usedIds = asStringIds(parsed.used_source_ids);
+  const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
+  const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
-  const imageIds = Array.isArray(parsed.image_ids) ? parsed.image_ids : [];
-  const imageNorm = new Set(imageIds.map(norm));
-  let images = candidateImages.filter((img) => imageNorm.has(norm(img.id)));
+  const storyHay = (parsed.answer ?? "").toLowerCase();
+  const storyThemes = detectStoryThemes(storyHay);
+  const imageIds = asStringIds(parsed.image_ids);
+  const imageNorm = new Set(imageIds.map(normId).filter(Boolean));
+  let images = candidateImages.filter((img) => imageNorm.has(normId(img.id)));
 
-  // Drop images that fail period or relevance checks.
+  const eligibleCandidates = (pool: ImageAsset[]) =>
+    pool.filter((img) => {
+      if (!isHistoricalImageAsset(img)) return false;
+      if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp && img.id !== pid)
+        return false;
+      if (shownImageIds.has(normId(img.id)) && img.id !== pid) return false;
+      return imageAllowedForStory(pack, img, userQuery, storyHay, storyThemes);
+    });
+
+  // Drop images that fail story relevance, theme conflict, or repeat checks.
+  images = eligibleCandidates(images);
+
+  // Reject model-picked images whose subject is not discussed in the answer.
   images = images.filter((img) => {
-    if (!isHistoricalImageAsset(img)) return false;
-    if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp && img.id !== "img-portrait")
-      return false;
-    return true;
+    if (img.id === pid) {
+      return isIdentityQuery(userQuery) || isAppearanceQuery(userQuery);
+    }
+    return (
+      answerSupportsImage(img, storyHay) &&
+      isStrongStoryMatch(img, storyHay, storyThemes) &&
+      imageMatchesQueryIntent(userQuery, img)
+    );
   });
 
-  // Image follow-up: only auto-show when there is a strong topic match (not generic town views).
-  if (images.length === 0 && isImageFollowUp && candidateImages.length > 0) {
-    const topicHay = `${topicContext} ${retrievalQuery}`.toLowerCase();
-    const pinned = candidateImages.find(
-      (img) => isStrongImageMatch(img, topicHay) && isHistoricalImageAsset(img)
+  // If the model picked a weak/conflicting image, swap to the best story match.
+  if (images.length > 0) {
+    const chosen = images[0];
+    const chosenScore = imageStoryMatchScore(chosen, storyHay);
+    const best = pickBestStoryImage(
+      eligibleCandidates(candidateImages),
+      storyHay,
+      storyThemes,
+      3
     );
-    if (pinned) {
-      images = [pinned];
+    const bestScore = best ? imageStoryMatchScore(best, storyHay) : 0;
+    if (
+      imageConflictsWithStory(chosen, storyThemes) ||
+      !answerSupportsImage(chosen, storyHay) ||
+      (best && bestScore >= chosenScore + 2 && best.id !== chosen.id)
+    ) {
+      images = best &&
+        answerSupportsImage(best, storyHay) &&
+        imageMatchesQueryIntent(userQuery, best)
+        ? [best]
+        : [];
+    }
+  }
+
+  // Fallback: strong story match only, never repeat (except portrait on identity).
+  if (images.length === 0 && candidateImages.length > 0) {
+    const skipProactive =
+      (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) ||
+      isRepetitionComplaint(userQuery) ||
+      (isShortFollowUp(userQuery) && !isImageFollowUp) ||
+      isFunFactQuery(userQuery) ||
+      evidenceLabel === "unknown";
+
+    if (!skipProactive) {
+      const pinned = pickBestStoryImage(
+        eligibleCandidates(candidateImages),
+        storyHay,
+        storyThemes,
+        4
+      );
+      if (pinned && imageMatchesQueryIntent(userQuery, pinned)) {
+        images = [pinned];
+      }
+    }
+  }
+
+  // Appearance questions must show the portrait, never a landmark the model picked.
+  if (isAppearanceQuery(userQuery)) {
+    const portrait =
+      candidateImages.find((img) => img.id === pid) ??
+      getAvailableLibraryImages().find((img) => img.id === pid);
+    images = portrait ? [portrait] : images;
+  }
+
+  // "Who are you" / self-introduction: always show the portrait / landmark image.
+  if (images.length === 0 && isIdentityQuery(userQuery)) {
+    const portrait =
+      candidateImages.find((img) => img.id === pid) ??
+      getAvailableLibraryImages().find((img) => img.id === pid);
+    if (portrait) {
+      images = [portrait];
     }
   }
 
@@ -677,8 +930,9 @@ export async function answerQuestion(
   // The model sometimes labels identity answers "unknown" even when bio sources
   // were retrieved and the reply is a normal self-introduction.
   if (evidenceLabel === "unknown" && isIdentityQuery(userQuery) && parsed.answer?.trim()) {
+    const prefixes = pack.identitySourceIdPrefixes ?? ["bio-"];
     const bioSources = retrieved.filter((s) =>
-      /^(bio-|calpoly-|philosophy-)/.test(s.id)
+      prefixes.some((p) => s.id.startsWith(p))
     );
     if (bioSources.length > 0) {
       evidenceLabel = "documented";
@@ -686,13 +940,34 @@ export async function answerQuestion(
     }
   }
 
+  // Hard cap: one image per reply, keeping the strongest story match.
+  if (images.length > 1) {
+    images = [...images].sort(
+      (a, b) =>
+        imageStoryMatchScore(b, storyHay) - imageStoryMatchScore(a, storyHay)
+    );
+    images = [images[0]];
+  }
+
+  // Final guard: never show an image the answer does not actually discuss.
+  images = images.filter((img) => {
+    if (img.id === pid && (isIdentityQuery(userQuery) || isAppearanceQuery(userQuery))) {
+      return true;
+    }
+    return (
+      answerSupportsImage(img, storyHay) &&
+      imageMatchesQueryIntent(userQuery, img)
+    );
+  });
+
   return {
-    answer:
+    answer: sanitizeAnswerText(
       parsed.answer?.trim() ||
-      "Forgive me — I find I cannot put words to that just now.",
+        "Forgive me — I find I cannot put words to that just now."
+    ),
     evidenceLabel,
     usedSourceIds: usedIds,
     sources: displaySources,
-    images,
+    images: filterServeableImages(images),
   };
 }

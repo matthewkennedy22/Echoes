@@ -45,13 +45,35 @@ body {
   top: 0;
   z-index: 50;
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
   padding: 10px 0 8px;
   /* slightly translucent paper so content scrolls cleanly underneath */
   background: rgba(246, 239, 225, 0.92);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   border-bottom: 1px solid var(--line);
+}
+.brand-back {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.brand-back:hover {
+  text-decoration: underline;
+}
+.brand-wordmark {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.brand-wordmark:hover {
+  color: var(--accent);
 }
 .brand {
   display: inline-flex;
@@ -71,7 +93,7 @@ body {
 /* ---------- Masthead ---------- */
 .masthead {
   text-align: center;
-  padding: 18px 0 14px;
+  padding: 22px 0 18px;
   border-bottom: 3px double var(--ink);
 }
 .masthead .kicker {
@@ -81,15 +103,150 @@ body {
   color: var(--ink-soft);
 }
 .masthead h1 {
-  font-size: 40px;
-  margin: 6px 0 2px;
-  letter-spacing: 0.02em;
+  font-size: 38px;
+  margin: 8px 0 10px;
+  letter-spacing: 0.01em;
+  font-weight: normal;
 }
 .masthead .sub {
-  font-style: italic;
+  font-style: normal;
   color: var(--ink-soft);
   font-size: 15px;
+  line-height: 1.55;
+  margin: 0 auto;
+  max-width: 34em;
+}
+.masthead-compact h1 {
+  font-size: 30px;
+  margin-top: 4px;
+}
+.persona-page-region {
+  margin: 0 0 6px;
+  text-align: center;
+}
+.persona-page-meta {
+  font-size: 14.5px !important;
+  margin-bottom: 6px !important;
+}
+.persona-page-era {
   margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+/* ---------- Landing gallery ---------- */
+.persona-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0 28px;
+}
+.persona-card {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.persona-card:hover {
+  border-color: var(--accent-soft);
+  box-shadow: 0 4px 18px rgba(43, 33, 24, 0.08);
+}
+.persona-card-portrait {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: 0 0 auto;
+  background: var(--paper-2);
+  border: 2px solid var(--accent-soft);
+  display: grid;
+  place-items: center;
+}
+.persona-card-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+.persona-card-glyph {
+  font-size: 36px;
+}
+.persona-card-region {
+  margin: 0 0 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  line-height: 1.2;
+}
+.persona-card-body h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  font-weight: normal;
+  line-height: 1.25;
+}
+.persona-card-years {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.persona-card-tagline {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.persona-card-era {
+  margin: 5px 0 10px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  opacity: 0.92;
+}
+.persona-card-cta {
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+.landing-partner {
+  text-align: center;
+  padding: 22px 12px 28px;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+.landing-partner h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: normal;
+}
+.landing-partner p {
+  margin: 0 auto 16px;
+  max-width: 520px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.partner-cta {
+  display: inline-block;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  background: var(--accent);
+  color: var(--paper);
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+}
+.partner-cta:hover {
+  background: var(--accent-soft);
 }
 
 /* ---------- Persona card ---------- */
@@ -101,14 +258,14 @@ body {
   border-bottom: 1px solid var(--line);
 }
 .persona .portrait {
-  width: 60px;
-  height: 60px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   background: var(--paper-2);
   border: 2px solid var(--accent-soft);
   display: grid;
   place-items: center;
-  font-size: 26px;
+  font-size: 34px;
   flex: 0 0 auto;
   overflow: hidden;
 }
@@ -126,6 +283,61 @@ body {
   margin: 2px 0 0;
   font-size: 13px;
   color: var(--ink-soft);
+}
+
+/* ---------- First-visit notice ---------- */
+.notice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(43, 33, 24, 0.42);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.notice-card {
+  width: min(100%, 380px);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 22px 18px;
+  box-shadow: 0 12px 40px rgba(43, 33, 24, 0.18);
+}
+.notice-kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.notice-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: normal;
+  letter-spacing: -0.01em;
+}
+.notice-body {
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.notice-btn {
+  font-family: Georgia, serif;
+  font-size: 15px;
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  cursor: pointer;
+  width: 100%;
+}
+.notice-btn:hover {
+  background: var(--accent-soft);
 }
 
 /* ---------- Disclosure ---------- */
@@ -190,11 +402,33 @@ body {
   box-shadow: none;
 }
 .role-tag {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
   margin: 0 2px 4px;
+}
+.role-tag.user {
+  justify-content: flex-end;
+}
+.role-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid var(--accent-soft);
+  flex: 0 0 auto;
+  background: var(--paper-2);
+}
+.role-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
 }
 
 /* ---------- Evidence ---------- */
@@ -405,21 +639,210 @@ body {
 }
 
 .footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   text-align: center;
   font-size: 11px;
   color: var(--ink-soft);
-  padding: 10px 0 20px;
+  padding: 14px 0 22px;
   border-top: 1px solid var(--line);
+}
+.footer-logo {
+  height: 28px;
+  width: auto;
+  opacity: 0.85;
 }
 
 @media (max-width: 600px) {
-  .masthead h1 {
-    font-size: 30px;
+  .app {
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
   }
-  .bubble {
-    font-size: 15px;
+
+  .brandbar {
+    margin-left: calc(-1 * max(14px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(14px, env(safe-area-inset-right)));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-top: max(8px, env(safe-area-inset-top));
   }
+
   .brand-logo {
     height: 34px;
+  }
+
+  .masthead {
+    padding: 14px 0 12px;
+  }
+
+  .masthead .kicker {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .masthead h1 {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .masthead .sub {
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 0 4px;
+  }
+
+  .persona {
+    gap: 12px;
+    padding: 14px 0;
+  }
+
+  .persona .portrait {
+    width: 72px;
+    height: 72px;
+    font-size: 28px;
+  }
+
+  .persona .meta h2 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .persona .meta p {
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  .disclosure {
+    font-size: 12px;
+    padding: 10px;
+    margin: 12px 0;
+  }
+
+  .starters {
+    flex-direction: column;
+    gap: 10px;
+    margin: 6px 0 12px;
+  }
+
+  .starter {
+    width: 100%;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.4;
+    border-radius: 12px;
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  .voicebar {
+    padding: 4px 0 2px;
+  }
+
+  .voice-toggle {
+    font-size: 13px;
+    padding: 8px 14px;
+    min-height: 40px;
+  }
+
+  .chat {
+    gap: 16px;
+    padding: 6px 0 12px;
+  }
+
+  .msg {
+    max-width: 100%;
+  }
+
+  .msg.user {
+    max-width: 92%;
+  }
+
+  .msg.assistant {
+    max-width: 100%;
+  }
+
+  .bubble {
+    font-size: 16px;
+    line-height: 1.55;
+    padding: 12px 14px;
+  }
+
+  .msg.assistant .bubble {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .role-tag {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .role-avatar {
+    width: 22px;
+    height: 22px;
+  }
+
+  .evidence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-top: 10px;
+  }
+
+  .evidence-toggle {
+    font-size: 13px;
+    margin-left: 0;
+    padding: 6px 2px;
+    min-height: 36px;
+  }
+
+  .figure {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .figure .fig-caption {
+    font-size: 12.5px;
+  }
+
+  .figure .fig-cite {
+    font-size: 10.5px;
+  }
+
+  .composer {
+    gap: 10px;
+    padding: 10px 0 max(16px, calc(10px + env(safe-area-inset-bottom)));
+    margin-left: calc(-1 * max(14px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(14px, env(safe-area-inset-right)));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+
+  .composer textarea {
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+    min-height: 48px;
+    padding: 12px 14px;
+  }
+
+  .send {
+    flex-shrink: 0;
+    min-width: 72px;
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: 16px;
+  }
+
+  .footer {
+    font-size: 10.5px;
+    line-height: 1.45;
+    padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+  }
+
+  .error {
+    font-size: 13px;
   }
 }

@@ -6,19 +6,20 @@ import type { PersonaPublic } from "@/lib/types";
  */
 export const myronAngelPublic: PersonaPublic = {
   slug: "myron-angel",
+  region: "San Luis Obispo County",
   name: "Myron Angel",
   years: "1827 – 1911",
   portrait: "✒️",
-  portraitImage: "/myron-angel.jpg",
+  portraitImage: "/portraits/myron-angel.jpg",
   tagline: "Journalist, county historian, and father of Cal Poly",
   era: "Speaking from his home on Buchon Street, San Luis Obispo, in 1905",
   disclosure:
     "You are speaking with an AI simulation of Myron Angel, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
-    "Who are you, and why does San Luis Obispo matter to you?",
-    "How did you come to found the Polytechnic School?",
-    "What was San Luis Obispo like when you arrived in 1883?",
-    "Why do you believe so much in 'learning by doing'?",
-    "Tell me about your book, the History of San Luis Obispo County.",
+    "Introduce yourself — who is Myron Angel?",
+    "Who were the Chumash, and how did they live along this coast?",
+    "Paint me a picture of San Luis Obispo as you know it in 1905.",
+    "Tell me about Mission San Luis Obispo and the town that grew around it.",
+    "How did the railroad change life here on the Central Coast?",
   ],
 };

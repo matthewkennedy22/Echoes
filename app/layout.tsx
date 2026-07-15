@@ -2,9 +2,15 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ECHOES — Talk with San Luis Obispo's History",
+  title: "California Speaks — Local History, Made Conversational",
   description:
-    "Converse with Myron Angel, the father of Cal Poly and chronicler of San Luis Obispo — an AI simulation grounded in historical sources.",
+    "Source-grounded conversations with California historians — San Luis Obispo, San Francisco, San Diego, Santa Barbara, Lake Tahoe, and the San Ramon Valley. Every answer labeled by evidence.",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

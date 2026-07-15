@@ -35,7 +35,11 @@ expertise. My goals are simple: **to promote history learning in San Luis Obispo
 continue my research into how AI can be made accurate and trustworthy for education.**
 
 I've enclosed a one-page overview that explains how ECHOES works and what partnership
-involves. Could I show you a **15-minute live demo**, in person or by phone, at a time
+involves. You can also **try the live beta now**:
+
+**https://echoes-inky-zeta.vercel.app/**
+
+Could I show you a **15-minute live demo**, in person or by phone, at a time
 that's convenient for you? I'm happy to work around your schedule.
 
 Thank you for everything you do to preserve our county's history. I'd be honored to build

@@ -6,9 +6,11 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 /** GET /api/chat — pre-build the embedding index so the first chat is fast. */
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const status = await warmIndex();
+    const { searchParams } = new URL(req.url);
+    const persona = searchParams.get("persona") ?? undefined;
+    const status = await warmIndex(persona);
     return NextResponse.json({ ok: true, ...status });
   } catch (err) {
     const message =
@@ -30,6 +32,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const messages = body?.messages;
+    const persona =
+      typeof body?.persona === "string" ? body.persona : undefined;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -46,9 +50,15 @@ export async function POST(req: Request) {
           ((m as ChatMessage).role === "user" ||
             (m as ChatMessage).role === "assistant")
       )
-      .map((m: ChatMessage) => ({ role: m.role, content: m.content }));
+      .map((m: ChatMessage) => ({
+        role: m.role,
+        content: m.content,
+        ...(Array.isArray(m.imageIds) && m.imageIds.length
+          ? { imageIds: m.imageIds.filter((id) => typeof id === "string") }
+          : {}),
+      }));
 
-    const result = await answerQuestion(history);
+    const result = await answerQuestion(history, persona);
     return NextResponse.json(result);
   } catch (err) {
     const message =
