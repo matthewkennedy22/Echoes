@@ -15,7 +15,7 @@ const IDENTIFIER = "historyofsanluis00ange";
 const SOURCE_URL = `https://archive.org/download/${IDENTIFIER}/${IDENTIFIER}_djvu.txt`;
 const BOOK_PAGE = `https://archive.org/details/${IDENTIFIER}`;
 const RAW_PATH = path.join("data", "raw", `${IDENTIFIER}.txt`);
-const OUT_PATH = path.join("personas", "myron-angel", "book-chunks.json");
+const OUT_PATH = path.join("personas", "myron-angel", "book-chunks-angel-1883.json");
 
 const TARGET_CHARS = 1900; // ~480 tokens
 const MIN_CLOSE_CHARS = 950;

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { myronAngelImages } from "@/personas/myron-angel/images";
+import { getActivePersona } from "@/lib/activePersona";
 import type { ImageAsset } from "@/lib/types";
 
 const PUBLIC_ROOT = path.join(process.cwd(), "public");
@@ -33,11 +33,17 @@ export function filterServeableImages(images: ImageAsset[]): ImageAsset[] {
   return images.filter(isServeableImage);
 }
 
-function buildAvailableLibraryImages(): ImageAsset[] {
+const availableBySlug = new Map<string, ImageAsset[]>();
+
+/** Library images for a persona whose files are present in /public. */
+export function availableImagesForPersona(slug: string, images: ImageAsset[]): ImageAsset[] {
+  const cached = availableBySlug.get(slug);
+  if (cached) return cached;
+
   const available: ImageAsset[] = [];
   const missing: string[] = [];
 
-  for (const img of myronAngelImages) {
+  for (const img of images) {
     if (isServeableImage(img)) {
       available.push(img);
     } else {
@@ -47,13 +53,21 @@ function buildAvailableLibraryImages(): ImageAsset[] {
 
   if (missing.length > 0) {
     console.warn(
-      `[ECHOES] ${missing.length} catalogued image(s) missing on disk — run npm run fetch-images:\n  ${missing.join("\n  ")}`
+      `[ECHOES] ${missing.length} catalogued image(s) missing for ${slug} — run npm run fetch-images:\n  ${missing.join("\n  ")}`
     );
   }
 
+  availableBySlug.set(slug, available);
   return available;
 }
 
-/** Library images whose files are present in /public (safe to offer the model). */
-export const availableMyronAngelImages: ImageAsset[] =
-  buildAvailableLibraryImages();
+/** Images for the currently active persona. */
+export function getAvailableLibraryImages(): ImageAsset[] {
+  const pack = getActivePersona();
+  return availableImagesForPersona(pack.public.slug, pack.images);
+}
+
+/**
+ * @deprecated Prefer getAvailableLibraryImages() — kept for Myron-era call sites.
+ */
+export const availableMyronAngelImages: ImageAsset[] = [];

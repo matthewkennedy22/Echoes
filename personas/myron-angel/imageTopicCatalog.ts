@@ -8,14 +8,12 @@
  * Louis Choris (1822) engravings are in "choris-bay-area" — Ohlone/Cholovones, NOT Chumash.
  */
 
-export interface MyronImageTopic {
-  key: string;
-  label: string;
-  buzzwords: string[];
-  imageIds: string[];
-}
+import type { ImageTopic } from "@/personas/types";
 
-export const MYRON_IMAGE_TOPICS: MyronImageTopic[] = [
+/** @deprecated Use ImageTopic from @/personas/types */
+export type MyronImageTopic = ImageTopic;
+
+export const MYRON_IMAGE_TOPICS: ImageTopic[] = [
   {
     key: "identity",
     label: "Myron Angel — who he is",

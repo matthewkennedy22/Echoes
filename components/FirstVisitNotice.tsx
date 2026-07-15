@@ -47,8 +47,8 @@ export default function FirstVisitNotice() {
         </h2>
         <p id="first-visit-notice-body" className="notice-body">
           The first question can take about 30 seconds while the server wakes up
-          and Myron searches the historical sources. Later answers are usually
-          much faster — thank you for your patience.
+          and the historian searches the historical sources. Later answers are
+          usually much faster — thank you for your patience.
         </p>
         <button type="button" className="notice-btn" onClick={dismiss}>
           Got it

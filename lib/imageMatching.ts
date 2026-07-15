@@ -1,5 +1,6 @@
 import type { ImageAsset } from "@/lib/types";
-import { catalogScoreForImage } from "@/personas/myron-angel/imageTopicCatalog";
+import { getActivePersona } from "@/lib/activePersona";
+import { catalogScoreForImage as scoreFromTopics } from "@/personas/topicCatalog";
 import {
   CHORIS_1822_IMAGE_IDS,
   CHUMASH_TOMOL_IMAGE_IDS,
@@ -7,6 +8,19 @@ import {
   isHistoricallyAccurateForStory,
   storyMentionsTomol,
 } from "@/lib/imageAccuracy";
+
+function catalogScoreForImage(
+  imageId: string,
+  storyHay: string,
+  hayContains: (hay: string, term: string) => boolean
+): number {
+  return scoreFromTopics(
+    getActivePersona().imageTopics,
+    imageId,
+    storyHay,
+    hayContains
+  );
+}
 
 /** Visual subject families — used to block cross-theme mismatches. */
 export type ImageTheme =
@@ -50,20 +64,109 @@ function themesForImage(img: ImageAsset): ImageTheme[] {
   return [];
 }
 
-const GENERIC_IMAGE_TOPICS = new Set([
+/** Weak topic tokens — matching these alone must not justify showing an image. */
+const GENERIC_WEAK_TOPICS = new Set([
   "town",
   "city",
   "view",
   "landscape",
   "san luis obispo",
+  "san francisco",
+  "san diego",
+  "santa barbara",
+  "california",
+  "nevada",
   "1900",
   "1905",
+  "1885",
+  "1890",
   "people",
   "culture",
   "daily life",
   "music",
-  "mission",
+  "history",
+  "county",
+  "valley",
+  "bay",
+  "coast",
+  "pacific coast",
+  "metropolis",
+  "pioneer",
+  "biography",
+  "appearance",
+  "yourself",
+  "identity",
+  "church",
+  "gold rush",
 ]);
+
+/** Thematic images require the answer to mention their subject, not just the region. */
+const SUBJECT_ANCHOR_RULES: {
+  test: (img: ImageAsset) => boolean;
+  pattern: RegExp;
+}[] = [
+  {
+    test: (img) =>
+      /mission/i.test(img.id) ||
+      img.topics.some((t) =>
+        /\bmission (?:dolores|san|santa|de)\b/i.test(t)
+      ),
+    pattern:
+      /\b(?:mission(?:\s+(?:san|dolores|santa|de|del|los|la))?|(?:los\s+)?dolores|padres?|friars?|franciscan|1776|1772|1782|1786|adobe mission|mission church|san francisco de as[ií]s|san luis obispo de tolosa|tolosa|queen of the missions)\b/i,
+  },
+  {
+    test: (img) =>
+      /golden-gate|angel-island|telegraph-hill|tamalpais/i.test(img.id),
+    pattern:
+      /\b(?:golden gate|angel island|telegraph hill|mount tamalpais|tamalpais|the strait|ferry|marina(?: district)?|waterfront|sandy shore|bay shore|san francisco bay)\b/i,
+  },
+  {
+    test: (img) => /railroad|train|depot|station|locomotive/i.test(img.id),
+    pattern:
+      /\b(?:railroad|railway|train|depot|locomotive|southern pacific|right of way|hemme station|tracks|branch line)\b/i,
+  },
+  {
+    test: (img) => /tahoe|timber-claim|nevada|carson/i.test(img.id),
+    pattern:
+      /\b(?:tahoe|lake tahoe|timber claim|nevada|carson city|roughing it|sierra nevada)\b/i,
+  },
+  {
+    test: (img) =>
+      /-1890|map/i.test(img.id) || img.topics.some((t) => t.toLowerCase() === "map"),
+    pattern: /\b(?:map|mapped|cartograph|survey|bird.?s eye|panorama of the city)\b/i,
+  },
+  {
+    test: (img) => /morro|avila|harford|wharf|slo-creek|slo-street|slo-view/i.test(img.id),
+    pattern:
+      /\b(?:morro rock|morro|avila|port harford|harford|san luis creek|higuera|monterey street)\b/i,
+  },
+  {
+    test: (img) => /bancroft-ranch|spring-valley/i.test(img.id),
+    pattern: /\b(?:spring valley|bancroft ranch|country home|country retreat)\b/i,
+  },
+  {
+    test: (img) => /horton-house|horton-plaza|city-park|gaslamp|old-town/i.test(img.id),
+    pattern:
+      /\b(?:horton house|horton plaza|city park|balboa park|gaslamp|old town|new town|whale fishery)\b/i,
+  },
+  {
+    test: (img) => /courthouse|court-house/i.test(img.id),
+    pattern: /\b(?:courthouse|court house|county government|judicial)\b/i,
+  },
+  {
+    test: (img) => /vaquero|fandango|rancho-roundup/i.test(img.id),
+    pattern: /\b(?:vaquero|californio|fandango|fiesta|round-?up|rodeo)\b/i,
+  },
+  {
+    test: (img) => /presidio|state-street|painted-cave/i.test(img.id),
+    pattern:
+      /\b(?:presidio|state street|painted cave|pictograph|rock art)\b/i,
+  },
+  {
+    test: (img) => /danville|alamo|san-ramon/i.test(img.id),
+    pattern: /\b(?:danville|alamo|san ramon|hemme station)\b/i,
+  },
+];
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -131,7 +234,7 @@ export function detectStoryThemes(answerHay: string): StoryThemeWeights {
     bump("native", 1);
   }
   if (
-    /\b(?:mission san luis|san luis obispo de tolosa|the mission|our mission|missionaries|padres|founded 1772)\b/i.test(
+    /\b(?:mission (?:san |dolores|santa |de |del )|(?:los\s+)?dolores|san luis obispo de tolosa|(?:the|our|a) mission|missionaries|padres|founded 1772|founded 1776|founded 1786)\b/i.test(
       answerHay
     )
   ) {
@@ -152,7 +255,7 @@ export function detectStoryThemes(answerHay: string): StoryThemeWeights {
   if (/\b(?:railroad|southern pacific|train|depot|tracks)\b/i.test(answerHay)) {
     bump("railroad", 2);
   }
-  if (/\b(?:morro|avila|beach|coast|ocean|harbor|wharf)\b/i.test(answerHay)) {
+  if (/\b(?:morro|avila|beach|coast|ocean|harbor|wharf|marina|waterfront|bay shore)\b/i.test(answerHay)) {
     bump("coast", 2);
   }
   if (/\b(?:polytechnic|cal poly|vocational school)\b/i.test(answerHay)) {
@@ -180,7 +283,7 @@ export function imageStoryMatchScore(img: ImageAsset, storyHay: string): number 
   for (const t of img.topics) {
     if (typeof t !== "string") continue;
     const term = t.toLowerCase();
-    if (term.length < 4 || GENERIC_IMAGE_TOPICS.has(term)) continue;
+    if (term.length < 4 || GENERIC_WEAK_TOPICS.has(term)) continue;
     if (!hayContainsTerm(storyHay, term)) continue;
     score += term.includes(" ") ? 5 : term.length >= 10 ? 4 : 3;
   }
@@ -280,6 +383,26 @@ export function imageConflictsWithStory(
   return false;
 }
 
+/** True when the answer text actually discusses what the image depicts. */
+export function answerSupportsImage(
+  img: ImageAsset,
+  storyHay: string,
+  opts?: { allowPortrait?: boolean }
+): boolean {
+  if (opts?.allowPortrait && img.topics.includes("portrait")) return true;
+
+  for (const rule of SUBJECT_ANCHOR_RULES) {
+    if (rule.test(img)) return rule.pattern.test(storyHay);
+  }
+
+  const specifics = img.topics.filter((t) => {
+    const term = t.toLowerCase();
+    return term.length >= 5 && !GENERIC_WEAK_TOPICS.has(term);
+  });
+  if (specifics.length === 0) return false;
+  return specifics.some((t) => hayContainsTerm(storyHay, t));
+}
+
 export function isStrongStoryMatch(
   img: ImageAsset,
   storyHay: string,
@@ -287,6 +410,7 @@ export function isStrongStoryMatch(
 ): boolean {
   if (!isHistoricallyAccurateForStory(img.id, storyHay)) return false;
   if (imageConflictsWithStory(img, themes)) return false;
+  if (!answerSupportsImage(img, storyHay)) return false;
   const score = imageStoryMatchScore(img, storyHay);
   if (img.id === "img-slo-view-1900") {
     return (
@@ -313,6 +437,59 @@ export function isStrongStoryMatch(
   return score >= 3;
 }
 
+/**
+ * When the visitor asks what a specific place looked like, do not show images for
+ * other subjects that merely appear in passing within the answer.
+ */
+export function imageMatchesQueryIntent(
+  userQuery: string,
+  img: ImageAsset
+): boolean {
+  const q = userQuery.toLowerCase();
+  const id = img.id.toLowerCase();
+  const stack = imageSearchHaystack(img);
+
+  const placeLookLike =
+    /\blook(?:s|ed)? like\b/.test(q) ||
+    /\bwhat did (?:the |this )?(?:\w+\s+){0,4}(?:look|appear)\b/.test(q) ||
+    /\bwhat was (?:the |this )?(?:\w+\s+){0,4}like\b/.test(q);
+
+  if (!placeLookLike) return true;
+
+  const asksHarbor = /\b(?:harbor|harbour|wharf|pier|waterfront|marina|dock|port)\b/.test(
+    q
+  );
+  const asksValley =
+    /\b(?:valley|countryside|landscape)\b/.test(q) &&
+    /\bbefore\b/.test(q);
+
+  if (asksHarbor) {
+    if (/mission/i.test(id) && !/\bmission\b/.test(q)) return false;
+    if (/courthouse|court-house/i.test(id) && !/\bcourthouse\b/.test(q))
+      return false;
+    if (/vaquero|fandango|rancho/i.test(id)) return false;
+    if (/depot|railroad|train|locomotive/i.test(id)) return false;
+    if (
+      !/harbor|wharf|port|coast|bay|gate|waterfront|stearns|roadstead/i.test(
+        id
+      ) &&
+      !/\b(?:harbor|harbour|wharf|pier|waterfront|bay|dock|roadstead|stearns)\b/.test(
+        stack
+      )
+    ) {
+      return false;
+    }
+  }
+
+  if (asksValley) {
+    if (/vaquero|fandango|rancho-roundup/i.test(id)) return false;
+    if (/depot|railroad|train|locomotive/i.test(id)) return false;
+    if (/gold-rush|mining/i.test(id)) return false;
+  }
+
+  return true;
+}
+
 /** Pick the best image for the answer text, or null if nothing fits well enough. */
 export function pickBestStoryImage(
   candidates: ImageAsset[],
@@ -326,6 +503,7 @@ export function pickBestStoryImage(
   for (const img of candidates) {
     if (imageConflictsWithStory(img, themes)) continue;
     if (!isHistoricallyAccurateForStory(img.id, storyHay)) continue;
+    if (!answerSupportsImage(img, storyHay)) continue;
     const score = imageStoryMatchScore(img, storyHay);
     if (score >= minScore && score > bestScore) {
       best = img;

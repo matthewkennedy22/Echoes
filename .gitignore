@@ -1,8 +1,8 @@
 # dependencies
-/node_modules
+node_modules/
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
@@ -14,8 +14,8 @@
 .env*.local
 
 # generated / local-only
-/.cache/
-/data/raw/
+.cache/
+data/raw/
 
 # misc
 .DS_Store
@@ -30,3 +30,11 @@ next-env.d.ts
 
 # docx lock/temp files
 ~$*.docx
+
+# local UAT / smoke artifacts
+uat-*.json
+uat-*.log
+*.log
+
+# leftover nested copy (do not commit if present)
+/Echoes/
