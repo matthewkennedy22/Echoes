@@ -40,6 +40,8 @@ export interface ImageAsset {
 /** Public, client-safe display info for a persona. */
 export interface PersonaPublic {
   slug: string;
+  /** Primary place or region this figure represents — shown prominently on cards. */
+  region: string;
   name: string;
   years: string;
   portrait: string; // emoji or short glyph fallback

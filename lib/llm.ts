@@ -24,12 +24,27 @@ const EMBED_BATCH = 96;
 
 /** Embed an array of strings in a single request (<= ~96 items). */
 export async function embed(texts: string[]): Promise<number[][]> {
-  const res = await getClient().embeddings.create({
-    model: EMBED_MODEL,
-    input: texts,
-    dimensions: EMBED_DIM,
-  });
-  return res.data.map((d) => d.embedding as number[]);
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await getClient().embeddings.create({
+        model: EMBED_MODEL,
+        input: texts,
+        dimensions: EMBED_DIM,
+      });
+      return res.data.map((d) => d.embedding as number[]);
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      if (!(status === 429 || status === 500 || status === 503) || ++attempt > 5)
+        throw err;
+      const msg = err instanceof Error ? err.message : "";
+      const hinted = msg.match(/try again in ([\d.]+)s/i);
+      const waitMs = hinted
+        ? Math.ceil(parseFloat(hinted[1]) * 1000) + 500
+        : attempt * 2000;
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 20000)));
+    }
+  }
 }
 
 /** Embed any number of strings, batching to stay within request limits. */
@@ -106,14 +121,30 @@ export async function chatJSON(
   system: string,
   history: ChatMessage[]
 ): Promise<string> {
-  const res = await getClient().chat.completions.create({
-    model: CHAT_MODEL,
-    temperature: 0.6,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: system },
-      ...history.map((m) => ({ role: m.role, content: m.content })),
-    ],
-  });
-  return res.choices[0]?.message?.content ?? "";
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await getClient().chat.completions.create({
+        model: CHAT_MODEL,
+        temperature: 0.6,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          ...history.map((m) => ({ role: m.role, content: m.content })),
+        ],
+      });
+      return res.choices[0]?.message?.content ?? "";
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      const retriable = status === 429 || status === 500 || status === 503;
+      if (!retriable || ++attempt > 5) throw err;
+      // Honor Retry-After-style hints embedded in the message when present.
+      const msg = err instanceof Error ? err.message : "";
+      const hinted = msg.match(/try again in ([\d.]+)s/i);
+      const waitMs = hinted
+        ? Math.ceil(parseFloat(hinted[1]) * 1000) + 500
+        : attempt * 2000;
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 20000)));
+    }
+  }
 }

@@ -45,11 +45,12 @@ const PLACE_HINTS: Record<string, string[]> = {
   basket: ["Chumash Indian Museum basket weaving"],
 };
 
-import { detectCatalogTopics } from "@/personas/myron-angel/imageTopicCatalog";
+import { getActivePersona } from "@/lib/activePersona";
 import {
+  detectCatalogTopics,
   resolveWikipediaArticlesFromHaystack,
   wikipediaArticlesForTopicKeys,
-} from "@/personas/myron-angel/wikipediaTopics";
+} from "@/personas/topicCatalog";
 
 function stripHtml(html: string): string {
   return html
@@ -176,8 +177,20 @@ export function buildImageSearchQueries(
 
 /** Intro / meta questions should not trigger a broad image search. */
 export function isIntroOrMetaQuery(userQuery: string): boolean {
-  return /\b(?:who are you|introduce yourself|why does .+ matter|what are you|tell me about yourself|how do you work|are you real|are you ai|what is echoes)\b/i.test(
+  return /\b(?:who are you|introduce yourself|why does .+ matter|what are you|tell me about yourself|how do you work|are you real|are you ai|what is echoes|your (?:childhood|family|wife|husband|children|private life|personal life)|what year is it)\b/i.test(
     userQuery
+  );
+}
+
+/** True when asking about the persona's likeness — not places ("what did the marina look like"). */
+export function isPersonPortraitRequest(userQuery: string): boolean {
+  const q = userQuery.toLowerCase();
+  const aboutPerson =
+    /\b(?:you|your(?:self)?|I)\b/i.test(userQuery) ||
+    /\b(?:picture|photo|image|portrait|likeness) of you\b/i.test(q);
+  if (!aboutPerson) return false;
+  return /\b(?:(?:what|how) did you look|you look(?:ed)? like|your (?:appearance|portrait|likeness|face)|show me (?:your|the) portrait|(?:picture|photo|image) of you(?:rself)?)\b/i.test(
+    q
   );
 }
 
@@ -186,8 +199,8 @@ export function queryWantsImageSearch(
   userQuery: string,
   contextQuery = ""
 ): boolean {
-  if (isIntroOrMetaQuery(userQuery) && !/\b(?:look like|appearance|portrait|likeness|images?|pictures?|photos?)\b/i.test(userQuery)) {
-    return /\b(?:look like|appearance|portrait|likeness)\b/i.test(userQuery);
+  if (isIntroOrMetaQuery(userQuery) && !/\b(?:images?|pictures?|photos?)\b/i.test(userQuery)) {
+    return isPersonPortraitRequest(userQuery);
   }
   if (
     /\b(?:images?|pictures?|photos?|illustration|illustrate|accompany|show me)\b/i.test(
@@ -276,8 +289,14 @@ export function resolveWikipediaArticles(
   topic: string,
   sourceHints: string[] = []
 ): string[] {
+  const pack = getActivePersona();
   const hay = `${topic} ${sourceHints.join(" ")}`;
-  const articles = new Set<string>(resolveWikipediaArticlesFromHaystack(hay));
+  const articles = new Set<string>(
+    resolveWikipediaArticlesFromHaystack(
+      hay,
+      pack.wikipediaKeywordArticles ?? {}
+    )
+  );
 
   const hayContains = (stack: string, term: string): boolean => {
     const t = term.toLowerCase();
@@ -287,9 +306,18 @@ export function resolveWikipediaArticles(
     );
   };
 
-  const catalogHits = detectCatalogTopics(hay.toLowerCase(), hayContains);
+  const catalogHits = detectCatalogTopics(
+    pack.imageTopics,
+    hay.toLowerCase(),
+    hayContains
+  );
   for (const { key } of catalogHits.slice(0, 6)) {
-    for (const title of wikipediaArticlesForTopicKeys([key])) articles.add(title);
+    for (const title of wikipediaArticlesForTopicKeys(
+      pack.wikipediaByTopicKey,
+      [key]
+    )) {
+      articles.add(title);
+    }
   }
 
   return [...articles].slice(0, 8);

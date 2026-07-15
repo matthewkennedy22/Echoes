@@ -6,10 +6,11 @@ import type { PersonaPublic } from "@/lib/types";
  */
 export const myronAngelPublic: PersonaPublic = {
   slug: "myron-angel",
+  region: "San Luis Obispo County",
   name: "Myron Angel",
   years: "1827 – 1911",
   portrait: "✒️",
-  portraitImage: "/myron-angel.jpg",
+  portraitImage: "/portraits/myron-angel.jpg",
   tagline: "Journalist, county historian, and father of Cal Poly",
   era: "Speaking from his home on Buchon Street, San Luis Obispo, in 1905",
   disclosure:

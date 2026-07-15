@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { myronAngelPublic as persona } from "@/personas/myron-angel/public";
-import type { EvidenceLabel, ImageAsset, SourceChunk } from "@/lib/types";
+import type {
+  EvidenceLabel,
+  ImageAsset,
+  PersonaPublic,
+  SourceChunk,
+} from "@/lib/types";
 
 interface UiMessage {
   role: "user" | "assistant";
@@ -21,13 +25,19 @@ const LABEL_TEXT: Record<EvidenceLabel, string> = {
   unknown: "Not in the sources",
 };
 
-function AssistantRoleTag({ name }: { name: string }) {
+function AssistantRoleTag({
+  name,
+  portraitImage,
+}: {
+  name: string;
+  portraitImage?: string;
+}) {
   return (
     <div className="role-tag">
-      {persona.portraitImage ? (
+      {portraitImage ? (
         <span className="role-avatar" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={persona.portraitImage} alt="" />
+          <img src={portraitImage} alt="" referrerPolicy="no-referrer" />
         </span>
       ) : null}
       {name}
@@ -46,6 +56,7 @@ function ChatFigure({ img }: { img: ImageAsset }) {
         src={img.src}
         alt={img.alt}
         loading="lazy"
+        referrerPolicy="no-referrer"
         onError={() => setBroken(true)}
       />
       <figcaption>
@@ -87,7 +98,7 @@ function canStreamMse(): boolean {
   return "MediaSource" in window && window.MediaSource.isTypeSupported(mime);
 }
 
-export default function Chat() {
+export default function Chat({ persona }: { persona: PersonaPublic }) {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,6 +113,9 @@ export default function Chat() {
   const playerRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const mediaSourceRef = useRef<MediaSource | null>(null);
+  const aliveRef = useRef(true);
   const playPromiseRef = useRef<Promise<void> | null>(null);
   const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -162,6 +176,25 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  /** Warm the persona's embedding index so the first answer is faster. */
+  useEffect(() => {
+    void fetch(`/api/chat?persona=${encodeURIComponent(persona.slug)}`).catch(
+      () => {}
+    );
+  }, [persona.slug]);
+
+  /** Stop voice and cancel requests when leaving the conversation. */
+  useEffect(() => {
+    aliveRef.current = true;
+    const onLeave = () => resetSession();
+    window.addEventListener("echoes:leave-chat", onLeave);
+    return () => {
+      window.removeEventListener("echoes:leave-chat", onLeave);
+      aliveRef.current = false;
+      resetSession();
+    };
+  }, [persona.slug]);
+
   function clearStallTimer() {
     if (stallTimerRef.current) {
       clearTimeout(stallTimerRef.current);
@@ -217,23 +250,51 @@ export default function Chat() {
     };
   }
 
+  function stopMediaSource() {
+    const ms = mediaSourceRef.current;
+    mediaSourceRef.current = null;
+    if (!ms) return;
+    try {
+      if (ms.readyState === "open") ms.endOfStream();
+    } catch {
+      /* already closed */
+    }
+  }
+
   function stopAudio() {
     clearStallTimer();
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
     }
+    stopMediaSource();
     void playPromiseRef.current?.catch(() => {});
     playPromiseRef.current = null;
     const audio = playerRef.current;
     if (audio) {
       clearAudioHandlers(audio);
       audio.pause();
+      audio.currentTime = 0;
       audio.removeAttribute("src");
       audio.load();
     }
-    setSpeakingIndex(null);
-    setVoicePreparingIndex(null);
+    if (aliveRef.current) {
+      setSpeakingIndex(null);
+      setVoicePreparingIndex(null);
+    }
+  }
+
+  /** Tear down voice, in-flight chat, and in-flight TTS (e.g. on leave). */
+  function resetSession() {
+    if (chatAbortRef.current) {
+      chatAbortRef.current.abort();
+      chatAbortRef.current = null;
+    }
+    stopAudio();
+    if (playerRef.current) {
+      playerRef.current = null;
+    }
+    audioUnlockedRef.current = false;
   }
 
   async function playFromUrl(
@@ -289,6 +350,7 @@ export default function Chat() {
           return;
         }
         const { url } = (await res.json()) as { url: string };
+        if (!aliveRef.current) return;
         await playFromUrl(audio, url, index);
         return;
       }
@@ -318,6 +380,7 @@ export default function Chat() {
       // Desktop / Android: progressive playback via MediaSource.
       if (canStreamMse() && res.body) {
         const mediaSource = new MediaSource();
+        mediaSourceRef.current = mediaSource;
         const url = URL.createObjectURL(mediaSource);
         attachPlaybackHandlers(audio, index, () => URL.revokeObjectURL(url));
         audio.src = url;
@@ -386,11 +449,13 @@ export default function Chat() {
           );
         });
 
+        if (!aliveRef.current) return;
         if (audio.paused) await safePlay(audio);
         return;
       }
 
       // Fallback: wait for the full file, then play.
+      if (!aliveRef.current) return;
       await playBlob(audio, await res.blob(), index);
       setVoicePreparingIndex(null);
     } catch (err) {
@@ -420,18 +485,25 @@ export default function Chat() {
     setInput("");
     setLoading(true);
 
+    chatAbortRef.current?.abort();
+    const chatController = new AbortController();
+    chatAbortRef.current = chatController;
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          persona: persona.slug,
           messages: nextMessages.map((m) => ({
             role: m.role,
             content: m.content,
             ...(m.imageIds?.length ? { imageIds: m.imageIds } : {}),
           })),
         }),
+        signal: chatController.signal,
       });
+      if (!aliveRef.current) return;
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.error || "Something went wrong.");
@@ -455,14 +527,17 @@ export default function Chat() {
             : undefined,
         },
       ]);
-      if (voiceOn && data.answer) {
+      if (voiceOn && data.answer && aliveRef.current) {
         speak(data.answer, assistantIndex);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (!aliveRef.current) return;
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setMessages(nextMessages);
     } finally {
-      setLoading(false);
+      if (aliveRef.current) setLoading(false);
+      if (chatAbortRef.current === chatController) chatAbortRef.current = null;
     }
   }
 
@@ -515,7 +590,10 @@ export default function Chat() {
             {m.role === "user" ? (
               <div className="role-tag user">You</div>
             ) : (
-              <AssistantRoleTag name={persona.name} />
+              <AssistantRoleTag
+                name={persona.name}
+                portraitImage={persona.portraitImage}
+              />
             )}
             <div className="bubble">
               {m.role === "assistant" && m.images && m.images.length > 0 && (
@@ -585,7 +663,10 @@ export default function Chat() {
 
         {loading && (
           <div className="msg assistant">
-            <AssistantRoleTag name={persona.name} />
+            <AssistantRoleTag
+              name={persona.name}
+              portraitImage={persona.portraitImage}
+            />
             <div className="typing">consulting the records…</div>
           </div>
         )}
