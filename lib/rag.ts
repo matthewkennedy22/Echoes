@@ -48,6 +48,10 @@ import type {
 const TOP_K = 10;
 const NEIGHBOR_RADIUS = 1; // also include N chunks before/after each book hit
 const CURATED_BOOST = 0.02; // prefer hand-verified facts on near-ties
+/** Extra score when query terms (esp. rare names) appear in a chunk. */
+const LEXICAL_HIT_BOOST = 0.18;
+const LEXICAL_FUZZY_BOOST = 0.14;
+const LEXICAL_BOOST_CAP = 0.55;
 const IMAGE_CANDIDATES = 5; // local library images to offer the model
 const EVIDENCE_LABELS: EvidenceLabel[] = [
   "documented",
@@ -56,6 +60,112 @@ const EVIDENCE_LABELS: EvidenceLabel[] = [
   "unknown",
 ];
 
+const LEXICAL_STOP = new Set([
+  "about",
+  "after",
+  "again",
+  "could",
+  "did",
+  "does",
+  "from",
+  "have",
+  "here",
+  "into",
+  "just",
+  "know",
+  "like",
+  "more",
+  "much",
+  "tell",
+  "than",
+  "that",
+  "them",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "with",
+  "would",
+  "your",
+  "please",
+  "show",
+  "luis",
+  "san",
+  "obispo",
+  "county",
+  "california",
+]);
+
+function queryLexicalTerms(query: string): string[] {
+  const raw = query.toLowerCase().match(/[a-z0-9']{4,}/g) ?? [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of raw) {
+    if (LEXICAL_STOP.has(t) || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+/** True if chunk text mentions term, with light typo tolerance on whole words. */
+function textMentionsTerm(hay: string, t: string): boolean {
+  if (hay.includes(t)) return true;
+  if (t.length < 5) return false;
+  const words = hay.match(/[a-z0-9']+/g) ?? [];
+  const stem = t.slice(0, -1); // morgant → morgan… but require longer word
+  return words.some(
+    (w) =>
+      w.startsWith(t) ||
+      (w.startsWith(stem) && w.length >= t.length && w.length <= t.length + 2)
+  );
+}
+
+/**
+ * Rare query terms (appear in few chunks) get a much stronger boost when matched —
+ * this is how "Morganti" / "morgant" beats generic SLO geography embeddings.
+ */
+function rareTermBoosts(
+  corpus: SourceChunk[],
+  terms: string[]
+): Map<string, number> {
+  const boosts = new Map<string, number>();
+  if (!terms.length || !corpus.length) return boosts;
+  for (const t of terms) {
+    let hits = 0;
+    for (const c of corpus) {
+      if (textMentionsTerm(c.text.toLowerCase(), t)) hits++;
+    }
+    if (hits === 0) continue;
+    // rarer → stronger; cap so one name can dominate retrieval
+    if (hits <= 8) boosts.set(t, 0.85);
+    else if (hits <= 40) boosts.set(t, 0.35);
+    else if (hits <= 200) boosts.set(t, 0.08);
+  }
+  return boosts;
+}
+
+function lexicalScoreForChunk(
+  chunkText: string,
+  terms: string[],
+  rareBoosts: Map<string, number>
+): number {
+  if (!terms.length) return 0;
+  const hay = chunkText.toLowerCase();
+  let boost = 0;
+  for (const t of terms) {
+    if (!textMentionsTerm(hay, t)) continue;
+    const rare = rareBoosts.get(t) ?? 0;
+    boost += Math.max(LEXICAL_HIT_BOOST, rare);
+  }
+  return Math.min(boost, 1.2);
+}
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 
 interface PersonaIndex {
@@ -387,11 +497,14 @@ async function retrieveContext(
     embed([retrievalQuery]),
   ]);
 
+  const lexTerms = queryLexicalTerms(`${retrievalQuery} ${userQuery}`);
+  const rareBoosts = rareTermBoosts(idx.corpus, lexTerms);
   const scored = idx.corpus.map((chunk, i) => ({
     index: i,
     score:
       cosine(queryEmbedding, embeddings[i]) +
-      (i < idx.curatedCount ? CURATED_BOOST : 0),
+      (i < idx.curatedCount ? CURATED_BOOST : 0) +
+      lexicalScoreForChunk(chunk.text, lexTerms, rareBoosts),
   }));
   scored.sort((a, b) => b.score - a.score);
   const topHits = scored.slice(0, TOP_K);
@@ -405,6 +518,16 @@ async function retrieveContext(
         const after = hit.index + d;
         if (before >= idx.curatedCount) selected.add(before);
         if (after < idx.corpus.length) selected.add(after);
+      }
+    }
+  }
+
+  // Hard-pin chunks that mention rare query names (≤8 corpus hits).
+  for (const [term, boost] of rareBoosts) {
+    if (boost < 0.8) continue;
+    for (let i = 0; i < idx.corpus.length; i++) {
+      if (textMentionsTerm(idx.corpus[i].text.toLowerCase(), term)) {
+        selected.add(i);
       }
     }
   }
@@ -702,6 +825,9 @@ Labeling rules (important):
   "unknown". Label by your most-supported core claims (usually "documented").
 - Only use "unknown" when you genuinely could not ground your answer and are admitting
   you lack reliable evidence.
+- When the label is "unknown": do NOT invent biographies, roles, or local deeds. Say
+  plainly that this name/topic is not in the sources before you, then offer a nearby
+  topic you CAN document (a place, industry, or figure that is in the retrieved sources).
 - ALWAYS populate "used_source_ids" with the ids you actually relied on. If your label is
   "documented", "inference", or "contested", this array must NOT be empty. Only "unknown"
   may have an empty array.
