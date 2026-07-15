@@ -77,14 +77,35 @@ function bookChunkPathsFor(pack: PersonaPack): string[] {
 }
 
 /** Load ingested book/OCR chunks (if present) as SourceChunks. */
+function resolveBookChunkPath(bookChunksPath: string): string | null {
+  const candidates = [
+    path.join(process.cwd(), bookChunksPath),
+    path.resolve(bookChunksPath),
+    // Serverless / traced layouts sometimes nest under the project root twice.
+    path.join(process.cwd(), "..", bookChunksPath),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      /* keep trying */
+    }
+  }
+  return null;
+}
+
 function loadBookSources(paths: string[]): SourceChunk[] {
   const out: SourceChunk[] = [];
   for (const bookChunksPath of paths) {
-    try {
-      const raw = fs.readFileSync(
-        path.join(process.cwd(), bookChunksPath),
-        "utf8"
+    const resolved = resolveBookChunkPath(bookChunksPath);
+    if (!resolved) {
+      console.warn(
+        `[ECHOES] Missing book chunks (not traced or not on disk): ${bookChunksPath}`
       );
+      continue;
+    }
+    try {
+      const raw = fs.readFileSync(resolved, "utf8");
       const data = JSON.parse(raw) as SourceChunk[];
       for (const d of data) {
         out.push({
@@ -98,8 +119,11 @@ function loadBookSources(paths: string[]): SourceChunk[] {
           reliability: d.reliability ?? "medium",
         });
       }
-    } catch {
-      /* missing or unreadable book file — skip */
+    } catch (err) {
+      console.warn(
+        `[ECHOES] Failed to load book chunks ${bookChunksPath}:`,
+        err instanceof Error ? err.message : err
+      );
     }
   }
   return out;
@@ -217,13 +241,21 @@ async function ensureImageEmbeddings(pack: PersonaPack): Promise<number[][]> {
 /** Pre-build the embedding index (used by the warm-up endpoint). */
 export async function warmIndex(
   personaSlug?: string
-): Promise<{ chunks: number; ready: boolean; persona: string }> {
+): Promise<{
+  chunks: number;
+  curated: number;
+  bookChunks: number;
+  ready: boolean;
+  persona: string;
+}> {
   const pack = getPersonaPack(personaSlug);
   return withPersona(pack, async () => {
     const idx = getOrCreateIndex(pack);
     await Promise.all([ensureEmbeddings(pack), ensureImageEmbeddings(pack)]);
     return {
       chunks: idx.corpus.length,
+      curated: idx.curatedCount,
+      bookChunks: Math.max(0, idx.corpus.length - idx.curatedCount),
       ready: idx.corpusEmbeddings !== null,
       persona: pack.public.slug,
     };
