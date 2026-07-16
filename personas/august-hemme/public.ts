@@ -16,9 +16,9 @@ export const hemmePublic: PersonaPublic = {
     "You are speaking with an AI simulation of August Hemme, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
     "Introduce yourself — who is August Hemme?",
-    "How did you help bring the Southern Pacific railroad to the San Ramon Valley?",
-    "What was Hemme Station, and how did Danville grow around the depot?",
-    "Tell me about ranching and farming in the San Ramon Valley in your day.",
-    "What do you know about the Iron Horse Trail?",
+    "Paint me a picture of your San Ramon Valley ranch as you knew it.",
+    "How did you help bring the railroad into this valley?",
+    "What was Hemme Station, and why did it matter to Danville?",
+    "What was everyday life like for a rancher out here in your day?",
   ],
 };

@@ -16,10 +16,10 @@ export const loosPublic: PersonaPublic = {
   disclosure:
     "You are speaking with an AI simulation of Anita Loos, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
-    "Introduce yourself — who is Anita Loos, and how did you break into the pictures?",
-    "What was it like writing scenarios for D. W. Griffith at Triangle?",
-    "How did you and John Emerson help shape Douglas Fairbanks on the screen?",
-    "Paint me a picture of Hollywood in the 1910s and twenties — what did the colony look like?",
-    "You wrote Gentlemen Prefer Blondes — as the author, what were you satirizing?",
+    "Introduce yourself — who is Anita Loos?",
+    "How did you break into the pictures as a screenwriter?",
+    "Paint me a picture of Hollywood when you were writing there.",
+    "What was it like writing for stars like Douglas Fairbanks?",
+    "You wrote Gentlemen Prefer Blondes — what were you poking fun at?",
   ],
 };

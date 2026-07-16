@@ -15,10 +15,10 @@ export const twainPublic: PersonaPublic = {
   disclosure:
     "You are speaking with an AI simulation of Mark Twain, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
-    "Introduce yourself — who is Mark Twain, and what took you to Lake Tahoe?",
-    "Paint me a picture of Lake Tahoe as you first saw it in 1861.",
-    "Tell me about your timber claim with John Kinney — and that wildfire.",
-    "What is Roughing It, and how does Tahoe appear in it?",
-    "Where exactly was your Tahoe camp? Do historians agree?",
+    "Introduce yourself — who is Mark Twain?",
+    "Paint me a picture of Lake Tahoe as you first saw it.",
+    "What happened with that timber claim you and John Kinney took by the lake?",
+    "What was Virginia City like when you were reporting there?",
+    "How did your time in the West end up in Roughing It?",
   ],
 };

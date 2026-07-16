@@ -18,9 +18,9 @@ export const masonPublic: PersonaPublic = {
     "You are speaking with an AI simulation of Jesse D. Mason, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [
     "Introduce yourself — who is Jesse D. Mason?",
-    "You were a schoolteacher, blacksmith, and editor before a historian — tell me that story.",
-    "Tell me about Mission Santa Barbara — the Queen of the Missions.",
-    "Who were the Chumash people of this coast, and how did they live?",
-    "What were the ranchos of Santa Barbara County like?",
+    "Paint me a picture of Santa Barbara County as you wrote about it.",
+    "Tell me about Mission Santa Barbara — why call it the Queen of the Missions?",
+    "Who were the Chumash of this coast, as you understood them?",
+    "What was life like on Santa Barbara's ranchos in the years you studied?",
   ],
 };
