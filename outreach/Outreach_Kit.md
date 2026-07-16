@@ -16,6 +16,7 @@
 | **`Target_List.md`** | Original SLO-first short list (still useful for week 1) |
 | Pamphlet PDF | `ECHOES Beta Pamphlet.pdf` (or re-export from `../beta-launch/ECHOES_Beta_Pamphlet.html`) |
 | **Gmail drafts script** | `../scripts/gmail-drafts/` — creates drafts in your Gmail for review/Send |
+| **`Send_Log.md`** | Who was emailed and when |
 
 Full partner packet (FAQ, agreement, cover letter): **`../beta-launch/`**
 

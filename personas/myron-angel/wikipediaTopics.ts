@@ -12,6 +12,7 @@ import { MYRON_IMAGE_TOPICS } from "./imageTopicCatalog";
 /** Catalog topic key → Wikipedia article titles (enwiki). */
 export const WIKIPEDIA_BY_TOPIC_KEY: Record<string, string[]> = {
   identity: ["Myron Angel"],
+  "myron-home": ["Myron Angel House", "Myron Angel"],
   "chumash-verified": ["Chumash", "Chumash Indian Museum", "Tomol"],
   "chumash-rock-art": [
     "Chumash Indian Museum",

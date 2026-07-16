@@ -41,6 +41,20 @@ function imageAnswerAligned(answer, imageId) {
     return DOWNTOWN_IMAGE.test(a);
   if (/chumash|vaquero|rancho|fandango|tomol|choris|painted-cave/i.test(imageId))
     return /\b(?:chumash|vaquero|rancho|fandango|tomol|native|pictograph|cave)\b/i.test(a);
+  if (/fairbanks/i.test(imageId))
+    return /\b(?:fairbanks|douglas fairbanks|swashbuckler)\b/i.test(a);
+  if (/hollywood-blvd|hollywood-streetcar|hollywoodland/i.test(imageId))
+    return /\b(?:hollywood|streetcar|boulevard|colony)\b/i.test(a);
+  if (/buchon-house/i.test(imageId))
+    return /\b(?:buchon|714|house|home|residence|resided)\b/i.test(a);
+  if (/bancroft-ranch/i.test(imageId))
+    return /\b(?:spring valley|bancroft ranch|country home|adobe)\b/i.test(a);
+  if (/gaslamp|davis/i.test(imageId))
+    return /\b(?:william heath davis|davis house|gaslamp)\b/i.test(a);
+  if (/washoe/i.test(imageId))
+    return /\b(?:washoe|washo|indigenous|native)\b/i.test(a);
+  if (/fandango/i.test(imageId))
+    return /\b(?:fandango|fiesta|californio|danc)\b/i.test(a);
   if (/-1890|map/i.test(imageId)) return /\b(?:map|mapped|cartograph|survey|city)\b/i.test(a);
   return true;
 }
@@ -70,9 +84,10 @@ const TESTS = [
         label: "Morro Rock → coast image or none",
       },
       {
-        q: "Tell me a fun fact about the county.",
-        banUnrelatedImages: true,
-        label: "fun fact → no stray images",
+        q: "Where did you live?",
+        expectImage: /buchon-house/,
+        banPortrait: true,
+        label: "residence → Buchon house, not Chumash",
       },
     ],
   },
@@ -99,6 +114,12 @@ const TESTS = [
         banPortrait: true,
         expectImage: /golden-gate|angel-island|telegraph|tamalpais/,
         label: "Golden Gate → strait image or none",
+      },
+      {
+        q: "Where did you retire?",
+        expectImage: /bancroft-ranch/,
+        banPortrait: true,
+        label: "retirement home → Spring Valley ranch",
       },
       {
         q: "Tell me a fun fact from your collecting years.",
@@ -129,6 +150,13 @@ const TESTS = [
         expectImage: /plaza|fountain|horton/,
         banPortrait: true,
         label: "Horton Plaza → plaza image or none",
+      },
+      {
+        q: "Tell me about William Heath Davis and his house.",
+        expectImage: /gaslamp|davis/,
+        banImages: /horton-house/,
+        banPortrait: true,
+        label: "Davis house → Gaslamp, not Horton House",
       },
       {
         q: "Tell me a fun fact about early San Diego.",
@@ -231,6 +259,12 @@ const TESTS = [
         expectImage: /depot|railroad|train|museum/,
         banPortrait: true,
         label: "right of way → railroad image or none",
+      },
+      {
+        q: "Tell me about your ranch and walnuts.",
+        banImages: /fandango/,
+        banPortrait: true,
+        label: "walnut ranch → no Californio fandango",
       },
       {
         q: "Tell me a fun fact about the valley.",

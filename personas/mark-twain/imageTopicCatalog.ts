@@ -65,8 +65,8 @@ export const TWAIN_IMAGE_TOPICS: ImageTopic[] = [
     buzzwords: [
       "tahoe city",
       "embarcadero",
-      "settlement",
-      "town",
+      "tahoe settlement",
+      "shore cottages",
       "cottages",
     ],
     imageIds: ["img-tahoe-city", "img-tallac-hotel"],

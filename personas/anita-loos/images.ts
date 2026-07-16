@@ -170,7 +170,6 @@ export const loosImages: ImageAsset[] = [
       "street",
       "1920s",
       "colony",
-      "look like",
     ],
     dateRange: "1922",
     citation:

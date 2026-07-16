@@ -14,6 +14,8 @@
     "verify-images": "node scripts/verify-images.mjs",
     "smoke-test": "node scripts/smoke-test-myron.mjs",
     "prebuild": "node scripts/verify-images.mjs",
+    "audit:images": "node scripts/audit-image-topics.mjs",
+    "test:images": "npx tsx scripts/test-image-matching-static.ts",
     "outreach:drafts": "node scripts/gmail-drafts/create-drafts.mjs",
     "outreach:drafts:dry": "node scripts/gmail-drafts/create-drafts.mjs --dry-run --priority A --limit 5"
   },

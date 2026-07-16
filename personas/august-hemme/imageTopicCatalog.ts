@@ -103,7 +103,19 @@ export const HEMME_IMAGE_TOPICS: ImageTopic[] = [
       "produce",
       "3000 acres",
     ],
-    imageIds: ["img-vaqueros-1854", "img-rancho-roundup"],
+    imageIds: ["img-vaqueros-1854"],
+  },
+  {
+    key: "californio-era",
+    label: "Californio rancho social life (not Hemme's walnut ranch)",
+    buzzwords: [
+      "fandango",
+      "fiesta",
+      "californio",
+      "dancing",
+      "celebration",
+    ],
+    imageIds: ["img-rancho-roundup"],
   },
   {
     key: "gold-rush",

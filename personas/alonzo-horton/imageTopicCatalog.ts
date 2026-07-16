@@ -68,11 +68,12 @@ export const HORTON_IMAGE_TOPICS: ImageTopic[] = [
     label: "William Heath Davis & earlier New Town",
     buzzwords: [
       "william heath davis",
-      "davis",
+      "heath davis",
       "gaslamp",
       "earlier new town",
       "prior attempt",
       "davis house",
+      "davis's house",
     ],
     imageIds: ["img-gaslamp-william-heath-davis"],
   },

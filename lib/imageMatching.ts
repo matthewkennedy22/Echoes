@@ -37,6 +37,7 @@ export type ImageTheme =
 
 const IMAGE_THEMES: Record<string, ImageTheme[]> = {
   "img-portrait": ["portrait"],
+  "img-buchon-house": ["downtown"],
   "img-chumash-musicians-1873": ["native", "mission"],
   "img-chumash-painted-cave": ["native"],
   "img-chumash-pictograph-oakbrook": ["native"],
@@ -98,6 +99,20 @@ const GENERIC_WEAK_TOPICS = new Set([
   "identity",
   "church",
   "gold rush",
+  // Too generic — matching these alone must not attach a Chumash dwelling
+  // (or similar) to answers about a Victorian house / residence.
+  "house",
+  "home",
+  "dwelling",
+  "look like",
+  "sign",
+  "lot",
+  "hotel",
+  "street",
+  "downtown",
+  "plaza",
+  "star",
+  "settlement",
 ]);
 
 /** Thematic images require the answer to mention their subject, not just the region. */
@@ -165,6 +180,60 @@ const SUBJECT_ANCHOR_RULES: {
   {
     test: (img) => /danville|alamo|san-ramon/i.test(img.id),
     pattern: /\b(?:danville|alamo|san ramon|hemme station)\b/i,
+  },
+  {
+    test: (img) =>
+      img.id === "img-chumash-ap-replica" ||
+      img.id === "img-chumash-mortars-exhibit",
+    pattern:
+      /\b(?:chumash|indigenous|native peoples|first peoples|'ap|ap house|tule house|acorn|mortar|pestle|sap'?wi)\b/i,
+  },
+  {
+    test: (img) => img.id === "img-buchon-house",
+    pattern:
+      /\b(?:buchon|714|my (?:house|home|residence)|angel house|where i (?:live|lived)|resided)\b/i,
+  },
+  {
+    test: (img) => /fairbanks/i.test(img.id),
+    pattern:
+      /\b(?:fairbanks|douglas fairbanks|swashbuckler|zorro|musketeers|picture in the papers)\b/i,
+  },
+  {
+    test: (img) =>
+      /griffith|intolerance|triangle-studios|new-york-hat/i.test(img.id) &&
+      !/hollywood-blvd|streetcar|hollywoodland/i.test(img.id),
+    pattern:
+      /\b(?:griffith|d\.?\s*w\.?\s*griffith|intolerance|babylon|triangle|new york hat|pickford|biograph)\b/i,
+  },
+  {
+    test: (img) => /hollywood-blvd|hollywood-streetcar|hollywoodland/i.test(img.id),
+    pattern:
+      /\b(?:hollywood(?:\s+boulevard)?|hollywoodland|streetcar|pacific electric|colony|what did hollywood)\b/i,
+  },
+  {
+    test: (img) => /emerson|wedding-1919/i.test(img.id),
+    pattern: /\b(?:john emerson|emerson|wedding|marriage|husband|mr e)\b/i,
+  },
+  {
+    test: (img) => /blondes/i.test(img.id),
+    pattern: /\b(?:gentlemen prefer blondes|lorelei|blondes|harper's)\b/i,
+  },
+  {
+    test: (img) => /gaslamp|william-heath-davis/i.test(img.id),
+    pattern:
+      /\b(?:william heath davis|davis house|gaslamp|davis's|davis')\b/i,
+  },
+  {
+    test: (img) => /washoe/i.test(img.id),
+    pattern: /\b(?:washoe|washo)\b/i,
+  },
+  {
+    test: (img) => /gold-rush|mining/i.test(img.id) && !/danville/i.test(img.id),
+    pattern: /\b(?:gold rush|1849|forty-niner|mining|hydraulic)\b/i,
+  },
+  {
+    test: (img) => /fandango|roundup/i.test(img.id) && !/vaquero/i.test(img.id),
+    pattern: /\b(?:fandango|fiesta|danc(?:e|ing)|celebration|feast)\b/i,
   },
 ];
 
@@ -330,10 +399,18 @@ export function imageStoryMatchScore(img: ImageAsset, storyHay: string): number 
     score += 10;
   }
   if (
-    /\b(?:village|dwelling|'ap|ap house|tule house)\b/i.test(storyHay) &&
+    (/\b(?:'ap|ap house|tule house)\b/i.test(storyHay) ||
+      (/\bchumash\b/i.test(storyHay) &&
+        /\b(?:village|dwelling|willow|tule)\b/i.test(storyHay))) &&
     img.id === "img-chumash-ap-replica"
   ) {
     score += 10;
+  }
+  if (
+    /\b(?:buchon|714|angel house|my house|my home|resided)\b/i.test(storyHay) &&
+    img.id === "img-buchon-house"
+  ) {
+    score += 12;
   }
   if (
     /\b(?:pictograph|rock art|shaman|swordfish)\b/i.test(storyHay) &&
@@ -448,6 +525,47 @@ export function imageMatchesQueryIntent(
   const q = userQuery.toLowerCase();
   const id = img.id.toLowerCase();
   const stack = imageSearchHaystack(img);
+
+  // Residence / "where did you live" must never show indigenous village dwellings.
+  const asksResidence =
+    /\b(?:where (?:do|did) you live|your (?:house|home|residence)|buchon|714)\b/i.test(
+      q
+    );
+  if (asksResidence) {
+    if (themesForImage(img).includes("native")) return false;
+    if (/chumash|ap-replica|tomol|choris/i.test(id)) return false;
+    if (
+      img.id !== "img-buchon-house" &&
+      img.id !== "img-horton-house" &&
+      img.id !== "img-bancroft-ranch" &&
+      img.id !== "img-portrait" &&
+      !/\bbuchon|angel house|714|horton house|spring valley|bancroft ranch\b/i.test(
+        stack
+      )
+    ) {
+      // Prefer residence-specific photos; block unrelated landmarks.
+      if (/mission|railroad|vaquero|fandango|morro|avila|cal-poly|griffith|fairbanks/i.test(id)) {
+        return false;
+      }
+    }
+  }
+
+  const asksHollywoodPlace =
+    /\bhollywood\b/.test(q) &&
+    (/\blook(?:s|ed)? like\b/.test(q) ||
+      /\bwhat did (?:\w+\s+){0,3}hollywood\b/.test(q) ||
+      /\bwhat was hollywood\b/.test(q));
+  if (asksHollywoodPlace) {
+    if (/griffith|fairbanks|emerson|blondes|new-york-hat|portrait/i.test(id)) {
+      return false;
+    }
+    if (
+      !/hollywood|streetcar|triangle-studios/i.test(id) &&
+      !/\bhollywood|streetcar|boulevard|colony\b/.test(stack)
+    ) {
+      return false;
+    }
+  }
 
   const placeLookLike =
     /\blook(?:s|ed)? like\b/.test(q) ||

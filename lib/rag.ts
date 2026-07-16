@@ -396,6 +396,19 @@ function isAppearanceQuery(query: string): boolean {
   return isPersonPortraitRequest(query);
 }
 
+/** "Where did you live?", residence, or figure-specific home anchors. */
+function isResidenceQuery(query: string): boolean {
+  return /\b(?:where (?:do|did) you live|your (?:house|home|residence)|buchon(?:\s+street)?|714\b|angel house|horton house hotel|spring valley(?:\s+country)?\s+home|bancroft ranch|country (?:home|retreat))\b/i.test(
+    query
+  );
+}
+
+const RESIDENCE_IMAGE_BY_SLUG: Record<string, string> = {
+  "myron-angel": "img-buchon-house",
+  "alonzo-horton": "img-horton-house",
+  "hubert-howe-bancroft": "img-bancroft-ranch",
+};
+
 /** Always include verified biographical sources for self-introduction questions. */
 function pinIdentitySources(
   pack: PersonaPack,
@@ -1058,6 +1071,26 @@ async function answerQuestionForPack(
       candidateImages.find((img) => img.id === pid) ??
       getAvailableLibraryImages().find((img) => img.id === pid);
     images = portrait ? [portrait] : images;
+  }
+
+  // Residence / "where did you live": pin persona-specific home image when available.
+  if (isResidenceQuery(userQuery)) {
+    const residenceId = RESIDENCE_IMAGE_BY_SLUG[pack.public.slug];
+    const house =
+      (residenceId &&
+        (candidateImages.find((img) => img.id === residenceId) ??
+          getAvailableLibraryImages().find((img) => img.id === residenceId))) ??
+      null;
+    if (house) {
+      images = [house];
+    } else {
+      // Never keep a native-village image on a residence question.
+      images = images.filter(
+        (img) =>
+          !/chumash|choris|tomol|ap-replica/i.test(img.id) &&
+          imageMatchesQueryIntent(userQuery, img)
+      );
+    }
   }
 
   // "Who are you" / self-introduction: always show the portrait / landmark image.

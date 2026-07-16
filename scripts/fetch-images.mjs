@@ -32,6 +32,8 @@ const WIKIMEDIA = {
     "https://upload.wikimedia.org/wikipedia/commons/9/9d/Chumash_indian_museum_mortars_pestles.jpg",
   "chumash-ap-replica.jpg":
     "https://upload.wikimedia.org/wikipedia/commons/4/40/Chumash_indian_museum_thousand_oaks.jpg",
+  "buchon-house.jpg":
+    "https://upload.wikimedia.org/wikipedia/commons/e/e3/Myron_Angel_House_-_View_from_across_Buchon_Street.JPG",
   "chumash-musicians-1873.jpg":
     "https://upload.wikimedia.org/wikipedia/commons/f/f6/Chmash_musicians_1873.jpg",
   "chumash-tomol-kihn.jpg":

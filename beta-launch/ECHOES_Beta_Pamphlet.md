@@ -25,7 +25,7 @@ ECHOES exists to:
 3. Partner with the people who already safeguard history, not replace them  
 4. Grow from a web prototype into physical exhibit experiences communities can host  
 
-Long term, the destination is a **living portrait**: you walk up, the figure comes to life, and the conversation sends visitors back into the cases, maps, and photographs, not away from them. The app is the prototype. The exhibit is the goal.
+Long term, the destination is a **living portrait**: you walk up, the figure comes to life, and the conversation sends visitors back into the cases, maps, and photographs, not away from them. The app is the prototype. The exhibit is the goal. The free web beta is how we learn what works so we can get there, with partners who try it and share honest feedback.
 
 ---
 
@@ -36,31 +36,31 @@ Long term, the destination is a **living portrait**: you walk up, the figure com
 - See every reply labeled: **Documented · Reasonable inference · Contested · Not in the sources**  
 - Tap **Show evidence** for citations  
 - View matched historic images when the topic fits  
-- Get an honest “I don’t have that in the sources” instead of invented biography  
+- Get an honest "I don't have that in the sources" instead of invented biography  
 
-**Note:** The first question for a figure may take 30–60 seconds while the source library loads. After that, replies are much faster.
+**Note:** The first question for a figure may take 30-60 seconds while the source library loads. After that, replies are much faster.
 
 ---
 
 ### Who is speaking now (California Speaks)
 
-Seven figures, roughly north to south:
+**Seven figures** live in the beta today, roughly north to south:
 
-1. **Mark Twain** — Lake Tahoe & the Nevada Territory  
-2. **Hubert Howe Bancroft** — San Francisco  
-3. **August Hemme** — San Ramon Valley  
-4. **Myron Angel** — San Luis Obispo County  
-5. **Jesse D. Mason** — Santa Barbara County  
-6. **Anita Loos** — Los Angeles / Hollywood  
-7. **Alonzo Horton** — San Diego  
+1. **Mark Twain** - Lake Tahoe & the Nevada Territory  
+2. **Hubert Howe Bancroft** - San Francisco  
+3. **August Hemme** - San Ramon Valley  
+4. **Myron Angel** - San Luis Obispo County  
+5. **Jesse D. Mason** - Santa Barbara County  
+6. **Anita Loos** - Los Angeles / Hollywood  
+7. **Alonzo Horton** - San Diego  
 
 Each figure is built from curated sources and ingested public-domain primary texts for that place and era.
 
 ---
 
-### Who I’m looking to partner with
+### Who I'm looking to partner with
 
-I’m actively seeking partners who care about accurate public history:
+I'm actively seeking partners who care about accurate public history:
 
 - Museums and history centers  
 - Local historical societies  
@@ -70,7 +70,7 @@ I’m actively seeking partners who care about accurate public history:
 - Exhibit designers and interpretive planners  
 - Mission sites, heritage sites, and cultural centers  
 
-If you steward a place’s story, I want to build with you.
+If you steward a place's story, I want to build with you.
 
 ---
 
@@ -80,14 +80,14 @@ If you steward a place’s story, I want to build with you.
 A simple web link or QR code. No software install. No IT project.
 
 **Your expertise shapes the product**  
-Tell me what’s accurate, what’s missing, what’s confusing, and what would actually serve your visitors.
+Try it, tell me what's accurate, what's missing, what's confusing, and what would actually serve your visitors. That feedback is how we move toward the living portrait.
 
 **Optional: a custom figure for your town, region, or exhibit**  
-During the beta I can build a source-grounded conversational figure for a person or place you care about, using public-domain materials you recommend (and materials we research together). Ideal for:
+During the beta I can build a source-grounded conversational figure tailored to your local history or a specific exhibit, using **your archived documents** and other sources you recommend (with your approval before anything goes live). Ideal for:
 
 - A signature local historian, founder, or chronicler  
 - A figure tied to a current gallery or walking tour  
-- A “pilot” character for a classroom or temporary exhibit  
+- A pilot character for a classroom or temporary exhibit  
 
 Custom work is offered as a **collaborative pilot** while ECHOES is in beta: free to try, shaped by your feedback, with clear sourcing standards.
 
@@ -98,15 +98,15 @@ QR codes at desks and galleries → classroom use → living-portrait / physical
 
 ### About me
 
-I’m **Matthew Kennedy**, Cal Poly MSBA alumnus and longtime San Luis Obispo resident. I built ECHOES to promote history learning and to practice responsible, source-grounded AI for education and public interpretation.
+I'm **Matthew Kennedy**, Cal Poly MSBA alumnus and longtime San Luis Obispo resident. I built ECHOES to promote history learning and to practice responsible, source-grounded AI for education and public interpretation.
 
-I’m not asking for a big commitment on first contact. I’m asking for a look, honest feedback, and a conversation if it feels useful.
+I'm not asking for a big commitment on first contact. I'm asking for a look, honest feedback, and a conversation if it feels useful.
 
 ---
 
-### Let’s talk
+### Let's talk
 
-I’d be glad to give a **15-minute live demo** (in person, phone, or video) and discuss whether a custom figure or exhibit pilot is a fit for your organization.
+I'd be glad to give a **15-minute live demo** (in person, phone, or video) and discuss whether a custom figure or exhibit pilot is a fit for your organization.
 
 | **Matthew Kennedy · ECHOES** |
 | --- |

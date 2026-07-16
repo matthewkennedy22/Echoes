@@ -87,13 +87,12 @@ export const LOOS_IMAGE_TOPICS: ImageTopic[] = [
     buzzwords: [
       "hollywood",
       "hollywood boulevard",
-      "look like",
-      "colony",
-      "town",
-      "street",
-      "los angeles",
       "what did hollywood",
+      "colony",
+      "los angeles",
       "streetcar",
+      "pacific electric",
+      "boulevard",
     ],
     imageIds: [
       "img-hollywood-blvd-1922",
@@ -110,8 +109,9 @@ export const LOOS_IMAGE_TOPICS: ImageTopic[] = [
       "studios",
       "culver city",
       "triangle studios",
-      "lot",
       "back lot",
+      "studio lot",
+      "film lot",
       "film plant",
     ],
     imageIds: ["img-triangle-studios", "img-hollywood-blvd-1922"],
@@ -147,7 +147,7 @@ export const LOOS_IMAGE_TOPICS: ImageTopic[] = [
   {
     key: "hollywoodland-sign",
     label: "Hollywoodland sign",
-    buzzwords: ["hollywoodland", "hollywood sign", "sign", "hills", "1923"],
+    buzzwords: ["hollywoodland", "hollywood sign", "hollywoodland sign", "hills", "1923"],
     imageIds: ["img-hollywoodland-sign"],
   },
 ];
