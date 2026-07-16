@@ -126,9 +126,25 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-async function runScenario(s: Scenario) {
+async function runScenario(s: Scenario): Promise<{
+  label: string;
+  slug: string;
+  ok: boolean;
+  problems: string[];
+  picked: string | null;
+  error?: string;
+}> {
   const pack = listPersonaPacks().find((p) => p.public.slug === s.slug);
-  if (!pack) return { ...s, ok: false, error: `unknown slug ${s.slug}` };
+  if (!pack) {
+    return {
+      label: s.label,
+      slug: s.slug,
+      ok: false,
+      problems: [],
+      picked: null,
+      error: `unknown slug ${s.slug}`,
+    };
+  }
 
   return withPersona(pack, async () => {
     const themes = detectStoryThemes(s.storyHay);
@@ -184,12 +200,12 @@ async function main() {
     const mark = r.ok ? "✓" : "✗";
     console.log(`${mark} [${r.slug}] ${r.label}`);
     if (!r.ok) {
-      for (const p of r.problems ?? []) console.log(`    → ${p}`);
-      if ("error" in r && r.error) console.log(`    → ${r.error}`);
-      console.log(`    picked: ${"picked" in r ? r.picked : "?"}`);
+      for (const p of r.problems) console.log(`    → ${p}`);
+      if (r.error) console.log(`    → ${r.error}`);
+      console.log(`    picked: ${r.picked ?? "?"}`);
       fail++;
     } else {
-      console.log(`    picked: ${"picked" in r ? r.picked : "none"}`);
+      console.log(`    picked: ${r.picked ?? "none"}`);
       pass++;
     }
   }
