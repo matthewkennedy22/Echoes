@@ -550,6 +550,17 @@ export function imageMatchesQueryIntent(
     }
   }
 
+  // Biographical fact questions (mayor, artist, etc.) — not scenic place photos.
+  const asksBiographicalFact =
+    /\b(?:who was|who were|first\s+(?:mayor|governor|alcalde)|popular\s+artist|which\s+artist|what\s+artist)\b/i.test(
+      q
+    );
+  if (asksBiographicalFact) {
+    if (/golden-gate|gate-1900|telegraph-hill|angel-island|bay-view/i.test(id)) {
+      return false;
+    }
+  }
+
   const asksHollywoodPlace =
     /\bhollywood\b/.test(q) &&
     (/\blook(?:s|ed)? like\b/.test(q) ||

@@ -7,6 +7,7 @@ import type {
   PersonaPublic,
   SourceChunk,
 } from "@/lib/types";
+import { formatChatText } from "@/lib/formatChatText";
 
 interface UiMessage {
   role: "user" | "assistant";
@@ -603,7 +604,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                   ))}
                 </div>
               )}
-              {m.content}
+              {formatChatText(m.content)}
             </div>
 
             {m.role === "assistant" && m.evidenceLabel && (

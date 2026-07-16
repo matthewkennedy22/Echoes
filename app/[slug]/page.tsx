@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Chat from "@/components/Chat";
 import FirstVisitNotice from "@/components/FirstVisitNotice";
 import LeaveChatLink from "@/components/LeaveChatLink";
+import { portraitCropStyle } from "@/lib/portraitCrop";
 import {
   getPersonaPack,
   isKnownPersonaSlug,
@@ -22,6 +23,12 @@ export default async function PersonaPage({
 
   const pack = getPersonaPack(slug);
   const persona = pack.public;
+  const portraitShape =
+    slug === "august-hemme" ||
+    slug === "anita-loos" ||
+    slug === "jesse-d-mason"
+      ? "rect"
+      : "round";
 
   return (
     <main className="app">
@@ -36,7 +43,23 @@ export default async function PersonaPage({
         </LeaveChatLink>
       </div>
 
-      <header className="masthead masthead-compact">
+      <header className="persona-hero">
+        <div
+          className={`persona-hero-portrait persona-hero-portrait--${portraitShape}`}
+          aria-hidden
+        >
+          {persona.portraitImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={persona.portraitImage}
+              alt=""
+              referrerPolicy="no-referrer"
+              style={portraitCropStyle(slug)}
+            />
+          ) : (
+            <span className="persona-hero-glyph">{persona.portrait}</span>
+          )}
+        </div>
         <p className="persona-card-region persona-page-region">{persona.region}</p>
         <h1>{persona.name}</h1>
         <p className="sub persona-page-meta">
@@ -44,32 +67,6 @@ export default async function PersonaPage({
         </p>
         <p className="persona-page-era">{persona.era}</p>
       </header>
-
-      <section className="persona">
-        <div className="portrait" aria-hidden>
-          {persona.portraitImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={persona.portraitImage}
-              alt={persona.name}
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            persona.portrait
-          )}
-        </div>
-        <div className="meta">
-          <p className="persona-card-region">{persona.region}</p>
-          <h2>
-            {persona.name}{" "}
-            <span style={{ fontWeight: "normal", color: "var(--ink-soft)" }}>
-              · {persona.years}
-            </span>
-          </h2>
-          <p>{persona.tagline}</p>
-          <p className="persona-page-era">{persona.era}</p>
-        </div>
-      </section>
 
       <div className="disclosure">
         <span aria-hidden>ⓘ</span>

@@ -165,3 +165,38 @@ export async function chatJSON(
     }
   }
 }
+
+/**
+ * Low-temperature JSON judge for grounding verification and other checks.
+ * Separate from chatJSON so persona replies stay creative while audits stay strict.
+ */
+export async function judgeJSON(
+  system: string,
+  user: string
+): Promise<string> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await getClient().chat.completions.create({
+        model: CHAT_MODEL,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      });
+      return res.choices[0]?.message?.content ?? "";
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      const retriable = status === 429 || status === 500 || status === 503;
+      if (!retriable || ++attempt > 5) throw err;
+      const msg = err instanceof Error ? err.message : "";
+      const hinted = msg.match(/try again in ([\d.]+)s/i);
+      const waitMs = hinted
+        ? Math.ceil(parseFloat(hinted[1]) * 1000) + 500
+        : attempt * 2000;
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 20000)));
+    }
+  }
+}

@@ -29,6 +29,16 @@ import {
   pickBestStoryImage,
 } from "@/lib/imageMatching";
 import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
+import {
+  isWikipediaSource,
+  sourcesForGrounding,
+} from "@/lib/sourcePolicy";
+import {
+  groundingRejectionPrompt,
+  groundingRetryEnabled,
+  groundingVerifyEnabled,
+  verifyAnswerGrounding,
+} from "@/lib/groundingVerifier";
 import { chatJSON, embed, embedMany, EMBED_DIM } from "@/lib/llm";
 import { withPersona } from "@/lib/activePersona";
 import {
@@ -95,7 +105,6 @@ const LEXICAL_STOP = new Set([
   "your",
   "please",
   "show",
-  "luis",
   "san",
   "obispo",
   "county",
@@ -116,15 +125,329 @@ function queryLexicalTerms(query: string): string[] {
 
 /** True if chunk text mentions term, with light typo tolerance on whole words. */
 function textMentionsTerm(hay: string, t: string): boolean {
-  if (hay.includes(t)) return true;
-  if (t.length < 5) return false;
+  if (t.length < 3) return false;
   const words = hay.match(/[a-z0-9']+/g) ?? [];
-  const stem = t.slice(0, -1); // morgant → morgan… but require longer word
+  if (words.some((w) => w === t)) return true;
+  if (t.length < 5) return false;
+  const stem = t.slice(0, -1);
   return words.some(
     (w) =>
-      w.startsWith(t) ||
-      (w.startsWith(stem) && w.length >= t.length && w.length <= t.length + 2)
+      w.startsWith(stem) && w.length >= t.length && w.length <= t.length + 2
   );
+}
+
+/** Person-name match; rejects place names like "Geary Street" without biographical context. */
+function textMentionsPersonName(hay: string, name: string): boolean {
+  if (!textMentionsTerm(hay, name)) return false;
+
+  const placeSuffix = new RegExp(
+    `\\b${name}\\s+(?:street|st\\.?|avenue|ave\\.?|road|rd\\.?|boulevard|blvd\\.?|way|drive|dr\\.?)\\b`,
+    "i"
+  );
+  if (!placeSuffix.test(hay)) return true;
+
+  const bioContext = new RegExp(
+    `(?:\\b${name}\\b[^.]{0,48}\\b(?:mayor|governor|colonel|general|appointed|served|office|alcalde)\\b|\\b(?:mayor|governor|colonel|general|alcalde)\\b[^.]{0,48}\\b${name}\\b|(?:john|j\\.?\\s*w\\.?)\\s+${name})`,
+    "i"
+  );
+  return bioContext.test(hay);
+}
+
+/** Region/place words that appear in many unrelated Bancroft chunks. */
+const EVIDENCE_GENERIC_NAMES = new Set([
+  "francisco",
+  "california",
+  "angeles",
+  "diego",
+  "barbara",
+  "monterey",
+  "sonoma",
+  "vallejo",
+  "alvarado",
+  "gate",
+  "golden",
+  "mission",
+  "mexico",
+  "american",
+  "general",
+  "captain",
+  "governor",
+]);
+
+/** Office/role words that appear in many unrelated passages. */
+const EVIDENCE_ROLE_WORDS = new Set([
+  "mayor",
+  "artist",
+  "painter",
+  "governor",
+  "alcalde",
+  "senator",
+  "alderman",
+  "sheriff",
+  "general",
+  "captain",
+  "commander",
+  "president",
+  "founder",
+]);
+
+/** Capitalized common nouns the model often uses — not person surnames. */
+const EVIDENCE_ANSWER_COMMON_NOUNS = new Set([
+  "store",
+  "coast",
+  "central",
+  "chinese",
+  "american",
+  "pacific",
+  "business",
+  "community",
+  "pioneer",
+  "railway",
+  "railroad",
+  "railroads",
+  "tunnels",
+  "grade",
+  "cuesta",
+  "landmark",
+  "laborers",
+  "establishment",
+  "immigrants",
+  "region",
+  "valley",
+  "county",
+  "mission",
+  "tunnel",
+  "railway",
+  "obispo",
+]);
+
+function unsupportedInSourcesMessage(pack: PersonaPack): string {
+  const region = pack.public.region?.trim();
+  const regionHint = region
+    ? `Ask me about ${region}, or about people and events that appear in my own sources`
+    : "Ask me about topics that appear in my own sources";
+  return `I must be honest: the passages before me do not speak to that question with enough clarity for me to name names or dates. ${regionHint} — and I will answer from what I can document.`;
+}
+
+/** Short replies that genuinely admit the sources do not cover the question. */
+function isHonestUnknownAdmission(answer: string): boolean {
+  const a = answer.trim();
+  if (!a) return true;
+  const words = a.split(/\s+/).filter(Boolean).length;
+  const admits =
+    /\b(?:do not|don't|cannot|can't|not in (?:my|the) sources|passages before me|do not speak|cannot find|no clarity|must be honest|I do not have|I must be honest)\b/i.test(
+      a
+    );
+  if (admits && words <= 80) return true;
+  return words <= 15 && admits;
+}
+
+/**
+ * Model sometimes sets evidence_label "unknown" but still writes a confident,
+ * detailed answer from general knowledge — must not bypass verification.
+ */
+function isFabricatedUnknownAnswer(answer: string, label: EvidenceLabel): boolean {
+  if (label !== "unknown") return false;
+  const a = answer.trim();
+  if (!a) return false;
+  return !isHonestUnknownAdmission(a);
+}
+
+/** Proper surnames / distinctive names the answer asserts (not query keywords). */
+function answerProperNames(answer: string): string[] {
+  const names = new Set<string>();
+
+  const multiName =
+    /\b([A-Z][a-z]+(?:\s+[A-Z]\.?\s*)*(?:\s+[A-Z][a-z]+)+)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = multiName.exec(answer)) !== null) {
+    const parts = m[1]
+      .split(/\s+/)
+      .map((p) => p.replace(/\./g, "").toLowerCase());
+    const last = parts[parts.length - 1];
+    if (
+      last.length >= 4 &&
+      !EVIDENCE_GENERIC_NAMES.has(last) &&
+      !EVIDENCE_ROLE_WORDS.has(last) &&
+      !EVIDENCE_ANSWER_COMMON_NOUNS.has(last)
+    ) {
+      names.add(last);
+    }
+  }
+
+  const singleName = /\b([A-Z][a-z]{5,})\b/g;
+  while ((m = singleName.exec(answer)) !== null) {
+    const w = m[1].toLowerCase();
+    if (
+      !EVIDENCE_GENERIC_NAMES.has(w) &&
+      !EVIDENCE_ROLE_WORDS.has(w) &&
+      !EVIDENCE_ANSWER_COMMON_NOUNS.has(w)
+    ) {
+      names.add(w);
+    }
+  }
+
+  return [...names];
+}
+
+/** Substantive terms from the question and named entities in the answer. */
+function answerSubstantiveTerms(answer: string, query: string): string[] {
+  const answerHay = answer.toLowerCase();
+  const terms = new Set<string>();
+  for (const t of queryLexicalTerms(query)) {
+    if (
+      t.length >= 4 &&
+      t !== "luis" &&
+      t !== "louis" &&
+      !EVIDENCE_GENERIC_NAMES.has(t) &&
+      !EVIDENCE_ROLE_WORDS.has(t) &&
+      !EVIDENCE_ANSWER_COMMON_NOUNS.has(t)
+    ) {
+      terms.add(t);
+    }
+  }
+  for (const name of answerProperNames(answer)) {
+    terms.add(name);
+  }
+  // Topic words the answer develops (railroad, store, etc.) for multi-source display.
+  for (const t of [
+    "railroad",
+    "railroads",
+    "chinese",
+    "store",
+    "tunnel",
+    "tunnels",
+    "cuesta",
+    "palm",
+    "dairy",
+    "mission",
+  ]) {
+    if (textMentionsTerm(answerHay, t)) terms.add(t);
+  }
+  return [...terms].filter((t) => textMentionsTerm(answerHay, t));
+}
+
+/** Person-name match with guards against place-name false positives (e.g. Saint Louis). */
+function personNameInSource(
+  hay: string,
+  name: string,
+  query: string
+): boolean {
+  if (!textMentionsTerm(hay, name)) return false;
+
+  if (name === "louis" || name === "luis") {
+    if (/\bah\s+lou?is\b/i.test(hay)) return true;
+    if (/\b(?:san|santa)\s+luis\b/i.test(hay)) return false;
+    if (/\bsaint\s+louis\b/i.test(hay) && !/\bah\s+lou?is\b/i.test(query)) {
+      return false;
+    }
+    const qTerms = queryLexicalTerms(query);
+    if (
+      qTerms.some((t) => t === "chinese" || t === "luis" || t === "louis") &&
+      /\b(?:chinese?|chinaman|palm\s+street)\b/i.test(hay)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  return textMentionsPersonName(hay, name);
+}
+
+/** True when a source chunk actually discusses what the answer claims. */
+function sourceSupportsAnswer(
+  source: SourceChunk,
+  query: string,
+  answer: string
+): boolean {
+  const hay = source.text.toLowerCase();
+  const answerHay = answer.toLowerCase();
+  const properNames = answerProperNames(answer);
+
+  if (properNames.length > 0) {
+    if (properNames.some((name) => personNameInSource(hay, name, query))) {
+      return true;
+    }
+    // Person named in the answer but absent from this chunk — still show if the
+    // chunk backs other factual claims the answer makes (railroad, dairy, etc.).
+    const substantive = answerSubstantiveTerms(answer, query);
+    const inSource = substantive.filter((t) => textMentionsTerm(hay, t));
+    const inQuery = queryLexicalTerms(query).filter(
+      (t) =>
+        t.length >= 4 &&
+        !EVIDENCE_GENERIC_NAMES.has(t) &&
+        textMentionsTerm(answerHay, t) &&
+        textMentionsTerm(hay, t)
+    );
+    if (inSource.length >= 2) return true;
+    if (inSource.length >= 1 && inQuery.length >= 1) return true;
+    return false;
+  }
+
+  const specificTerms = queryLexicalTerms(query).filter(
+    (t) =>
+      t.length >= 5 &&
+      !EVIDENCE_GENERIC_NAMES.has(t) &&
+      !EVIDENCE_ROLE_WORDS.has(t) &&
+      textMentionsTerm(answerHay, t)
+  );
+  if (specificTerms.length === 0) return false;
+
+  return specificTerms.some((t) => textMentionsTerm(hay, t));
+}
+
+function filterSourcesSupportingAnswer(
+  sources: SourceChunk[],
+  query: string,
+  answer: string
+): SourceChunk[] {
+  return sources.filter((s) => sourceSupportsAnswer(s, query, answer));
+}
+
+const MAX_DISPLAY_SOURCES = 6;
+
+/** Evidence panel: cited sources first, then other retrieved passages that support the answer. */
+function buildDisplaySources(
+  retrieved: SourceChunk[],
+  query: string,
+  answer: string,
+  citedIds: string[]
+): SourceChunk[] {
+  const seen = new Set<string>();
+  const out: SourceChunk[] = [];
+  const byNorm = new Map(retrieved.map((s) => [normId(s.id), s]));
+
+  const add = (s: SourceChunk | undefined) => {
+    if (!s) return;
+    const n = normId(s.id);
+    if (seen.has(n)) return;
+    seen.add(n);
+    out.push(s);
+  };
+
+  for (const id of citedIds) {
+    add(byNorm.get(normId(id)));
+    if (out.length >= MAX_DISPLAY_SOURCES) return out;
+  }
+
+  for (const s of filterSourcesSupportingAnswer(retrieved, query, answer)) {
+    add(s);
+    if (out.length >= MAX_DISPLAY_SOURCES) break;
+  }
+
+  return out;
+}
+
+function dedupeSourceChunks(chunks: SourceChunk[]): SourceChunk[] {
+  const seen = new Set<string>();
+  const out: SourceChunk[] = [];
+  for (const s of chunks) {
+    const n = normId(s.id);
+    if (seen.has(n)) continue;
+    seen.add(n);
+    out.push(s);
+  }
+  return out;
 }
 
 /**
@@ -252,10 +575,11 @@ function getOrCreateIndex(pack: PersonaPack): PersonaIndex {
   if (idx) return idx;
 
   const bookSources = loadBookSources(bookChunkPathsFor(pack));
-  const corpus: SourceChunk[] = [...pack.sources, ...bookSources];
+  const curated = sourcesForGrounding(pack.sources);
+  const corpus: SourceChunk[] = [...curated, ...bookSources];
   idx = {
     corpus,
-    curatedCount: pack.sources.length,
+    curatedCount: curated.length,
     corpusEmbeddings: null,
     embeddingJob: null,
     imageEmbeddings: null,
@@ -730,6 +1054,7 @@ ${opts.conversationBrief}
 }
 # SOURCES RETRIEVED FOR THIS QUESTION
 Use ONLY the facts below for historical claims. Each is tagged with an id like [bio-birth] or [book-0123].
+These passages come from primary records, period documents, and other authoritative sources — not Wikipedia.
 Some entries may be dense historical prose; paraphrase clearly for the visitor.
 ${sourceBlock}
 
@@ -841,6 +1166,8 @@ Labeling rules (important):
 - When the label is "unknown": do NOT invent biographies, roles, or local deeds. Say
   plainly that this name/topic is not in the sources before you, then offer a nearby
   topic you CAN document (a place, industry, or figure that is in the retrieved sources).
+- If the retrieved sources do not mention the person, office, or event the visitor asked
+  about, you MUST use "unknown" — do not answer from general knowledge.
 - ALWAYS populate "used_source_ids" with the ids you actually relied on. If your label is
   "documented", "inference", or "contested", this array must NOT be empty. Only "unknown"
   may have an empty array.
@@ -949,6 +1276,11 @@ async function answerQuestionForPack(
     retrievalQuery,
     { userQuery, topicContext, isImageFollowUp }
   );
+  const personaIndex = getOrCreateIndex(pack);
+  const evidencePool = dedupeSourceChunks([
+    ...retrieved,
+    ...personaIndex.corpus.slice(0, personaIndex.curatedCount),
+  ]);
 
   candidateImages = candidateImages.filter((img) => {
     if (!shownImageIds.has(normId(img.id))) return true;
@@ -968,6 +1300,8 @@ async function answerQuestionForPack(
   });
   let raw = await chatJSON(system, history);
   let parsed = parseModelAnswer(raw);
+  let groundingRejected = false;
+  let verifierSupportedIds: string[] | null = null;
 
   if (detectAnachronism(parsed.answer ?? raw, pack.temporalYear ?? 1905)) {
     raw = await chatJSON(
@@ -977,15 +1311,110 @@ async function answerQuestionForPack(
     parsed = parseModelAnswer(raw);
   }
 
+  const skipGroundingVerifier =
+    !groundingVerifyEnabled() ||
+    isIdentityQuery(userQuery) ||
+    isAppearanceQuery(userQuery) ||
+    isIntroOrMetaQuery(userQuery);
+
+  if (!skipGroundingVerifier) {
+    const maxAttempts = groundingRetryEnabled() ? 2 : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const draftAnswer = parsed.answer?.trim() ?? "";
+      const draftLabel: EvidenceLabel = EVIDENCE_LABELS.includes(
+        parsed.evidence_label as EvidenceLabel
+      )
+        ? (parsed.evidence_label as EvidenceLabel)
+        : "inference";
+
+      if (!draftAnswer) break;
+      // Do not skip verification when the model self-labels "unknown" but still
+      // outputs a substantive fabricated answer (names, dates, narrative).
+      if (draftLabel === "unknown" && isHonestUnknownAdmission(draftAnswer)) break;
+
+      const draftIds = asStringIds(parsed.used_source_ids);
+      const draftNorm = new Set(draftIds.map(normId).filter(Boolean));
+      let checkSources = retrieved.filter((s) => draftNorm.has(normId(s.id)));
+      if (checkSources.length === 0) {
+        checkSources = filterSourcesSupportingAnswer(
+          retrieved.slice(0, 12),
+          userQuery,
+          draftAnswer
+        );
+      }
+      if (checkSources.length === 0) checkSources = retrieved.slice(0, 10);
+
+      const verdict = await verifyAnswerGrounding({
+        question: userQuery,
+        answer: draftAnswer,
+        claimedLabel: draftLabel,
+        sources: checkSources,
+        personaName: pack.public.name,
+      });
+
+      if (verdict.grounded) {
+        verifierSupportedIds = verdict.supportedSourceIds;
+        if (verdict.evidenceLabel !== "unknown") {
+          parsed.evidence_label = verdict.evidenceLabel;
+        }
+        break;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        raw = await chatJSON(
+          `${system}\n\n${groundingRejectionPrompt(verdict.reason)}`,
+          history
+        );
+        parsed = parseModelAnswer(raw);
+        continue;
+      }
+
+      groundingRejected = true;
+      parsed = {
+        answer: "",
+        evidence_label: "unknown",
+        used_source_ids: [],
+        image_ids: [],
+      };
+      break;
+    }
+  }
+
+  // Verifier disabled or honest-unknown skip: still block fabricated unknown text.
+  if (
+    !groundingRejected &&
+    !skipGroundingVerifier &&
+    isFabricatedUnknownAnswer(parsed.answer ?? "", parsed.evidence_label as EvidenceLabel)
+  ) {
+    groundingRejected = true;
+    parsed = {
+      answer: "",
+      evidence_label: "unknown",
+      used_source_ids: [],
+      image_ids: [],
+    };
+  }
+
   let evidenceLabel: EvidenceLabel = EVIDENCE_LABELS.includes(
     parsed.evidence_label as EvidenceLabel
   )
     ? (parsed.evidence_label as EvidenceLabel)
     : "inference";
+  const modelEvidenceLabel = evidenceLabel;
 
   // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
   // so match on a normalized form rather than exact string equality.
-  const usedIds = asStringIds(parsed.used_source_ids);
+  const modelUsedIds = asStringIds(parsed.used_source_ids);
+  const usedIds = (
+    verifierSupportedIds
+      ? [...new Set([...verifierSupportedIds, ...modelUsedIds])]
+      : modelUsedIds
+  ).filter((id) => {
+    const chunk =
+      retrieved.find((s) => normId(s.id) === normId(id)) ??
+      pack.sources.find((s) => normId(s.id) === normId(id));
+    return !chunk || !isWikipediaSource(chunk);
+  });
   const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
   const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
@@ -993,7 +1422,9 @@ async function answerQuestionForPack(
   const storyThemes = detectStoryThemes(storyHay);
   const imageIds = asStringIds(parsed.image_ids);
   const imageNorm = new Set(imageIds.map(normId).filter(Boolean));
-  let images = candidateImages.filter((img) => imageNorm.has(normId(img.id)));
+  let images = groundingRejected
+    ? []
+    : candidateImages.filter((img) => imageNorm.has(normId(img.id)));
 
   const eligibleCandidates = (pool: ImageAsset[]) =>
     pool.filter((img) => {
@@ -1044,7 +1475,7 @@ async function answerQuestionForPack(
   }
 
   // Fallback: strong story match only, never repeat (except portrait on identity).
-  if (images.length === 0 && candidateImages.length > 0) {
+  if (images.length === 0 && candidateImages.length > 0 && !groundingRejected) {
     const skipProactive =
       (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) ||
       isRepetitionComplaint(userQuery) ||
@@ -1103,19 +1534,63 @@ async function answerQuestionForPack(
     }
   }
 
+  const answerText = parsed.answer ?? "";
+
   // Decide which sources to surface to the reader.
-  // - "unknown": the model claims no grounding, so show NO sources (showing the
-  //   full retrieved candidate list here is misleading — those are just search
-  //   hits the model did not stand behind).
-  // - Otherwise: show the sources the model actually cited. Only fall back to the
-  //   retrieved candidates if the model grounded its answer but forgot to list ids.
+  // - "unknown": no sources (retrieved hits were not stood behind).
+  // - Otherwise: cited/verifier ids first, then other retrieved passages that
+  //   support claims in the answer (up to MAX_DISPLAY_SOURCES).
   let displaySources: SourceChunk[];
   if (evidenceLabel === "unknown") {
     displaySources = [];
-  } else if (usedSources.length > 0) {
-    displaySources = usedSources;
+  } else if (answerText.trim()) {
+    displaySources = buildDisplaySources(
+      evidencePool,
+      userQuery,
+      answerText,
+      usedIds
+    );
+    if (displaySources.length === 0 && usedSources.length > 0) {
+      displaySources = usedSources.slice(0, MAX_DISPLAY_SOURCES);
+    } else if (displaySources.length === 0) {
+      displaySources = retrieved.slice(0, MAX_DISPLAY_SOURCES);
+    }
   } else {
-    displaySources = retrieved;
+    displaySources = [];
+  }
+
+  let evidenceDowngraded = groundingRejected;
+  const skipEvidenceDowngrade =
+    isIdentityQuery(userQuery) || isAppearanceQuery(userQuery);
+  if (!skipEvidenceDowngrade && answerText.trim() && !groundingRejected) {
+    const filtered = filterSourcesSupportingAnswer(
+      displaySources,
+      userQuery,
+      answerText
+    );
+    if (filtered.length > 0) {
+      displaySources = filtered
+        .filter((s) => !isWikipediaSource(s))
+        .slice(0, MAX_DISPLAY_SOURCES);
+    } else {
+      displaySources = [];
+    }
+    if (
+      displaySources.length === 0 &&
+      !isIntroOrMetaQuery(userQuery)
+    ) {
+      if (evidenceLabel !== "unknown") {
+        evidenceLabel = "unknown";
+        evidenceDowngraded = modelEvidenceLabel !== "unknown";
+      } else if (isFabricatedUnknownAnswer(answerText, evidenceLabel)) {
+        evidenceDowngraded = true;
+      }
+    }
+  }
+
+  if (evidenceDowngraded && !skipEvidenceDowngrade) {
+    displaySources = [];
+    images = [];
   }
 
   // The model sometimes labels identity answers "unknown" even when bio sources
@@ -1127,7 +1602,14 @@ async function answerQuestionForPack(
     );
     if (bioSources.length > 0) {
       evidenceLabel = "documented";
-      displaySources = usedSources.length > 0 ? usedSources : bioSources.slice(0, 6);
+      displaySources = filterSourcesSupportingAnswer(
+        usedSources.length > 0 ? usedSources : bioSources.slice(0, 6),
+        userQuery,
+        answerText
+      );
+      if (displaySources.length === 0) {
+        displaySources = bioSources.slice(0, 3);
+      }
     }
   }
 
@@ -1153,8 +1635,10 @@ async function answerQuestionForPack(
 
   return {
     answer: sanitizeAnswerText(
-      parsed.answer?.trim() ||
-        "Forgive me — I find I cannot put words to that just now."
+      evidenceDowngraded
+        ? unsupportedInSourcesMessage(pack)
+        : parsed.answer?.trim() ||
+            "Forgive me — I find I cannot put words to that just now."
     ),
     evidenceLabel,
     usedSourceIds: usedIds,

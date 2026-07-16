@@ -1,0 +1,4403 @@
+=== ECHOES RAG PIPELINE REVIEW DUMP ===
+Generated: 2026-07-16T17:49:27Z
+
+
+================================================================================
+FILE: lib/rag.ts
+================================================================================
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import {
+  buildGroundingTemporalBlock,
+  detectAnachronism,
+  anachronismRetry,
+} from "@/lib/temporalPolicy";
+import {
+  isContextualFollowUp,
+  isHistoricalImageAsset,
+  isImageFollowUpQuery,
+  isIntroOrMetaQuery,
+  isPersonPortraitRequest,
+  queryWantsImageSearch,
+  searchHistoricalImages,
+} from "@/lib/imageSearch";
+import {
+  filterServeableImages,
+  getAvailableLibraryImages,
+} from "@/lib/imageAvailability";
+import {
+  answerSupportsImage,
+  detectStoryThemes,
+  imageConflictsWithStory,
+  imageMatchesQueryIntent,
+  imageStoryMatchScore,
+  isStrongStoryMatch,
+  pickBestStoryImage,
+} from "@/lib/imageMatching";
+import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
+import {
+  groundingRejectionPrompt,
+  groundingRetryEnabled,
+  groundingVerifyEnabled,
+  verifyAnswerGrounding,
+} from "@/lib/groundingVerifier";
+import { chatJSON, embed, embedMany, EMBED_DIM } from "@/lib/llm";
+import { withPersona } from "@/lib/activePersona";
+import {
+  DEFAULT_PERSONA_SLUG,
+  getPersonaPack,
+} from "@/personas";
+import { formatTopicCatalogForPrompt } from "@/personas/topicCatalog";
+import type { PersonaPack } from "@/personas/types";
+import type {
+  ChatMessage,
+  EvidenceLabel,
+  GroundedAnswer,
+  ImageAsset,
+  SourceChunk,
+} from "@/lib/types";
+
+const TOP_K = 10;
+const NEIGHBOR_RADIUS = 1; // also include N chunks before/after each book hit
+const CURATED_BOOST = 0.02; // prefer hand-verified facts on near-ties
+/** Extra score when query terms (esp. rare names) appear in a chunk. */
+const LEXICAL_HIT_BOOST = 0.18;
+const LEXICAL_FUZZY_BOOST = 0.14;
+const LEXICAL_BOOST_CAP = 0.55;
+const IMAGE_CANDIDATES = 5; // local library images to offer the model
+const EVIDENCE_LABELS: EvidenceLabel[] = [
+  "documented",
+  "inference",
+  "contested",
+  "unknown",
+];
+
+const LEXICAL_STOP = new Set([
+  "about",
+  "after",
+  "again",
+  "could",
+  "did",
+  "does",
+  "from",
+  "have",
+  "here",
+  "into",
+  "just",
+  "know",
+  "like",
+  "more",
+  "much",
+  "tell",
+  "than",
+  "that",
+  "them",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "with",
+  "would",
+  "your",
+  "please",
+  "show",
+  "luis",
+  "san",
+  "obispo",
+  "county",
+  "california",
+]);
+
+function queryLexicalTerms(query: string): string[] {
+  const raw = query.toLowerCase().match(/[a-z0-9']{4,}/g) ?? [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of raw) {
+    if (LEXICAL_STOP.has(t) || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+/** True if chunk text mentions term, with light typo tolerance on whole words. */
+function textMentionsTerm(hay: string, t: string): boolean {
+  if (hay.includes(t)) return true;
+  if (t.length < 5) return false;
+  const words = hay.match(/[a-z0-9']+/g) ?? [];
+  const stem = t.slice(0, -1); // morgant → morgan… but require longer word
+  return words.some(
+    (w) =>
+      w.startsWith(t) ||
+      (w.startsWith(stem) && w.length >= t.length && w.length <= t.length + 2)
+  );
+}
+
+/** Person-name match; rejects place names like "Geary Street" without biographical context. */
+function textMentionsPersonName(hay: string, name: string): boolean {
+  if (!textMentionsTerm(hay, name)) return false;
+
+  const placeSuffix = new RegExp(
+    `\\b${name}\\s+(?:street|st\\.?|avenue|ave\\.?|road|rd\\.?|boulevard|blvd\\.?|way|drive|dr\\.?)\\b`,
+    "i"
+  );
+  if (!placeSuffix.test(hay)) return true;
+
+  const bioContext = new RegExp(
+    `(?:\\b${name}\\b[^.]{0,48}\\b(?:mayor|governor|colonel|general|appointed|served|office|alcalde)\\b|\\b(?:mayor|governor|colonel|general|alcalde)\\b[^.]{0,48}\\b${name}\\b|(?:john|j\\.?\\s*w\\.?)\\s+${name})`,
+    "i"
+  );
+  return bioContext.test(hay);
+}
+
+/** Region/place words that appear in many unrelated Bancroft chunks. */
+const EVIDENCE_GENERIC_NAMES = new Set([
+  "francisco",
+  "california",
+  "angeles",
+  "diego",
+  "barbara",
+  "monterey",
+  "sonoma",
+  "vallejo",
+  "alvarado",
+  "gate",
+  "golden",
+  "mission",
+  "mexico",
+  "american",
+  "general",
+  "captain",
+  "governor",
+]);
+
+/** Office/role words that appear in many unrelated passages. */
+const EVIDENCE_ROLE_WORDS = new Set([
+  "mayor",
+  "artist",
+  "painter",
+  "governor",
+  "alcalde",
+  "senator",
+  "alderman",
+  "sheriff",
+  "general",
+  "captain",
+  "commander",
+  "president",
+  "founder",
+]);
+
+function unsupportedInSourcesMessage(pack: PersonaPack): string {
+  const region = pack.public.region?.trim();
+  const regionHint = region
+    ? `Ask me about ${region}, or about people and events that appear in my own sources`
+    : "Ask me about topics that appear in my own sources";
+  return `I must be honest: the passages before me do not speak to that question with enough clarity for me to name names or dates. ${regionHint} — and I will answer from what I can document.`;
+}
+
+/** Proper surnames / distinctive names the answer asserts (not query keywords). */
+function answerProperNames(answer: string): string[] {
+  const names = new Set<string>();
+
+  const multiName =
+    /\b([A-Z][a-z]+(?:\s+[A-Z]\.?\s*)*(?:\s+[A-Z][a-z]+)+)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = multiName.exec(answer)) !== null) {
+    const parts = m[1]
+      .split(/\s+/)
+      .map((p) => p.replace(/\./g, "").toLowerCase());
+    const last = parts[parts.length - 1];
+    if (
+      last.length >= 4 &&
+      !EVIDENCE_GENERIC_NAMES.has(last) &&
+      !EVIDENCE_ROLE_WORDS.has(last)
+    ) {
+      names.add(last);
+    }
+  }
+
+  const singleName = /\b([A-Z][a-z]{5,})\b/g;
+  while ((m = singleName.exec(answer)) !== null) {
+    const w = m[1].toLowerCase();
+    if (!EVIDENCE_GENERIC_NAMES.has(w) && !EVIDENCE_ROLE_WORDS.has(w)) {
+      names.add(w);
+    }
+  }
+
+  return [...names];
+}
+
+/** True when a source chunk actually discusses what the answer claims. */
+function sourceSupportsAnswer(
+  source: SourceChunk,
+  query: string,
+  answer: string
+): boolean {
+  const hay = source.text.toLowerCase();
+  const properNames = answerProperNames(answer);
+
+  // Answers that name people require those names in the source — "mayor of Victoria"
+  // must not pass for a claim about John W. Geary.
+  if (properNames.length > 0) {
+    return properNames.some((name) => textMentionsPersonName(hay, name));
+  }
+
+  const answerHay = answer.toLowerCase();
+  const specificTerms = queryLexicalTerms(query).filter(
+    (t) =>
+      t.length >= 5 &&
+      !EVIDENCE_GENERIC_NAMES.has(t) &&
+      !EVIDENCE_ROLE_WORDS.has(t) &&
+      textMentionsTerm(answerHay, t)
+  );
+  if (specificTerms.length === 0) return false;
+
+  return specificTerms.some((t) => textMentionsTerm(hay, t));
+}
+
+function filterSourcesSupportingAnswer(
+  sources: SourceChunk[],
+  query: string,
+  answer: string
+): SourceChunk[] {
+  return sources.filter((s) => sourceSupportsAnswer(s, query, answer));
+}
+
+/**
+ * Rare query terms (appear in few chunks) get a much stronger boost when matched —
+ * this is how "Morganti" / "morgant" beats generic SLO geography embeddings.
+ */
+function rareTermBoosts(
+  corpus: SourceChunk[],
+  terms: string[]
+): Map<string, number> {
+  const boosts = new Map<string, number>();
+  if (!terms.length || !corpus.length) return boosts;
+  for (const t of terms) {
+    let hits = 0;
+    for (const c of corpus) {
+      if (textMentionsTerm(c.text.toLowerCase(), t)) hits++;
+    }
+    if (hits === 0) continue;
+    // rarer → stronger; cap so one name can dominate retrieval
+    if (hits <= 8) boosts.set(t, 0.85);
+    else if (hits <= 40) boosts.set(t, 0.35);
+    else if (hits <= 200) boosts.set(t, 0.08);
+  }
+  return boosts;
+}
+
+function lexicalScoreForChunk(
+  chunkText: string,
+  terms: string[],
+  rareBoosts: Map<string, number>
+): number {
+  if (!terms.length) return 0;
+  const hay = chunkText.toLowerCase();
+  let boost = 0;
+  for (const t of terms) {
+    if (!textMentionsTerm(hay, t)) continue;
+    const rare = rareBoosts.get(t) ?? 0;
+    boost += Math.max(LEXICAL_HIT_BOOST, rare);
+  }
+  return Math.min(boost, 1.2);
+}
+const CACHE_DIR = path.join(process.cwd(), ".cache");
+
+interface PersonaIndex {
+  corpus: SourceChunk[];
+  curatedCount: number;
+  corpusEmbeddings: number[][] | null;
+  embeddingJob: Promise<number[][]> | null;
+  imageEmbeddings: number[][] | null;
+  imageEmbeddingJob: Promise<number[][]> | null;
+  hash: string;
+}
+
+const indexes = new Map<string, PersonaIndex>();
+
+function bookChunkPathsFor(pack: PersonaPack): string[] {
+  if (pack.bookChunksPaths?.length) return pack.bookChunksPaths;
+  if (pack.bookChunksPath) return [pack.bookChunksPath];
+  return [];
+}
+
+/** Load ingested book/OCR chunks (if present) as SourceChunks. */
+function resolveBookChunkPath(bookChunksPath: string): string | null {
+  const candidates = [
+    path.join(process.cwd(), bookChunksPath),
+    path.resolve(bookChunksPath),
+    // Serverless / traced layouts sometimes nest under the project root twice.
+    path.join(process.cwd(), "..", bookChunksPath),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      /* keep trying */
+    }
+  }
+  return null;
+}
+
+function loadBookSources(paths: string[]): SourceChunk[] {
+  const out: SourceChunk[] = [];
+  for (const bookChunksPath of paths) {
+    const resolved = resolveBookChunkPath(bookChunksPath);
+    if (!resolved) {
+      console.warn(
+        `[ECHOES] Missing book chunks (not traced or not on disk): ${bookChunksPath}`
+      );
+      continue;
+    }
+    try {
+      const raw = fs.readFileSync(resolved, "utf8");
+      const data = JSON.parse(raw) as SourceChunk[];
+      for (const d of data) {
+        out.push({
+          id: d.id,
+          text: d.text,
+          topics: d.topics ?? ["local history"],
+          dateRange: d.dateRange ?? "historical",
+          sourceType: "primary" as const,
+          citation: d.citation,
+          url: d.url,
+          reliability: d.reliability ?? "medium",
+        });
+      }
+    } catch (err) {
+      console.warn(
+        `[ECHOES] Failed to load book chunks ${bookChunksPath}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  return out;
+}
+
+function corpusHashFor(corpus: SourceChunk[]): string {
+  const h = crypto.createHash("sha1");
+  h.update(`dim:${EMBED_DIM}|n:${corpus.length}`);
+  for (const c of corpus) h.update(`${c.id}:${c.text.length}|`);
+  return h.digest("hex");
+}
+
+function getOrCreateIndex(pack: PersonaPack): PersonaIndex {
+  const slug = pack.public.slug;
+  let idx = indexes.get(slug);
+  if (idx) return idx;
+
+  const bookSources = loadBookSources(bookChunkPathsFor(pack));
+  const corpus: SourceChunk[] = [...pack.sources, ...bookSources];
+  idx = {
+    corpus,
+    curatedCount: pack.sources.length,
+    corpusEmbeddings: null,
+    embeddingJob: null,
+    imageEmbeddings: null,
+    imageEmbeddingJob: null,
+    hash: corpusHashFor(corpus),
+  };
+  indexes.set(slug, idx);
+  return idx;
+}
+
+function cachePathFor(slug: string): string {
+  return path.join(CACHE_DIR, `${slug}-embeddings.json`);
+}
+
+function tryLoadCache(idx: PersonaIndex, slug: string): number[][] | null {
+  try {
+    const raw = fs.readFileSync(cachePathFor(slug), "utf8");
+    const cached = JSON.parse(raw) as {
+      hash: string;
+      vectors: number[][];
+    };
+    if (
+      cached.hash === idx.hash &&
+      cached.vectors.length === idx.corpus.length
+    ) {
+      return cached.vectors;
+    }
+  } catch {
+    /* no usable cache */
+  }
+  return null;
+}
+
+function saveCache(idx: PersonaIndex, slug: string, vectors: number[][]) {
+  try {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+    fs.writeFileSync(
+      cachePathFor(slug),
+      JSON.stringify({ hash: idx.hash, vectors }),
+      "utf8"
+    );
+  } catch {
+    /* read-only fs: keep embeddings in memory only */
+  }
+}
+
+async function ensureEmbeddings(pack: PersonaPack): Promise<number[][]> {
+  const idx = getOrCreateIndex(pack);
+  if (idx.corpusEmbeddings) return idx.corpusEmbeddings;
+
+  const cached = tryLoadCache(idx, pack.public.slug);
+  if (cached) {
+    idx.corpusEmbeddings = cached;
+    return cached;
+  }
+
+  if (!idx.embeddingJob) {
+    const texts = idx.corpus.map((c) => `${c.topics.join(", ")}: ${c.text}`);
+    console.log(
+      `[ECHOES] Indexing ${texts.length} source chunks for ${pack.public.slug}…`
+    );
+    idx.embeddingJob = embedMany(texts, (done, total) => {
+      if (done % 480 === 0 || done === total) {
+        console.log(`[ECHOES] ${pack.public.slug}: embedded ${done}/${total}`);
+      }
+    }).then((vectors) => {
+      idx.corpusEmbeddings = vectors;
+      saveCache(idx, pack.public.slug, vectors);
+      console.log(`[ECHOES] Index ready for ${pack.public.slug}.`);
+      return vectors;
+    });
+  }
+  return idx.embeddingJob;
+}
+
+async function ensureImageEmbeddings(pack: PersonaPack): Promise<number[][]> {
+  const idx = getOrCreateIndex(pack);
+  if (idx.imageEmbeddings) return idx.imageEmbeddings;
+  const library = getAvailableLibraryImages();
+  if (library.length === 0) return (idx.imageEmbeddings = []);
+  if (!idx.imageEmbeddingJob) {
+    const texts = library.map(
+      (img) => `${img.topics.join(", ")}: ${img.caption}`
+    );
+    idx.imageEmbeddingJob = embedMany(texts).then((vectors) => {
+      idx.imageEmbeddings = vectors;
+      return vectors;
+    });
+  }
+  return idx.imageEmbeddingJob;
+}
+
+/** Pre-build the embedding index (used by the warm-up endpoint). */
+export async function warmIndex(
+  personaSlug?: string
+): Promise<{
+  chunks: number;
+  curated: number;
+  bookChunks: number;
+  ready: boolean;
+  persona: string;
+}> {
+  const pack = getPersonaPack(personaSlug);
+  return withPersona(pack, async () => {
+    const idx = getOrCreateIndex(pack);
+    await Promise.all([ensureEmbeddings(pack), ensureImageEmbeddings(pack)]);
+    return {
+      chunks: idx.corpus.length,
+      curated: idx.curatedCount,
+      bookChunks: Math.max(0, idx.corpus.length - idx.curatedCount),
+      ready: idx.corpusEmbeddings !== null,
+      persona: pack.public.slug,
+    };
+  });
+}
+
+function cosine(a: number[], b: number[]): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  if (na === 0 || nb === 0) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+function isIdentityQuery(query: string): boolean {
+  return /\b(?:who are you|introduce yourself|tell me about yourself|why does .+ matter to you)\b/i.test(
+    query
+  );
+}
+
+/** "What did you look like?", "show me your portrait", etc. — not places. */
+function isAppearanceQuery(query: string): boolean {
+  return isPersonPortraitRequest(query);
+}
+
+/** "Where did you live?", residence, or figure-specific home anchors. */
+function isResidenceQuery(query: string): boolean {
+  return /\b(?:where (?:do|did) you live|your (?:house|home|residence)|buchon(?:\s+street)?|714\b|angel house|horton house hotel|spring valley(?:\s+country)?\s+home|bancroft ranch|country (?:home|retreat))\b/i.test(
+    query
+  );
+}
+
+const RESIDENCE_IMAGE_BY_SLUG: Record<string, string> = {
+  "myron-angel": "img-buchon-house",
+  "alonzo-horton": "img-horton-house",
+  "hubert-howe-bancroft": "img-bancroft-ranch",
+};
+
+/** Always include verified biographical sources for self-introduction questions. */
+function pinIdentitySources(
+  pack: PersonaPack,
+  sources: SourceChunk[]
+): SourceChunk[] {
+  const prefixes = pack.identitySourceIdPrefixes ?? ["bio-"];
+  const pinned = pack.sources.filter((s) =>
+    prefixes.some((p) => s.id.startsWith(p))
+  );
+  const seen = new Set<string>();
+  const merged: SourceChunk[] = [];
+  for (const s of [...pinned, ...sources]) {
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
+    merged.push(s);
+  }
+  return merged;
+}
+
+function portraitId(pack: PersonaPack): string {
+  return pack.portraitImageId ?? "img-portrait";
+}
+
+/** Blend recent turns into the retrieval query when the visitor says "this" / "images for that". */
+function buildRetrievalQuery(history: ChatMessage[]): {
+  userQuery: string;
+  retrievalQuery: string;
+  topicContext: string;
+  isImageFollowUp: boolean;
+} {
+  const lastUser = [...history].reverse().find((m) => m.role === "user");
+  const userQuery = lastUser?.content?.trim() || "Introduce yourself.";
+
+  if (!isContextualFollowUp(userQuery) || history.length <= 1) {
+    return {
+      userQuery,
+      retrievalQuery: userQuery,
+      topicContext: "",
+      isImageFollowUp: isImageFollowUpQuery(userQuery),
+    };
+  }
+
+  const contextParts: string[] = [];
+  for (const m of history.slice(-6)) {
+    if (m.role === "user" && m.content.trim() !== userQuery) {
+      contextParts.push(m.content.trim());
+    }
+    if (m.role === "assistant") {
+      contextParts.push(m.content.trim().slice(0, 600));
+    }
+  }
+  const topicContext = contextParts.join(" ").slice(0, 1200);
+  const retrievalQuery = `${topicContext} ${userQuery}`.trim();
+
+  return {
+    userQuery,
+    retrievalQuery,
+    topicContext,
+    isImageFollowUp: isImageFollowUpQuery(userQuery),
+  };
+}
+
+/** Pin library images whose topics strongly match the question. */
+function pinTopicImages(topicHay: string, localCandidates: ImageAsset[]): ImageAsset[] {
+  const library = getAvailableLibraryImages();
+  const hay = topicHay.toLowerCase();
+  let pinned = library.filter((img) => imageStoryMatchScore(img, hay) >= 3);
+  if (isMissionQuery(hay)) {
+    const mission = library.filter(
+      (img) => isMissionImage(img) && imageStoryMatchScore(img, hay) >= 2
+    );
+    pinned = [...mission, ...pinned];
+  }
+  const seen = new Set<string>();
+  const merged: ImageAsset[] = [];
+  for (const img of [...pinned, ...localCandidates]) {
+    if (seen.has(img.id)) continue;
+    seen.add(img.id);
+    merged.push(img);
+  }
+  return merged.slice(0, IMAGE_CANDIDATES + 3);
+}
+
+async function retrieveContext(
+  pack: PersonaPack,
+  retrievalQuery: string,
+  opts: {
+    userQuery: string;
+    topicContext: string;
+    isImageFollowUp: boolean;
+  }
+): Promise<{ sources: SourceChunk[]; candidateImages: ImageAsset[] }> {
+  const { userQuery, topicContext, isImageFollowUp } = opts;
+  const idx = getOrCreateIndex(pack);
+  const library = getAvailableLibraryImages();
+  const [embeddings, imgEmbeddings, [queryEmbedding]] = await Promise.all([
+    ensureEmbeddings(pack),
+    ensureImageEmbeddings(pack),
+    embed([retrievalQuery]),
+  ]);
+
+  const lexTerms = queryLexicalTerms(`${retrievalQuery} ${userQuery}`);
+  const rareBoosts = rareTermBoosts(idx.corpus, lexTerms);
+  const scored = idx.corpus.map((chunk, i) => ({
+    index: i,
+    score:
+      cosine(queryEmbedding, embeddings[i]) +
+      (i < idx.curatedCount ? CURATED_BOOST : 0) +
+      lexicalScoreForChunk(chunk.text, lexTerms, rareBoosts),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  const topHits = scored.slice(0, TOP_K);
+
+  const selected = new Set<number>();
+  for (const hit of topHits) {
+    selected.add(hit.index);
+    if (hit.index >= idx.curatedCount) {
+      for (let d = 1; d <= NEIGHBOR_RADIUS; d++) {
+        const before = hit.index - d;
+        const after = hit.index + d;
+        if (before >= idx.curatedCount) selected.add(before);
+        if (after < idx.corpus.length) selected.add(after);
+      }
+    }
+  }
+
+  // Hard-pin chunks that mention rare query names (≤8 corpus hits).
+  for (const [term, boost] of rareBoosts) {
+    if (boost < 0.8) continue;
+    for (let i = 0; i < idx.corpus.length; i++) {
+      if (textMentionsTerm(idx.corpus[i].text.toLowerCase(), term)) {
+        selected.add(i);
+      }
+    }
+  }
+
+  let sources = [...selected]
+    .sort((a, b) => a - b)
+    .map((i) => idx.corpus[i]);
+  if (isIdentityQuery(userQuery)) {
+    sources = pinIdentitySources(pack, sources);
+  }
+
+  const sourceHints = sources.slice(0, 3).map((s) => s.text.slice(0, 100));
+  const imageSearchQuery = topicContext || retrievalQuery;
+  const searchImages =
+    queryWantsImageSearch(userQuery, topicContext || retrievalQuery)
+      ? await searchHistoricalImages(imageSearchQuery, sourceHints)
+      : [];
+
+  let localCandidates = library
+    .map((img, i) => ({
+      img,
+      score: imgEmbeddings[i]
+        ? cosine(queryEmbedding, imgEmbeddings[i])
+        : 0,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, IMAGE_CANDIDATES)
+    .map((x) => x.img);
+
+  localCandidates = pinTopicImages(
+    `${topicContext} ${retrievalQuery} ${sourceHints.join(" ")}`,
+    localCandidates
+  );
+
+  const pid = portraitId(pack);
+  if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
+    if (isIdentityQuery(userQuery)) {
+      const portrait = library.find((img) => img.id === pid);
+      localCandidates = portrait ? [portrait] : [];
+    } else {
+      const wantsPortrait = isPersonPortraitRequest(userQuery);
+      localCandidates = wantsPortrait
+        ? localCandidates.filter((img) => img.id === pid)
+        : [];
+    }
+  }
+
+  const seen = new Set<string>();
+  const candidateImages: ImageAsset[] = [];
+  for (const img of [...localCandidates, ...searchImages]) {
+    if (seen.has(img.id)) continue;
+    seen.add(img.id);
+    candidateImages.push(img);
+  }
+
+  return { sources, candidateImages: filterServeableImages(candidateImages) };
+}
+
+function isRepetitionComplaint(userQuery: string): boolean {
+  return /\b(?:repeat|repeated|already (?:said|told)|you (?:just )?said|same thing|said that|told me that)\b/i.test(
+    userQuery
+  );
+}
+
+function isShortFollowUp(userQuery: string): boolean {
+  const words = userQuery.trim().split(/\s+/).length;
+  return words <= 6 && (isImageFollowUpQuery(userQuery) || isContextualFollowUp(userQuery));
+}
+
+/** Prior turns for the model — truncated so it knows what NOT to repeat. */
+function buildConversationBrief(
+  history: ChatMessage[],
+  speakerLabel: string
+): string {
+  if (history.length <= 1) return "";
+  const prior = history.slice(0, -1).slice(-4);
+  return prior
+    .map((m) => {
+      const label = m.role === "user" ? "Visitor" : speakerLabel;
+      return `${label}: ${m.content.trim().slice(0, 500)}`;
+    })
+    .join("\n\n");
+}
+
+function isMissionQuery(topicHay: string): boolean {
+  if (/\bbuenaventura\b/i.test(topicHay)) return false;
+  return /\b(?:mission san luis|san luis obispo de tolosa|mission de tolosa|the mission|our mission|mission church|mission history|founded 1772|franciscan padres)\b/i.test(
+    topicHay
+  );
+}
+
+function isMissionImage(img: ImageAsset): boolean {
+  return img.id.startsWith("img-mission-");
+}
+
+function normId(id: unknown): string {
+  const s =
+    typeof id === "string" ? id : typeof id === "number" ? String(id) : "";
+  if (!s) return "";
+  return s.toLowerCase().replace(/(\d+)/g, (n) => String(parseInt(n, 10)));
+}
+
+function asStringIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((id) =>
+      typeof id === "string"
+        ? id.trim()
+        : typeof id === "number"
+          ? String(id)
+          : ""
+    )
+    .filter(Boolean);
+}
+
+function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
+  const shown = new Set<string>();
+  for (const m of history) {
+    if (m.role !== "assistant") continue;
+    for (const id of asStringIds(m.imageIds)) {
+      const norm = normId(id);
+      if (norm) shown.add(norm);
+    }
+  }
+  return shown;
+}
+
+function imageAllowedForStory(
+  pack: PersonaPack,
+  img: ImageAsset,
+  userQuery: string,
+  storyHay: string,
+  storyThemes: ReturnType<typeof detectStoryThemes>
+): boolean {
+  if (img.id === portraitId(pack)) {
+    return (
+      isIdentityQuery(userQuery) ||
+      isAppearanceQuery(userQuery) ||
+      /\bstore\b/i.test(userQuery)
+    );
+  }
+  return isStrongStoryMatch(img, storyHay, storyThemes) &&
+    imageMatchesQueryIntent(userQuery, img);
+}
+
+function buildGroundingPrompt(
+  pack: PersonaPack,
+  sources: SourceChunk[],
+  images: ImageAsset[],
+  opts?: {
+    isImageFollowUp?: boolean;
+    topicContext?: string;
+    isRepetitionComplaint?: boolean;
+    isShortFollowUp?: boolean;
+    isFunFactQuery?: boolean;
+    conversationBrief?: string;
+    shownImageIds?: string[];
+  }
+): string {
+  const year = pack.temporalYear ?? 1905;
+  const pid = portraitId(pack);
+  const accuracy = pack.accuracyPrompt ?? IMAGE_ACCURACY_PROMPT;
+  const sourceBlock = sources
+    .map(
+      (s) =>
+        `[${s.id}] (reliability: ${s.reliability}; ${s.dateRange ?? "n.d."})\n` +
+        `${s.text}\nCitation: ${s.citation}`
+    )
+    .join("\n\n");
+
+  const imageBlock =
+    images.length > 0
+      ? images
+          .map((img) => `[${img.id}] (${img.dateRange ?? "n.d."}) ${img.caption}`)
+          .join("\n")
+      : "(none available)";
+
+  return `
+${pack.systemPrompt}
+
+${
+  opts?.conversationBrief
+    ? `# CONVERSATION SO FAR (already told — do NOT repeat)
+${opts.conversationBrief}
+`
+    : ""
+}
+# SOURCES RETRIEVED FOR THIS QUESTION
+Use ONLY the facts below for historical claims. Each is tagged with an id like [bio-birth] or [book-0123].
+Some entries may be dense historical prose; paraphrase clearly for the visitor.
+${sourceBlock}
+
+${buildGroundingTemporalBlock(year)}
+
+# IMAGES YOU MAY SHOW
+You may show at most ONE image per reply. Include an image only when one **clearly and
+specifically** illustrates the exact place, building, person, or event you are discussing.
+When in doubt, use empty image_ids — a mismatched image is worse than none. Pick from:
+${imageBlock}
+
+# TOPIC → IMAGE GUIDE (match buzzwords in your answer to the best id)
+${formatTopicCatalogForPrompt(pack.imageTopics)}
+
+${accuracy}
+${
+  opts?.shownImageIds?.length
+    ? `
+Already shown this session — do NOT repeat these ids: ${opts.shownImageIds.join(", ")}
+`
+    : ""
+}
+Rules for images:
+- **Match the story you tell, not loose keywords.** See TOPIC GUIDE and HISTORICAL ACCURACY above.
+- **High bar for a match:** The image must depict the **same subject** you are narrating.
+  Generic town panoramas do not fit specific stories.
+- **Skip when none fit:** Use empty image_ids when no listed image truly matches.
+- Do NOT show images for "what is echoes" / "are you AI" meta questions.
+- **Never** show ${pid} except for "who are you", introductions, or questions about **your**
+  likeness/appearance — not for places ("what did the marina look like").
+- For **"who are you"** and other identity introductions → **always** include ${pid}
+  when it is listed, and refer to the likeness (or store) in your answer.
+- Do NOT show images for "why does SLO matter" unless a listed image directly fits.
+- Do NOT show modern photographs, contemporary scenes, or images whose caption does not
+  match what you are actually describing.
+- Prefer at most ONE image. Do not invent image ids; use only the ids listed above.
+- **Integration rule (critical):** If image_ids is not empty, the image renders **above**
+  your answer text. Write as though the visitor is already looking at it — one unified
+  moment. Never offer to show an image you are simultaneously including. Never end with
+  "if you wish" when the image is already in image_ids.
+- Good example (mission history with img-mission-1883 listed): "Observe here the Mission
+  as it stood in my day — the adobe walls weathered by decades of faithful labor…"
+- Bad example: "...If you wish, I can show you a likeness." (while also setting image_ids)
+- Prefer the most specific listed image for the subject; do not default to a loose town view.
+${
+  opts?.isImageFollowUp
+    ? `
+# IMAGE FOLLOW-UP (visitor asked for a picture about the ongoing topic)
+The visitor wants a visual for what you **already discussed** — they do not need the story again.
+- Give **2–5 sentences** about what the image shows and how it connects.
+- If a listed image matches the topic, include it in image_ids. If none truly fit, say so
+  honestly and use **empty image_ids**.
+- Refer to the image as already before the visitor; never ask "would that interest you?"
+`
+    : ""
+}
+${
+  opts?.isRepetitionComplaint
+    ? `
+# REPETITION COMPLAINT
+The visitor noticed you repeated yourself. Reply in **under 80 words**: brief apology,
+acknowledge it, offer ONE new thread or ask what they'd like next. **Do not retell any
+part of the bandit story, mission history, or prior answer.**
+`
+    : ""
+}
+${
+  opts?.isShortFollowUp && !opts?.isImageFollowUp
+    ? `
+# SHORT FOLLOW-UP
+The visitor's message is brief — they want something **added**, not the whole story again.
+Give only the new information or the next layer of detail not yet covered above.
+`
+    : ""
+}
+${
+  opts?.isFunFactQuery
+    ? `
+# FUN FACT REQUEST
+Pick ONE surprising but **documented** fact from the sources above. It must be
+something you could know in **${year}**. Do NOT use modern trivia from after ${year}.
+Unless the fact is specifically about a place, building, or event that one of the
+listed images depicts, use **empty image_ids** — a fun fact about naming, politics,
+or general history rarely needs a picture.
+`
+    : ""
+}
+
+# IDENTITY QUESTIONS ("who are you", introductions)
+When the visitor asks who you are, ground your answer in the biographical sources above.
+Label "documented", cite the ids you relied on, and do NOT use "unknown" for a standard
+self-introduction. When the visitor asks **who you are**, **introduce yourself**, or
+**tell me about yourself**, you MUST include ${pid} in image_ids and weave that image
+into your reply — as though you have just set it before them.
+
+# HOW TO LABEL YOUR ANSWER
+Choose exactly one "evidence_label", judged by the MAIN factual claims of your answer:
+- "documented": the core facts are directly supported by one or more sources above.
+- "inference": the core facts are reasonably inferred from the sources but not stated
+  outright (say so in-character).
+- "contested": sources conflict or historians disagree; present more than one view.
+- "unknown": the sources contain NOTHING that supports your answer.
+
+Labeling rules (important):
+- If ANY factual claim in your answer is supported by a source above, you must NOT use
+  "unknown". Label by your most-supported core claims (usually "documented").
+- Only use "unknown" when you genuinely could not ground your answer and are admitting
+  you lack reliable evidence.
+- When the label is "unknown": do NOT invent biographies, roles, or local deeds. Say
+  plainly that this name/topic is not in the sources before you, then offer a nearby
+  topic you CAN document (a place, industry, or figure that is in the retrieved sources).
+- If the retrieved sources do not mention the person, office, or event the visitor asked
+  about, you MUST use "unknown" — do not answer from general knowledge.
+- ALWAYS populate "used_source_ids" with the ids you actually relied on. If your label is
+  "documented", "inference", or "contested", this array must NOT be empty. Only "unknown"
+  may have an empty array.
+- Conversational framing, your feelings, or polite asides do not need a source and should
+  not push you toward "unknown" — judge the label by the historical facts you assert.
+
+# OUTPUT FORMAT (STRICT)
+Respond with a single JSON object, nothing else:
+{
+  "answer": "<plain-text reply only — NO Markdown, NO image links, NO URLs for pictures>",
+  "evidence_label": "documented" | "inference" | "contested" | "unknown",
+  "used_source_ids": ["<id>", ...],
+  "image_ids": ["<img-id>", ...]
+}
+The "answer" field is shown as plain text. Images listed in image_ids render automatically
+above your reply — never embed ![...](...) syntax, HTML, or wikimedia URLs in "answer".
+`.trim();
+}
+
+function isFunFactQuery(userQuery: string): boolean {
+  return /\b(?:fun fact|interesting fact|something interesting|tell me something (?:fun|interesting|cool|surprising|neat))\b/i.test(
+    userQuery
+  );
+}
+
+function parseModelAnswer(raw: string): {
+  answer?: string;
+  evidence_label?: string;
+  used_source_ids?: string[];
+  image_ids?: string[];
+} {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    /* fall through to salvage */
+  }
+
+  // Salvage: trim to the outermost braces (models occasionally wrap JSON in prose).
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      /* fall through */
+    }
+  }
+
+  // Salvage: pull the "answer" string field out of malformed/truncated JSON so we
+  // never show raw JSON to the visitor.
+  const m = raw.match(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)/);
+  if (m) {
+    try {
+      const answer = JSON.parse(`"${m[1]}"`) as string;
+      const labelMatch = raw.match(/"evidence_label"\s*:\s*"([a-z]+)"/);
+      return { answer, evidence_label: labelMatch?.[1] };
+    } catch {
+      return { answer: m[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') };
+    }
+  }
+
+  // Last resort: if it still looks like JSON, don't leak it verbatim.
+  if (raw.trim().startsWith("{")) {
+    return { answer: "" };
+  }
+  return { answer: raw };
+}
+
+/** Strip markdown/HTML image embeds the model sometimes adds despite image_ids. */
+function sanitizeAnswerText(answer: string): string {
+  return answer
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/<img\b[^>]*>/gi, "")
+    .replace(
+      /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
+      ""
+    )
+    .replace(/^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export async function answerQuestion(
+  history: ChatMessage[],
+  personaSlug?: string
+): Promise<GroundedAnswer> {
+  const pack = getPersonaPack(personaSlug ?? DEFAULT_PERSONA_SLUG);
+  return withPersona(pack, () => answerQuestionForPack(pack, history));
+}
+
+async function answerQuestionForPack(
+  pack: PersonaPack,
+  history: ChatMessage[]
+): Promise<GroundedAnswer> {
+  const pid = portraitId(pack);
+  const { userQuery, retrievalQuery, topicContext, isImageFollowUp } =
+    buildRetrievalQuery(history);
+  const conversationBrief = buildConversationBrief(
+    history,
+    pack.speakerLabel ?? `You (${pack.public.name})`
+  );
+  const shownImageIds = collectPreviouslyShownImageIds(history.slice(0, -1));
+
+  let { sources: retrieved, candidateImages } = await retrieveContext(
+    pack,
+    retrievalQuery,
+    { userQuery, topicContext, isImageFollowUp }
+  );
+
+  candidateImages = candidateImages.filter((img) => {
+    if (!shownImageIds.has(normId(img.id))) return true;
+    return (
+      img.id === pid && (isIdentityQuery(userQuery) || isAppearanceQuery(userQuery))
+    );
+  });
+
+  const system = buildGroundingPrompt(pack, retrieved, candidateImages, {
+    isImageFollowUp,
+    topicContext,
+    isRepetitionComplaint: isRepetitionComplaint(userQuery),
+    isShortFollowUp: isShortFollowUp(userQuery),
+    isFunFactQuery: isFunFactQuery(userQuery),
+    conversationBrief,
+    shownImageIds: [...shownImageIds],
+  });
+  let raw = await chatJSON(system, history);
+  let parsed = parseModelAnswer(raw);
+  let groundingRejected = false;
+  let verifierSupportedIds: string[] | null = null;
+
+  if (detectAnachronism(parsed.answer ?? raw, pack.temporalYear ?? 1905)) {
+    raw = await chatJSON(
+      `${system}\n\n${anachronismRetry(pack)}`,
+      history
+    );
+    parsed = parseModelAnswer(raw);
+  }
+
+  const skipGroundingVerifier =
+    !groundingVerifyEnabled() ||
+    isIdentityQuery(userQuery) ||
+    isAppearanceQuery(userQuery) ||
+    isIntroOrMetaQuery(userQuery);
+
+  if (!skipGroundingVerifier) {
+    const maxAttempts = groundingRetryEnabled() ? 2 : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const draftAnswer = parsed.answer?.trim() ?? "";
+      const draftLabel: EvidenceLabel = EVIDENCE_LABELS.includes(
+        parsed.evidence_label as EvidenceLabel
+      )
+        ? (parsed.evidence_label as EvidenceLabel)
+        : "inference";
+
+      if (!draftAnswer || draftLabel === "unknown") break;
+
+      const draftIds = asStringIds(parsed.used_source_ids);
+      const draftNorm = new Set(draftIds.map(normId).filter(Boolean));
+      let checkSources = retrieved.filter((s) => draftNorm.has(normId(s.id)));
+      if (checkSources.length === 0) {
+        checkSources = filterSourcesSupportingAnswer(
+          retrieved.slice(0, 12),
+          userQuery,
+          draftAnswer
+        );
+      }
+      if (checkSources.length === 0) checkSources = retrieved.slice(0, 10);
+
+      const verdict = await verifyAnswerGrounding({
+        question: userQuery,
+        answer: draftAnswer,
+        claimedLabel: draftLabel,
+        sources: checkSources,
+        personaName: pack.public.name,
+      });
+
+      if (verdict.grounded) {
+        verifierSupportedIds = verdict.supportedSourceIds;
+        if (verdict.evidenceLabel !== "unknown") {
+          parsed.evidence_label = verdict.evidenceLabel;
+        }
+        break;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        raw = await chatJSON(
+          `${system}\n\n${groundingRejectionPrompt(verdict.reason)}`,
+          history
+        );
+        parsed = parseModelAnswer(raw);
+        continue;
+      }
+
+      groundingRejected = true;
+      parsed = {
+        answer: "",
+        evidence_label: "unknown",
+        used_source_ids: [],
+        image_ids: [],
+      };
+      break;
+    }
+  }
+
+  let evidenceLabel: EvidenceLabel = EVIDENCE_LABELS.includes(
+    parsed.evidence_label as EvidenceLabel
+  )
+    ? (parsed.evidence_label as EvidenceLabel)
+    : "inference";
+  const modelEvidenceLabel = evidenceLabel;
+
+  // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
+  // so match on a normalized form rather than exact string equality.
+  const usedIds =
+    verifierSupportedIds ?? asStringIds(parsed.used_source_ids);
+  const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
+  const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
+
+  const storyHay = (parsed.answer ?? "").toLowerCase();
+  const storyThemes = detectStoryThemes(storyHay);
+  const imageIds = asStringIds(parsed.image_ids);
+  const imageNorm = new Set(imageIds.map(normId).filter(Boolean));
+  let images = groundingRejected
+    ? []
+    : candidateImages.filter((img) => imageNorm.has(normId(img.id)));
+
+  const eligibleCandidates = (pool: ImageAsset[]) =>
+    pool.filter((img) => {
+      if (!isHistoricalImageAsset(img)) return false;
+      if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp && img.id !== pid)
+        return false;
+      if (shownImageIds.has(normId(img.id)) && img.id !== pid) return false;
+      return imageAllowedForStory(pack, img, userQuery, storyHay, storyThemes);
+    });
+
+  // Drop images that fail story relevance, theme conflict, or repeat checks.
+  images = eligibleCandidates(images);
+
+  // Reject model-picked images whose subject is not discussed in the answer.
+  images = images.filter((img) => {
+    if (img.id === pid) {
+      return isIdentityQuery(userQuery) || isAppearanceQuery(userQuery);
+    }
+    return (
+      answerSupportsImage(img, storyHay) &&
+      isStrongStoryMatch(img, storyHay, storyThemes) &&
+      imageMatchesQueryIntent(userQuery, img)
+    );
+  });
+
+  // If the model picked a weak/conflicting image, swap to the best story match.
+  if (images.length > 0) {
+    const chosen = images[0];
+    const chosenScore = imageStoryMatchScore(chosen, storyHay);
+    const best = pickBestStoryImage(
+      eligibleCandidates(candidateImages),
+      storyHay,
+      storyThemes,
+      3
+    );
+    const bestScore = best ? imageStoryMatchScore(best, storyHay) : 0;
+    if (
+      imageConflictsWithStory(chosen, storyThemes) ||
+      !answerSupportsImage(chosen, storyHay) ||
+      (best && bestScore >= chosenScore + 2 && best.id !== chosen.id)
+    ) {
+      images = best &&
+        answerSupportsImage(best, storyHay) &&
+        imageMatchesQueryIntent(userQuery, best)
+        ? [best]
+        : [];
+    }
+  }
+
+  // Fallback: strong story match only, never repeat (except portrait on identity).
+  if (images.length === 0 && candidateImages.length > 0 && !groundingRejected) {
+    const skipProactive =
+      (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) ||
+      isRepetitionComplaint(userQuery) ||
+      (isShortFollowUp(userQuery) && !isImageFollowUp) ||
+      isFunFactQuery(userQuery) ||
+      evidenceLabel === "unknown";
+
+    if (!skipProactive) {
+      const pinned = pickBestStoryImage(
+        eligibleCandidates(candidateImages),
+        storyHay,
+        storyThemes,
+        4
+      );
+      if (pinned && imageMatchesQueryIntent(userQuery, pinned)) {
+        images = [pinned];
+      }
+    }
+  }
+
+  // Appearance questions must show the portrait, never a landmark the model picked.
+  if (isAppearanceQuery(userQuery)) {
+    const portrait =
+      candidateImages.find((img) => img.id === pid) ??
+      getAvailableLibraryImages().find((img) => img.id === pid);
+    images = portrait ? [portrait] : images;
+  }
+
+  // Residence / "where did you live": pin persona-specific home image when available.
+  if (isResidenceQuery(userQuery)) {
+    const residenceId = RESIDENCE_IMAGE_BY_SLUG[pack.public.slug];
+    const house =
+      (residenceId &&
+        (candidateImages.find((img) => img.id === residenceId) ??
+          getAvailableLibraryImages().find((img) => img.id === residenceId))) ??
+      null;
+    if (house) {
+      images = [house];
+    } else {
+      // Never keep a native-village image on a residence question.
+      images = images.filter(
+        (img) =>
+          !/chumash|choris|tomol|ap-replica/i.test(img.id) &&
+          imageMatchesQueryIntent(userQuery, img)
+      );
+    }
+  }
+
+  // "Who are you" / self-introduction: always show the portrait / landmark image.
+  if (images.length === 0 && isIdentityQuery(userQuery)) {
+    const portrait =
+      candidateImages.find((img) => img.id === pid) ??
+      getAvailableLibraryImages().find((img) => img.id === pid);
+    if (portrait) {
+      images = [portrait];
+    }
+  }
+
+  // Decide which sources to surface to the reader.
+  // - "unknown": the model claims no grounding, so show NO sources (showing the
+  //   full retrieved candidate list here is misleading — those are just search
+  //   hits the model did not stand behind).
+  // - Otherwise: show the sources the model actually cited. Only fall back to the
+  //   retrieved candidates if the model grounded its answer but forgot to list ids.
+  let displaySources: SourceChunk[];
+  if (evidenceLabel === "unknown") {
+    displaySources = [];
+  } else if (usedSources.length > 0) {
+    displaySources = usedSources;
+  } else {
+    displaySources = retrieved;
+  }
+
+  const answerText = parsed.answer ?? "";
+  let evidenceDowngraded = groundingRejected;
+  const skipEvidenceDowngrade =
+    isIdentityQuery(userQuery) || isAppearanceQuery(userQuery);
+  if (!skipEvidenceDowngrade && answerText.trim() && !groundingRejected) {
+    displaySources = filterSourcesSupportingAnswer(
+      displaySources,
+      userQuery,
+      answerText
+    );
+    if (
+      displaySources.length === 0 &&
+      evidenceLabel !== "unknown" &&
+      !isIntroOrMetaQuery(userQuery)
+    ) {
+      evidenceLabel = "unknown";
+      evidenceDowngraded = modelEvidenceLabel !== "unknown";
+    }
+  }
+
+  if (evidenceDowngraded && !skipEvidenceDowngrade) {
+    displaySources = [];
+    images = [];
+  }
+
+  // The model sometimes labels identity answers "unknown" even when bio sources
+  // were retrieved and the reply is a normal self-introduction.
+  if (evidenceLabel === "unknown" && isIdentityQuery(userQuery) && parsed.answer?.trim()) {
+    const prefixes = pack.identitySourceIdPrefixes ?? ["bio-"];
+    const bioSources = retrieved.filter((s) =>
+      prefixes.some((p) => s.id.startsWith(p))
+    );
+    if (bioSources.length > 0) {
+      evidenceLabel = "documented";
+      displaySources = filterSourcesSupportingAnswer(
+        usedSources.length > 0 ? usedSources : bioSources.slice(0, 6),
+        userQuery,
+        answerText
+      );
+      if (displaySources.length === 0) {
+        displaySources = bioSources.slice(0, 3);
+      }
+    }
+  }
+
+  // Hard cap: one image per reply, keeping the strongest story match.
+  if (images.length > 1) {
+    images = [...images].sort(
+      (a, b) =>
+        imageStoryMatchScore(b, storyHay) - imageStoryMatchScore(a, storyHay)
+    );
+    images = [images[0]];
+  }
+
+  // Final guard: never show an image the answer does not actually discuss.
+  images = images.filter((img) => {
+    if (img.id === pid && (isIdentityQuery(userQuery) || isAppearanceQuery(userQuery))) {
+      return true;
+    }
+    return (
+      answerSupportsImage(img, storyHay) &&
+      imageMatchesQueryIntent(userQuery, img)
+    );
+  });
+
+  return {
+    answer: sanitizeAnswerText(
+      evidenceDowngraded
+        ? unsupportedInSourcesMessage(pack)
+        : parsed.answer?.trim() ||
+            "Forgive me — I find I cannot put words to that just now."
+    ),
+    evidenceLabel,
+    usedSourceIds: usedIds,
+    sources: displaySources,
+    images: filterServeableImages(images),
+  };
+}
+
+================================================================================
+FILE: lib/groundingVerifier.ts
+================================================================================
+import { judgeJSON } from "@/lib/llm";
+import type { EvidenceLabel, SourceChunk } from "@/lib/types";
+
+const EVIDENCE_LABELS: EvidenceLabel[] = [
+  "documented",
+  "inference",
+  "contested",
+  "unknown",
+];
+
+export type GroundingVerdict = {
+  grounded: boolean;
+  evidenceLabel: EvidenceLabel;
+  supportedSourceIds: string[];
+  reason: string;
+};
+
+const VERIFIER_SYSTEM = `
+You are a strict grounding verifier for ECHOES, a historical persona chatbot.
+Your ONLY job is to decide whether an assistant answer is supported by the provided
+source passages — not by general world knowledge, Wikipedia, or training data.
+
+Rules:
+- "grounded" is true ONLY when every MAIN factual claim in the answer is directly
+  supported by at least one source passage below.
+- If the answer names a person, office, date, or event that does not appear in the
+  sources (or appears only in an unrelated context), grounded is false.
+- If sources mention a related topic but not the specific claim (e.g. answer says
+  "first mayor" but sources only mention a different mayor), grounded is false.
+- Polite framing, offers to continue, and in-character tone do not need sources.
+- If grounded is false, evidence_label must be "unknown".
+- supported_source_ids must list ONLY ids from the passages below that actually
+  support the answer's main facts. Use [] when grounded is false.
+- Be strict: when in doubt, grounded is false.
+
+Respond with JSON only:
+{
+  "grounded": boolean,
+  "evidence_label": "documented" | "inference" | "contested" | "unknown",
+  "supported_source_ids": ["id", ...],
+  "reason": "one short sentence"
+}
+`.trim();
+
+function formatSourcesForVerifier(sources: SourceChunk[]): string {
+  return sources
+    .slice(0, 14)
+    .map(
+      (s) =>
+        `[${s.id}]\n${s.text.slice(0, 900).trim()}${s.text.length > 900 ? "…" : ""}`
+    )
+    .join("\n\n---\n\n");
+}
+
+function parseVerifierVerdict(raw: string): GroundingVerdict {
+  const fallback: GroundingVerdict = {
+    grounded: false,
+    evidenceLabel: "unknown",
+    supportedSourceIds: [],
+    reason: "Verifier could not confirm grounding.",
+  };
+
+  try {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    const parsed = JSON.parse(
+      start >= 0 && end > start ? raw.slice(start, end + 1) : raw
+    ) as {
+      grounded?: boolean;
+      evidence_label?: string;
+      supported_source_ids?: unknown;
+      reason?: string;
+    };
+
+    const evidenceLabel = EVIDENCE_LABELS.includes(
+      parsed.evidence_label as EvidenceLabel
+    )
+      ? (parsed.evidence_label as EvidenceLabel)
+      : "unknown";
+
+    const supportedSourceIds = Array.isArray(parsed.supported_source_ids)
+      ? parsed.supported_source_ids.filter((id) => typeof id === "string")
+      : [];
+
+    const grounded = parsed.grounded === true && supportedSourceIds.length > 0;
+
+    return {
+      grounded,
+      evidenceLabel: grounded ? evidenceLabel : "unknown",
+      supportedSourceIds: grounded ? supportedSourceIds : [],
+      reason:
+        typeof parsed.reason === "string" && parsed.reason.trim()
+          ? parsed.reason.trim()
+          : fallback.reason,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+/** LLM agent that checks whether an answer is supported by retrieved sources only. */
+export async function verifyAnswerGrounding(opts: {
+  question: string;
+  answer: string;
+  claimedLabel: EvidenceLabel;
+  sources: SourceChunk[];
+  personaName: string;
+}): Promise<GroundingVerdict> {
+  const { question, answer, claimedLabel, sources, personaName } = opts;
+
+  if (!answer.trim() || sources.length === 0) {
+    return {
+      grounded: false,
+      evidenceLabel: "unknown",
+      supportedSourceIds: [],
+      reason: "No answer or no sources to verify against.",
+    };
+  }
+
+  const user = `
+Persona: ${personaName}
+Visitor question: ${question}
+
+Assistant answer to verify:
+${answer}
+
+Claimed evidence label: ${claimedLabel}
+
+SOURCE PASSAGES (the ONLY allowable evidence):
+${formatSourcesForVerifier(sources)}
+`.trim();
+
+  const raw = await judgeJSON(VERIFIER_SYSTEM, user);
+  return parseVerifierVerdict(raw);
+}
+
+export function groundingRejectionPrompt(reason: string): string {
+  return `
+# GROUNDING CHECK FAILED
+An independent verifier determined your previous answer used facts NOT supported by
+the source passages provided. General historical knowledge is NOT allowed.
+
+Verifier reason: ${reason}
+
+You MUST do ONE of the following:
+1. Answer ONLY from the sources above — with an accurate evidence_label and
+   used_source_ids listing the passages you actually relied on, OR
+2. Use evidence_label "unknown", empty used_source_ids, and admit honestly that
+   the sources before you do not address the question.
+
+Do NOT repeat unsupported names, dates, or claims.
+`.trim();
+}
+
+export function groundingVerifyEnabled(): boolean {
+  return process.env.ECHOES_GROUNDING_VERIFY !== "0";
+}
+
+export function groundingRetryEnabled(): boolean {
+  return process.env.ECHOES_GROUNDING_RETRY !== "0";
+}
+
+================================================================================
+FILE: lib/llm.ts
+================================================================================
+import OpenAI from "openai";
+import type { ChatMessage } from "@/lib/types";
+
+let client: OpenAI | null = null;
+
+/** Lazily create the OpenAI client so a missing key doesn't break the build. */
+function getClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error(
+      "OPENAI_API_KEY is not set. Copy .env.local.example to .env.local and add your key."
+    );
+  }
+  if (!client) {
+    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return client;
+}
+
+const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
+const EMBED_MODEL = process.env.OPENAI_EMBED_MODEL || "text-embedding-3-small";
+export const EMBED_DIM = Number(process.env.OPENAI_EMBED_DIM || 512);
+
+const EMBED_BATCH = 96;
+
+/** Embed an array of strings in a single request (<= ~96 items). */
+export async function embed(texts: string[]): Promise<number[][]> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await getClient().embeddings.create({
+        model: EMBED_MODEL,
+        input: texts,
+        dimensions: EMBED_DIM,
+      });
+      return res.data.map((d) => d.embedding as number[]);
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      if (!(status === 429 || status === 500 || status === 503) || ++attempt > 5)
+        throw err;
+      const msg = err instanceof Error ? err.message : "";
+      const hinted = msg.match(/try again in ([\d.]+)s/i);
+      const waitMs = hinted
+        ? Math.ceil(parseFloat(hinted[1]) * 1000) + 500
+        : attempt * 2000;
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 20000)));
+    }
+  }
+}
+
+/** Embed any number of strings, batching to stay within request limits. */
+export async function embedMany(
+  texts: string[],
+  onProgress?: (done: number, total: number) => void
+): Promise<number[][]> {
+  const out: number[][] = [];
+  for (let i = 0; i < texts.length; i += EMBED_BATCH) {
+    const batch = texts.slice(i, i + EMBED_BATCH);
+    let attempt = 0;
+    // simple retry for transient rate-limit / network errors
+    while (true) {
+      try {
+        const vectors = await embed(batch);
+        out.push(...vectors);
+        break;
+      } catch (err) {
+        if (++attempt >= 4) throw err;
+        await new Promise((r) => setTimeout(r, attempt * 1500));
+      }
+    }
+    onProgress?.(Math.min(i + EMBED_BATCH, texts.length), texts.length);
+  }
+  return out;
+}
+
+const TTS_MODEL = process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts";
+const TTS_VOICE = process.env.OPENAI_TTS_VOICE || "onyx";
+const TTS_SPEED = Number(process.env.OPENAI_TTS_SPEED || 1.12);
+const TTS_INSTRUCTIONS =
+  process.env.OPENAI_TTS_INSTRUCTIONS ||
+  "Voice of a very old man, about 78 years old, in the year 1905 — a frail but dignified 19th-century gentleman. The timbre is aged and weathered: low, dry, and noticeably gravelly, with a slight tremor and quaver of old age, and a touch of breathiness as if speaking takes a little effort. He sounds like an elderly grandfather, not a middle-aged man. Keep the tone warm and kindly, with the cadence of an old storyteller, at a natural, easy conversational pace.";
+
+export type TtsOptions = {
+  voice?: string;
+  instructions?: string;
+  speed?: number;
+};
+
+function resolveTts(options?: TtsOptions) {
+  return {
+    voice: options?.voice || TTS_VOICE,
+    instructions: options?.instructions || TTS_INSTRUCTIONS,
+    speed: options?.speed ?? TTS_SPEED,
+  };
+}
+
+/** Synthesize speech for a persona's reply. Returns MP3 bytes. */
+export async function tts(text: string, options?: TtsOptions): Promise<Buffer> {
+  const { voice, instructions, speed } = resolveTts(options);
+  const res = await getClient().audio.speech.create({
+    model: TTS_MODEL,
+    voice: voice as "onyx",
+    input: text.slice(0, 4000),
+    instructions,
+    speed,
+  });
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Synthesize speech and return the raw MP3 byte stream as it is produced,
+ * so the client can begin playback before the whole file is ready.
+ */
+export async function ttsStream(
+  text: string,
+  options?: TtsOptions
+): Promise<ReadableStream<Uint8Array>> {
+  const { voice, instructions, speed } = resolveTts(options);
+  const res = await getClient().audio.speech.create({
+    model: TTS_MODEL,
+    voice: voice as "onyx",
+    input: text.slice(0, 4000),
+    instructions,
+    speed,
+    response_format: "mp3",
+  });
+  const body = res.body as ReadableStream<Uint8Array> | null;
+  if (!body) throw new Error("No audio stream returned from TTS provider.");
+  return body;
+}
+
+/**
+ * Ask the chat model to produce a grounded answer as JSON.
+ * `system` carries the persona + grounding instructions; `history` is the
+ * prior conversation. Returns the raw JSON string from the model.
+ */
+export async function chatJSON(
+  system: string,
+  history: ChatMessage[]
+): Promise<string> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await getClient().chat.completions.create({
+        model: CHAT_MODEL,
+        temperature: 0.6,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          ...history.map((m) => ({ role: m.role, content: m.content })),
+        ],
+      });
+      return res.choices[0]?.message?.content ?? "";
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      const retriable = status === 429 || status === 500 || status === 503;
+      if (!retriable || ++attempt > 5) throw err;
+      // Honor Retry-After-style hints embedded in the message when present.
+      const msg = err instanceof Error ? err.message : "";
+      const hinted = msg.match(/try again in ([\d.]+)s/i);
+      const waitMs = hinted
+        ? Math.ceil(parseFloat(hinted[1]) * 1000) + 500
+        : attempt * 2000;
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 20000)));
+    }
+  }
+}
+
+/**
+ * Low-temperature JSON judge for grounding verification and other checks.
+ * Separate from chatJSON so persona replies stay creative while audits stay strict.
+ */
+export async function judgeJSON(
+  system: string,
+  user: string
+): Promise<string> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await getClient().chat.completions.create({
+        model: CHAT_MODEL,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      });
+      return res.choices[0]?.message?.content ?? "";
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      const retriable = status === 429 || status === 500 || status === 503;
+      if (!retriable || ++attempt > 5) throw err;
+      const msg = err instanceof Error ? err.message : "";
+      const hinted = msg.match(/try again in ([\d.]+)s/i);
+      const waitMs = hinted
+        ? Math.ceil(parseFloat(hinted[1]) * 1000) + 500
+        : attempt * 2000;
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 20000)));
+    }
+  }
+}
+
+================================================================================
+FILE: lib/types.ts
+================================================================================
+export type EvidenceLabel = "documented" | "inference" | "contested" | "unknown";
+
+export type Reliability = "high" | "medium" | "low";
+
+/** A single retrievable, cited chunk of historical knowledge. */
+export interface SourceChunk {
+  id: string;
+  /** The factual content, written plainly for retrieval and grounding. */
+  text: string;
+  /** Short topic tags used for organization and debugging. */
+  topics: string[];
+  /** Human-readable date or range this fact concerns, e.g. "1901" or "1849-1850". */
+  dateRange?: string;
+  sourceType:
+    | "primary"
+    | "secondary"
+    | "reference"
+    | "biographical"
+    | "persona-note";
+  /** Human-readable citation shown to users in the evidence panel. */
+  citation: string;
+  /** Optional URL to the underlying source. */
+  url?: string;
+  reliability: Reliability;
+}
+
+/** A historical image the persona can show, with provenance. */
+export interface ImageAsset {
+  id: string;
+  src: string; // path under /public
+  caption: string; // shown to the user
+  alt: string;
+  topics: string[];
+  dateRange?: string;
+  citation: string;
+  url?: string;
+  license: string;
+}
+
+/** Public, client-safe display info for a persona. */
+export interface PersonaPublic {
+  slug: string;
+  /** Primary place or region this figure represents — shown prominently on cards. */
+  region: string;
+  name: string;
+  years: string;
+  portrait: string; // emoji or short glyph fallback
+  portraitImage?: string; // path to a real portrait in /public
+  tagline: string;
+  era: string;
+  disclosure: string;
+  starters: string[];
+}
+
+/** Chat message exchanged with the API. */
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  /** Image ids already shown with this assistant turn (for deduping). */
+  imageIds?: string[];
+}
+
+/** The structured answer returned by the model + server. */
+export interface GroundedAnswer {
+  answer: string;
+  evidenceLabel: EvidenceLabel;
+  usedSourceIds: string[];
+  sources: SourceChunk[];
+  images: ImageAsset[];
+}
+
+================================================================================
+FILE: lib/temporalPolicy.ts
+================================================================================
+import type { PersonaPack } from "@/personas/types";
+
+/** True when the reply frames post-era facts as record, not lived memory. */
+export function hasLegacyBridgeFraming(text: string): boolean {
+  return /\b(?:after my (?:time|day|death|years)|beyond my (?:time|day|years|knowledge)|I did not live to(?: see)?|did not live to see|not from (?:my )?memory|speak from the record|the record (?: tells| shows| suggests| indicates)|history records|historians (?: later )?(?: record| tell| say)|those who came after|in later (?:years|decades|times)|after I (?:was gone|had passed|died)|was renamed (?: later| in)|would (?: later )?become|what became of|outside my (?:time|day|years)|I (?:cannot|can't) speak from (?:personal )?memory|not firsthand|without having (?:seen|witnessed)|generations after me)\b/i.test(
+    text
+  );
+}
+
+/** Shared temporal rules injected into every persona system prompt. */
+export function personaTemporalGuardrails(speakingYear: number): string {
+  return `
+# TEMPORAL GUARDRAILS (speaking year ${speakingYear})
+- You speak from **${speakingYear}**. Your default voice is firsthand memory and
+  sources plausible through ${speakingYear}.
+- **Never** claim you personally witnessed, lived through, or remember events after
+  ${speakingYear}, or your own death if it lies after ${speakingYear}.
+- **Never** narrate your funeral, death, or private moments after ${speakingYear}
+  as lived experience.
+- **Never** treat modern technology or mass culture (smartphones, internet, AI,
+  social media, freeways as everyday life) as things you use or understand — react
+  with bewilderment or honest refusal unless the visitor is clearly joking.
+- **Fun facts** and casual conversation stay in ${speakingYear} unless the visitor
+  explicitly asks what happened *later* to a place or legacy you shaped.
+
+# LEGACY BRIDGE (place & history after your time — use carefully)
+When the visitor asks what became of a **place, building, mission, railroad, institution,
+town, or legacy** you helped shape — you MAY describe **later** events if ALL of these apply:
+1. **Frame it explicitly** — e.g. "I did not live to see it, but the record tells us…",
+   "That was after my time…", "Those who came after…", "History records that later…"
+2. **Third person only** for post-${speakingYear} facts — never "I saw in 1960" or
+   "I walked the trail today."
+3. **Stay grounded** — use retrieved SOURCES when available; label "inference" if
+   you are summarizing general later history without a direct source; use "unknown"
+   if the record in sources does not support the claim.
+4. **Keep it proportionate** — a short postscript unless the question is specifically
+   about later history; do not dump modern trivia.
+5. **Do NOT use legacy bridge** for: your personal life after death, modern chit-chat,
+   technology you never knew, or replacing a solid ${speakingYear}-era answer.
+
+# WHEN TO REFUSE (even with legacy bridge)
+- "How did your funeral go?" / "What did you think when you died?" → refuse firsthand;
+  you may acknowledge obituaries exist **only if sources support it**, framed as record.
+- "What's your favorite app?" → bewilderment / refusal, not legacy bridge.
+- Invented dates, places, or events not in sources → admit uncertainty instead.
+`.trim();
+}
+
+/** Temporal block appended in the grounding prompt (retrieval turn). */
+export function buildGroundingTemporalBlock(speakingYear: number): string {
+  return `
+# TEMPORAL ENFORCEMENT (${speakingYear})
+- Default: historical claims must be supported by the SOURCES above or plausible for ${speakingYear}.
+- **Legacy bridge:** For questions about what happened *after* ${speakingYear} to a **place or
+  legacy**, you MAY cite later dates IF you use explicit framing ("after my time", "the record
+  shows") and do NOT claim firsthand memory. Label "inference" unless sources directly support
+  the later fact.
+- **No legacy bridge** for personal post-death experience, modern technology, or unsupported trivia.
+- Fun facts: prefer ${speakingYear}-era sources unless the visitor asks about later history of a place.
+`.trim();
+}
+
+/** Detect answers that claim post-era knowledge without proper framing. */
+export function detectAnachronism(text: string, speakingYear = 1905): boolean {
+  const lower = text.toLowerCase();
+
+  if (hasLegacyBridgeFraming(text)) {
+    // Still block modern tech stated as familiar even with some bridge language.
+    if (
+      /\b(?:my favorite (?:app|website|phone|smartphone)|I (?:use|love|prefer) (?:the )?(?:internet|instagram|chatgpt))\b/i.test(
+        text
+      )
+    ) {
+      return true;
+    }
+    // Block firsthand post-era claims even if other bridge phrases appear.
+    if (
+      /\b(?:I (?:was there|witnessed|saw|remember|walked|visited|enjoyed|experienced|lived through| rode| used) (?:in|during|at)?\s*(?:the )?(?:19(?:[2-9]\d)|20\d{2})|as I saw in (?:19(?:[2-9]\d)|20\d{2})|in my time in (?:19(?:[2-9]\d)|20\d{2}))\b/i.test(
+        text
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  // Modern / anachronistic topics without bridge framing.
+  if (/\bbubble\s*gum|bubblegum alley\b/.test(lower)) return true;
+  if (
+    /\b(?:highway\s*101|us[\s-]?101|freeway|cal poly state|instagram|world war|chatgpt|openai|smartphone)\b/.test(
+      lower
+    )
+  )
+    return true;
+  if (/\b(19(?:1[1-9]|[2-9]\d)|20\d{2})s\b/.test(lower)) return true;
+
+  // Post-era dates presented as established fact without bridge.
+  const postYearInPhrase =
+    /\b(?:in|since|from|beginning in|started in|opened in|dating to|tradition began in|by)\s+(19\d{2}|20\d{2})\b/gi;
+  for (const m of text.matchAll(postYearInPhrase)) {
+    const y = parseInt(m[1], 10);
+    if (y > speakingYear) return true;
+  }
+
+  // Firsthand memory verbs + post-era year anywhere in answer.
+  if (/\b(?:I (?:was|saw|witnessed|remember|recall|visited|walked|enjoyed|experienced|lived through))\b/i.test(text)) {
+    for (const m of text.matchAll(/\b(19\d{2}|20\d{2})\b/g)) {
+      if (parseInt(m[1], 10) > speakingYear) return true;
+    }
+  }
+
+  return false;
+}
+
+export function anachronismRetry(pack: PersonaPack): string {
+  const year = pack.temporalYear ?? 1905;
+  return `
+CRITICAL: Your draft mentioned post-${year} facts without proper framing, or claimed firsthand
+memory you cannot have. You are ${pack.public.name} in ${year}. Rewrite using the SOURCES.
+- For ${year}-era questions: stay in character with firsthand or sourced knowledge.
+- For "what happened later to [place/legacy]?" questions: use LEGACY BRIDGE — third person,
+  explicit "after my time / the record tells us" framing, no "I saw in [later year]."
+- Do NOT invent modern trivia. Do NOT narrate your own death as lived experience.
+`.trim();
+}
+
+================================================================================
+FILE: lib/imageMatching.ts
+================================================================================
+import type { ImageAsset } from "@/lib/types";
+import { getActivePersona } from "@/lib/activePersona";
+import { catalogScoreForImage as scoreFromTopics } from "@/personas/topicCatalog";
+import {
+  CHORIS_1822_IMAGE_IDS,
+  CHUMASH_TOMOL_IMAGE_IDS,
+  CHUMASH_VERIFIED_IMAGE_IDS,
+  isHistoricallyAccurateForStory,
+  storyMentionsTomol,
+} from "@/lib/imageAccuracy";
+
+function catalogScoreForImage(
+  imageId: string,
+  storyHay: string,
+  hayContains: (hay: string, term: string) => boolean
+): number {
+  return scoreFromTopics(
+    getActivePersona().imageTopics,
+    imageId,
+    storyHay,
+    hayContains
+  );
+}
+
+/** Visual subject families — used to block cross-theme mismatches. */
+export type ImageTheme =
+  | "native"
+  | "mission"
+  | "rancho-fiesta"
+  | "rancho-work"
+  | "downtown"
+  | "railroad"
+  | "coast"
+  | "education"
+  | "portrait"
+  | "generic-town";
+
+const IMAGE_THEMES: Record<string, ImageTheme[]> = {
+  "img-portrait": ["portrait"],
+  "img-buchon-house": ["downtown"],
+  "img-chumash-musicians-1873": ["native", "mission"],
+  "img-chumash-painted-cave": ["native"],
+  "img-chumash-pictograph-oakbrook": ["native"],
+  "img-chumash-mortars-exhibit": ["native"],
+  "img-chumash-ap-replica": ["native"],
+  "img-choris-tule-canoe-1822": ["coast"],
+  "img-choris-california-people-1822": ["native"],
+  "img-choris-cholovones-hunting-1822": ["coast"],
+  "img-ah-louis-store": ["downtown"],
+  "img-chinese-railroad-laborers": ["railroad"],
+  "img-rancho-fandango-1873": ["rancho-fiesta"],
+  "img-rancho-roundup": ["rancho-work"],
+  "img-vaqueros-1854": ["rancho-work", "rancho-fiesta"],
+  "img-slo-view-1900": ["generic-town"],
+};
+
+function themesForImage(img: ImageAsset): ImageTheme[] {
+  if (IMAGE_THEMES[img.id]) return IMAGE_THEMES[img.id];
+  if (img.id.startsWith("img-mission-")) return ["mission"];
+  if (/railroad|train|depot|port-harford|wharf/i.test(img.id)) return ["railroad"];
+  if (/street|downtown|courthouse|monterey/i.test(img.id)) return ["downtown"];
+  if (/morro|avila|beach|coast|creek/i.test(img.id)) return ["coast"];
+  if (/cal-poly|polytechnic/i.test(img.id)) return ["education"];
+  if (/rancho|vaquero|fandango/i.test(img.id)) return ["rancho-work"];
+  return [];
+}
+
+/** Weak topic tokens — matching these alone must not justify showing an image. */
+const GENERIC_WEAK_TOPICS = new Set([
+  "town",
+  "city",
+  "view",
+  "landscape",
+  "san luis obispo",
+  "san francisco",
+  "san diego",
+  "santa barbara",
+  "california",
+  "nevada",
+  "1900",
+  "1905",
+  "1885",
+  "1890",
+  "people",
+  "culture",
+  "daily life",
+  "music",
+  "history",
+  "county",
+  "valley",
+  "bay",
+  "coast",
+  "pacific coast",
+  "metropolis",
+  "pioneer",
+  "biography",
+  "appearance",
+  "yourself",
+  "identity",
+  "church",
+  "gold rush",
+  // Too generic — matching these alone must not attach a Chumash dwelling
+  // (or similar) to answers about a Victorian house / residence.
+  "house",
+  "home",
+  "dwelling",
+  "look like",
+  "sign",
+  "lot",
+  "hotel",
+  "street",
+  "downtown",
+  "plaza",
+  "star",
+  "settlement",
+]);
+
+/** Thematic images require the answer to mention their subject, not just the region. */
+const SUBJECT_ANCHOR_RULES: {
+  test: (img: ImageAsset) => boolean;
+  pattern: RegExp;
+}[] = [
+  {
+    test: (img) =>
+      /mission/i.test(img.id) ||
+      img.topics.some((t) =>
+        /\bmission (?:dolores|san|santa|de)\b/i.test(t)
+      ),
+    pattern:
+      /\b(?:mission(?:\s+(?:san|dolores|santa|de|del|los|la))?|(?:los\s+)?dolores|padres?|friars?|franciscan|1776|1772|1782|1786|adobe mission|mission church|san francisco de as[ií]s|san luis obispo de tolosa|tolosa|queen of the missions)\b/i,
+  },
+  {
+    test: (img) =>
+      /golden-gate|angel-island|telegraph-hill|tamalpais/i.test(img.id),
+    pattern:
+      /\b(?:golden gate|angel island|telegraph hill|mount tamalpais|tamalpais|the strait|ferry|marina(?: district)?|waterfront|sandy shore|bay shore|san francisco bay)\b/i,
+  },
+  {
+    test: (img) => /railroad|train|depot|station|locomotive/i.test(img.id),
+    pattern:
+      /\b(?:railroad|railway|train|depot|locomotive|southern pacific|right of way|hemme station|tracks|branch line)\b/i,
+  },
+  {
+    test: (img) => /tahoe|timber-claim|nevada|carson/i.test(img.id),
+    pattern:
+      /\b(?:tahoe|lake tahoe|timber claim|nevada|carson city|roughing it|sierra nevada)\b/i,
+  },
+  {
+    test: (img) =>
+      /-1890|map/i.test(img.id) || img.topics.some((t) => t.toLowerCase() === "map"),
+    pattern: /\b(?:map|mapped|cartograph|survey|bird.?s eye|panorama of the city)\b/i,
+  },
+  {
+    test: (img) => /morro|avila|harford|wharf|slo-creek|slo-street|slo-view/i.test(img.id),
+    pattern:
+      /\b(?:morro rock|morro|avila|port harford|harford|san luis creek|higuera|monterey street)\b/i,
+  },
+  {
+    test: (img) => /bancroft-ranch|spring-valley/i.test(img.id),
+    pattern: /\b(?:spring valley|bancroft ranch|country home|country retreat)\b/i,
+  },
+  {
+    test: (img) => /horton-house|horton-plaza|city-park|gaslamp|old-town/i.test(img.id),
+    pattern:
+      /\b(?:horton house|horton plaza|city park|balboa park|gaslamp|old town|new town|whale fishery)\b/i,
+  },
+  {
+    test: (img) => /courthouse|court-house/i.test(img.id),
+    pattern: /\b(?:courthouse|court house|county government|judicial)\b/i,
+  },
+  {
+    test: (img) => /vaquero|fandango|rancho-roundup/i.test(img.id),
+    pattern: /\b(?:vaquero|californio|fandango|fiesta|round-?up|rodeo)\b/i,
+  },
+  {
+    test: (img) => /presidio|state-street|painted-cave/i.test(img.id),
+    pattern:
+      /\b(?:presidio|state street|painted cave|pictograph|rock art)\b/i,
+  },
+  {
+    test: (img) => /danville|alamo|san-ramon/i.test(img.id),
+    pattern: /\b(?:danville|alamo|san ramon|hemme station)\b/i,
+  },
+  {
+    test: (img) =>
+      img.id === "img-chumash-ap-replica" ||
+      img.id === "img-chumash-mortars-exhibit",
+    pattern:
+      /\b(?:chumash|indigenous|native peoples|first peoples|'ap|ap house|tule house|acorn|mortar|pestle|sap'?wi)\b/i,
+  },
+  {
+    test: (img) => img.id === "img-buchon-house",
+    pattern:
+      /\b(?:buchon|714|my (?:house|home|residence)|angel house|where i (?:live|lived)|resided)\b/i,
+  },
+  {
+    test: (img) => /fairbanks/i.test(img.id),
+    pattern:
+      /\b(?:fairbanks|douglas fairbanks|swashbuckler|zorro|musketeers|picture in the papers)\b/i,
+  },
+  {
+    test: (img) =>
+      /griffith|intolerance|triangle-studios|new-york-hat/i.test(img.id) &&
+      !/hollywood-blvd|streetcar|hollywoodland/i.test(img.id),
+    pattern:
+      /\b(?:griffith|d\.?\s*w\.?\s*griffith|intolerance|babylon|triangle|new york hat|pickford|biograph)\b/i,
+  },
+  {
+    test: (img) => /hollywood-blvd|hollywood-streetcar|hollywoodland/i.test(img.id),
+    pattern:
+      /\b(?:hollywood(?:\s+boulevard)?|hollywoodland|streetcar|pacific electric|colony|what did hollywood)\b/i,
+  },
+  {
+    test: (img) => /emerson|wedding-1919/i.test(img.id),
+    pattern: /\b(?:john emerson|emerson|wedding|marriage|husband|mr e)\b/i,
+  },
+  {
+    test: (img) => /blondes/i.test(img.id),
+    pattern: /\b(?:gentlemen prefer blondes|lorelei|blondes|harper's)\b/i,
+  },
+  {
+    test: (img) => /gaslamp|william-heath-davis/i.test(img.id),
+    pattern:
+      /\b(?:william heath davis|davis house|gaslamp|davis's|davis')\b/i,
+  },
+  {
+    test: (img) => /washoe/i.test(img.id),
+    pattern: /\b(?:washoe|washo)\b/i,
+  },
+  {
+    test: (img) => /gold-rush|mining/i.test(img.id) && !/danville/i.test(img.id),
+    pattern: /\b(?:gold rush|1849|forty-niner|mining|hydraulic)\b/i,
+  },
+  {
+    test: (img) => /fandango|roundup/i.test(img.id) && !/vaquero/i.test(img.id),
+    pattern: /\b(?:fandango|fiesta|danc(?:e|ing)|celebration|feast)\b/i,
+  },
+];
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Whole-word / phrase match — avoids "rancho" matching inside "ranching". */
+export function hayContainsTerm(hay: string, term: string): boolean {
+  const t = term.toLowerCase().trim();
+  if (!t) return false;
+  if (t.includes(" ")) return hay.includes(t);
+  return new RegExp(`\\b${escapeRe(t)}\\b`, "i").test(hay);
+}
+
+export interface StoryThemeWeights {
+  native: number;
+  mission: number;
+  "rancho-fiesta": number;
+  "rancho-work": number;
+  downtown: number;
+  railroad: number;
+  coast: number;
+  education: number;
+}
+
+/** Detect what the *story* is about from Myron's answer (not just the visitor's question). */
+export function detectStoryThemes(answerHay: string): StoryThemeWeights {
+  const w: StoryThemeWeights = {
+    native: 0,
+    mission: 0,
+    "rancho-fiesta": 0,
+    "rancho-work": 0,
+    downtown: 0,
+    railroad: 0,
+    coast: 0,
+    education: 0,
+  };
+
+  const bump = (key: keyof StoryThemeWeights, n = 1) => {
+    w[key] += n;
+  };
+
+  if (
+    /\b(?:chumash|indigenous|native peoples|first peoples|basket|baskets|weaving|weave|crafts?|tule|tomol|acorn)\b/i.test(
+      answerHay
+    )
+  ) {
+    bump("native", 3);
+  }
+  if (
+    /\b(?:canoe|canoes|tomol|tule|rush boat|paddle|paddling|plank canoe)\b/i.test(
+      answerHay
+    )
+  ) {
+    bump("native", 2);
+    bump("coast", 2);
+  }
+  if (
+    /\b(?:pictograph|rock art|cave painting|ancient tradition|before the mission|pre-contact|gentile|ancestors)\b/i.test(
+      answerHay
+    )
+  ) {
+    bump("native", 2);
+  }
+  if (/\b(?:settlers?|two cultures|melding|bridge between)\b/i.test(answerHay)) {
+    bump("native", 1);
+  }
+  if (
+    /\b(?:mission (?:san |dolores|santa |de |del )|(?:los\s+)?dolores|san luis obispo de tolosa|(?:the|our|a) mission|missionaries|padres|founded 1772|founded 1776|founded 1786)\b/i.test(
+      answerHay
+    )
+  ) {
+    bump("mission", 2);
+  }
+  if (/\b(?:fandango|fiesta|danc(?:e|ing)|celebration|feast|party)\b/i.test(answerHay)) {
+    bump("rancho-fiesta", 3);
+  }
+  if (/\b(?:vaquero|californio|rodeo|round-up|cattle round|cattle herd)\b/i.test(answerHay)) {
+    bump("rancho-work", 2);
+  }
+  if (/\b(?:\brancho\b|ranching|ranchero)\b/i.test(answerHay)) {
+    bump("rancho-work", 1);
+  }
+  if (/\b(?:downtown|main street|storefront|higuera|monterey street)\b/i.test(answerHay)) {
+    bump("downtown", 2);
+  }
+  if (/\b(?:railroad|southern pacific|train|depot|tracks)\b/i.test(answerHay)) {
+    bump("railroad", 2);
+  }
+  if (/\b(?:morro|avila|beach|coast|ocean|harbor|wharf|marina|waterfront|bay shore)\b/i.test(answerHay)) {
+    bump("coast", 2);
+  }
+  if (/\b(?:polytechnic|cal poly|vocational school)\b/i.test(answerHay)) {
+    bump("education", 2);
+  }
+  if (/\b(?:ah louis|chinese community|chinese pioneer|chinese-owned)\b/i.test(answerHay)) {
+    bump("downtown", 1);
+  }
+  if (/\b(?:gold rush|forty-niner|49er|hydraulic mining)\b/i.test(answerHay)) {
+    bump("native", 1);
+  }
+
+  return w;
+}
+
+function imageSearchHaystack(img: ImageAsset): string {
+  return `${img.caption} ${img.alt} ${img.topics.join(" ")}`.toLowerCase();
+}
+
+/** Score how well an image fits the story Myron actually told. */
+export function imageStoryMatchScore(img: ImageAsset, storyHay: string): number {
+  let score = catalogScoreForImage(img.id, storyHay, hayContainsTerm);
+  const stack = imageSearchHaystack(img);
+
+  for (const t of img.topics) {
+    if (typeof t !== "string") continue;
+    const term = t.toLowerCase();
+    if (term.length < 4 || GENERIC_WEAK_TOPICS.has(term)) continue;
+    if (!hayContainsTerm(storyHay, term)) continue;
+    score += term.includes(" ") ? 5 : term.length >= 10 ? 4 : 3;
+  }
+
+  // Caption keywords the catalog may not list in topics.
+  const captionTerms = [
+    "chumash",
+    "basket",
+    "weaving",
+    "indigenous",
+    "canoe",
+    "tomol",
+    "tule",
+    "pictograph",
+    "fandango",
+    "vaquero",
+    "mission",
+    "railroad",
+    "courthouse",
+    "adobe",
+    "creek",
+  ];
+  for (const term of captionTerms) {
+    if (hayContainsTerm(storyHay, term) && stack.includes(term)) {
+      score += 2;
+    }
+  }
+
+  const missionNativeStory = /\b(?:mission|missionaries|padres|neophyte|convert|san buenaventura)\b/i.test(
+    storyHay
+  );
+  const chumashStory = /\bchumash\b/i.test(storyHay);
+
+  if (chumashStory && CHUMASH_VERIFIED_IMAGE_IDS.has(img.id)) {
+    score += 8;
+  }
+  if (storyMentionsTomol(storyHay) && CHUMASH_TOMOL_IMAGE_IDS.has(img.id)) {
+    score += 10;
+  }
+  if (
+    /\b(?:acorn|grinding|mortar|pestle)\b/i.test(storyHay) &&
+    img.id === "img-chumash-mortars-exhibit"
+  ) {
+    score += 10;
+  }
+  if (
+    (/\b(?:'ap|ap house|tule house)\b/i.test(storyHay) ||
+      (/\bchumash\b/i.test(storyHay) &&
+        /\b(?:village|dwelling|willow|tule)\b/i.test(storyHay))) &&
+    img.id === "img-chumash-ap-replica"
+  ) {
+    score += 10;
+  }
+  if (
+    /\b(?:buchon|714|angel house|my house|my home|resided)\b/i.test(storyHay) &&
+    img.id === "img-buchon-house"
+  ) {
+    score += 12;
+  }
+  if (
+    /\b(?:pictograph|rock art|shaman|swordfish)\b/i.test(storyHay) &&
+    img.id === "img-chumash-pictograph-oakbrook"
+  ) {
+    score += 10;
+  }
+  if (chumashStory && CHORIS_1822_IMAGE_IDS.has(img.id)) {
+    score -= 50;
+  }
+  if (
+    hayContainsTerm(storyHay, "chumash") ||
+    hayContainsTerm(storyHay, "indigenous")
+  ) {
+    if (img.id === "img-chumash-musicians-1873") {
+      score += missionNativeStory ? 5 : 2;
+    }
+  }
+
+  return score;
+}
+
+export function imageConflictsWithStory(
+  img: ImageAsset,
+  themes: StoryThemeWeights
+): boolean {
+  const imgThemes = themesForImage(img);
+  if (imgThemes.length === 0) return false;
+
+  const nativeStrong = themes.native >= 3;
+  const fiestaStrong = themes["rancho-fiesta"] >= 2;
+  const ranchoWorkStrong = themes["rancho-work"] >= 2 && themes.native === 0;
+
+  if (nativeStrong && imgThemes.includes("rancho-fiesta") && !imgThemes.includes("native")) {
+    return true;
+  }
+  if (nativeStrong && imgThemes.includes("rancho-work") && !imgThemes.includes("native")) {
+    return true;
+  }
+  if (fiestaStrong && imgThemes.includes("native") && !imgThemes.includes("rancho-fiesta")) {
+    return true;
+  }
+  if (ranchoWorkStrong && imgThemes.includes("native")) {
+    return true;
+  }
+
+  return false;
+}
+
+/** True when the answer text actually discusses what the image depicts. */
+export function answerSupportsImage(
+  img: ImageAsset,
+  storyHay: string,
+  opts?: { allowPortrait?: boolean }
+): boolean {
+  if (opts?.allowPortrait && img.topics.includes("portrait")) return true;
+
+  for (const rule of SUBJECT_ANCHOR_RULES) {
+    if (rule.test(img)) return rule.pattern.test(storyHay);
+  }
+
+  const specifics = img.topics.filter((t) => {
+    const term = t.toLowerCase();
+    return term.length >= 5 && !GENERIC_WEAK_TOPICS.has(term);
+  });
+  if (specifics.length === 0) return false;
+  return specifics.some((t) => hayContainsTerm(storyHay, t));
+}
+
+export function isStrongStoryMatch(
+  img: ImageAsset,
+  storyHay: string,
+  themes: StoryThemeWeights
+): boolean {
+  if (!isHistoricallyAccurateForStory(img.id, storyHay)) return false;
+  if (imageConflictsWithStory(img, themes)) return false;
+  if (!answerSupportsImage(img, storyHay)) return false;
+  const score = imageStoryMatchScore(img, storyHay);
+  if (img.id === "img-slo-view-1900") {
+    return (
+      score >= 3 &&
+      /\b(?:panorama|view of (?:the )?town|town spread|valley view)\b/i.test(storyHay)
+    );
+  }
+  if (themesForImage(img).includes("mission") && themes.mission >= 2) {
+    return score >= 2;
+  }
+  if (themes.native >= 2 && img.id === "img-chumash-musicians-1873") {
+    return themes.mission >= 2 && score >= 2;
+  }
+  if (themes.native >= 2 && CHUMASH_VERIFIED_IMAGE_IDS.has(img.id)) {
+    return score >= 2;
+  }
+  if (
+    themes.native >= 2 &&
+    storyMentionsTomol(storyHay) &&
+    CHUMASH_TOMOL_IMAGE_IDS.has(img.id)
+  ) {
+    return score >= 2;
+  }
+  return score >= 3;
+}
+
+/**
+ * When the visitor asks what a specific place looked like, do not show images for
+ * other subjects that merely appear in passing within the answer.
+ */
+export function imageMatchesQueryIntent(
+  userQuery: string,
+  img: ImageAsset
+): boolean {
+  const q = userQuery.toLowerCase();
+  const id = img.id.toLowerCase();
+  const stack = imageSearchHaystack(img);
+
+  // Residence / "where did you live" must never show indigenous village dwellings.
+  const asksResidence =
+    /\b(?:where (?:do|did) you live|your (?:house|home|residence)|buchon|714)\b/i.test(
+      q
+    );
+  if (asksResidence) {
+    if (themesForImage(img).includes("native")) return false;
+    if (/chumash|ap-replica|tomol|choris/i.test(id)) return false;
+    if (
+      img.id !== "img-buchon-house" &&
+      img.id !== "img-horton-house" &&
+      img.id !== "img-bancroft-ranch" &&
+      img.id !== "img-portrait" &&
+      !/\bbuchon|angel house|714|horton house|spring valley|bancroft ranch\b/i.test(
+        stack
+      )
+    ) {
+      // Prefer residence-specific photos; block unrelated landmarks.
+      if (/mission|railroad|vaquero|fandango|morro|avila|cal-poly|griffith|fairbanks/i.test(id)) {
+        return false;
+      }
+    }
+  }
+
+  // Biographical fact questions (mayor, artist, etc.) — not scenic place photos.
+  const asksBiographicalFact =
+    /\b(?:who was|who were|first\s+(?:mayor|governor|alcalde)|popular\s+artist|which\s+artist|what\s+artist)\b/i.test(
+      q
+    );
+  if (asksBiographicalFact) {
+    if (/golden-gate|gate-1900|telegraph-hill|angel-island|bay-view/i.test(id)) {
+      return false;
+    }
+  }
+
+  const asksHollywoodPlace =
+    /\bhollywood\b/.test(q) &&
+    (/\blook(?:s|ed)? like\b/.test(q) ||
+      /\bwhat did (?:\w+\s+){0,3}hollywood\b/.test(q) ||
+      /\bwhat was hollywood\b/.test(q));
+  if (asksHollywoodPlace) {
+    if (/griffith|fairbanks|emerson|blondes|new-york-hat|portrait/i.test(id)) {
+      return false;
+    }
+    if (
+      !/hollywood|streetcar|triangle-studios/i.test(id) &&
+      !/\bhollywood|streetcar|boulevard|colony\b/.test(stack)
+    ) {
+      return false;
+    }
+  }
+
+  const placeLookLike =
+    /\blook(?:s|ed)? like\b/.test(q) ||
+    /\bwhat did (?:the |this )?(?:\w+\s+){0,4}(?:look|appear)\b/.test(q) ||
+    /\bwhat was (?:the |this )?(?:\w+\s+){0,4}like\b/.test(q);
+
+  if (!placeLookLike) return true;
+
+  const asksHarbor = /\b(?:harbor|harbour|wharf|pier|waterfront|marina|dock|port)\b/.test(
+    q
+  );
+  const asksValley =
+    /\b(?:valley|countryside|landscape)\b/.test(q) &&
+    /\bbefore\b/.test(q);
+
+  if (asksHarbor) {
+    if (/mission/i.test(id) && !/\bmission\b/.test(q)) return false;
+    if (/courthouse|court-house/i.test(id) && !/\bcourthouse\b/.test(q))
+      return false;
+    if (/vaquero|fandango|rancho/i.test(id)) return false;
+    if (/depot|railroad|train|locomotive/i.test(id)) return false;
+    if (
+      !/harbor|wharf|port|coast|bay|gate|waterfront|stearns|roadstead/i.test(
+        id
+      ) &&
+      !/\b(?:harbor|harbour|wharf|pier|waterfront|bay|dock|roadstead|stearns)\b/.test(
+        stack
+      )
+    ) {
+      return false;
+    }
+  }
+
+  if (asksValley) {
+    if (/vaquero|fandango|rancho-roundup/i.test(id)) return false;
+    if (/depot|railroad|train|locomotive/i.test(id)) return false;
+    if (/gold-rush|mining/i.test(id)) return false;
+  }
+
+  return true;
+}
+
+/** Pick the best image for the answer text, or null if nothing fits well enough. */
+export function pickBestStoryImage(
+  candidates: ImageAsset[],
+  storyHay: string,
+  themes: StoryThemeWeights,
+  minScore = 4
+): ImageAsset | null {
+  let best: ImageAsset | null = null;
+  let bestScore = 0;
+
+  for (const img of candidates) {
+    if (imageConflictsWithStory(img, themes)) continue;
+    if (!isHistoricallyAccurateForStory(img.id, storyHay)) continue;
+    if (!answerSupportsImage(img, storyHay)) continue;
+    const score = imageStoryMatchScore(img, storyHay);
+    if (score >= minScore && score > bestScore) {
+      best = img;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+================================================================================
+FILE: lib/imageSearch.ts
+================================================================================
+import crypto from "node:crypto";
+import type { ImageAsset } from "@/lib/types";
+
+const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
+const WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php";
+const SEARCH_ENABLED = process.env.IMAGE_SEARCH_ENABLED !== "false";
+const WIKI_USER_AGENT =
+  "ECHOES/0.1 (local history education; matthewkennedy22@gmail.com)";
+const SEARCH_MAX = Number(process.env.IMAGE_SEARCH_MAX || 4);
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+/** Licenses we will show (attribution required where noted). */
+const ALLOWED_LICENSE = /public domain|cc0|cc by|cc-by|pd-|no restrictions/i;
+
+const STOP_WORDS =
+  /\b(?:me|please|the|a|an|with|and|or|about|tell|what|who|show|picture|photo|historical|county|san|luis|obispo|california|you|your|yourself|why|does|matter)\b/i;
+
+/** Reject clearly modern or irrelevant subject matter. */
+const MODERN_REJECT =
+  /\b(?:pickup|pick-up|truck|suv|sedan|minivan|highway|freeway|iphone|selfie|protest|rally|thin blue|blue lives|donald trump|maga|202[0-9]|201[0-9]|200[0-9]|199[0-9]|19[89]\d|digital photo|color photo|wikimedia photo challenge)\b/i;
+
+/** Latest year we will show without strong historical-documentary context (e.g. HABS). */
+const MAX_CASUAL_YEAR = 1930;
+
+/** Extra search phrases for well-known SLO County places. */
+const PLACE_HINTS: Record<string, string[]> = {
+  nipomo: [
+    "Dana Adobe Nipomo HABS",
+    "William G Dana House Nipomo",
+    "Rancho Nipomo historical",
+  ],
+  avila: ["Avila Beach California", "Port San Luis Avila"],
+  morro: ["Morro Rock California", "Morro Bay California"],
+  pismo: ["Pismo Beach California historical"],
+  paso: ["Paso Robles California historical"],
+  "san luis obispo": ["San Luis Obispo mission", "San Luis Obispo downtown historical"],
+  "arroyo grande": ["Arroyo Grande California historical"],
+  cambria: ["Cambria California historical"],
+  guadalupe: ["Guadalupe California historical"],
+  chumash: ["Chumash California historical", "Chumash tomol", "Chumash Indian Museum"],
+  tomol: ["Tomol Chumash plank canoe", "Chumash tomol crossing"],
+  "plank canoe": ["Tomol Chumash"],
+  acorn: ["Chumash Indian Museum acorn mortar"],
+  pictograph: ["Chumash Indian Museum pictograph Oakbrook"],
+  basket: ["Chumash Indian Museum basket weaving"],
+};
+
+import { getActivePersona } from "@/lib/activePersona";
+import {
+  detectCatalogTopics,
+  resolveWikipediaArticlesFromHaystack,
+  wikipediaArticlesForTopicKeys,
+} from "@/personas/topicCatalog";
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function metaValue(
+  ext: Record<string, { value?: string }> | undefined,
+  key: string
+): string {
+  const raw = ext?.[key]?.value;
+  return raw ? stripHtml(raw) : "";
+}
+
+function commonsId(title: string): string {
+  const hash = crypto.createHash("sha1").update(title).digest("hex").slice(0, 10);
+  return `commons-${hash}`;
+}
+
+function isAllowedLicense(license: string, copyrighted: string): boolean {
+  const lic = String(license ?? "").toLowerCase();
+  if (ALLOWED_LICENSE.test(lic)) return true;
+  if (/copyrighted|all rights reserved|fair use|non-free/i.test(lic)) return false;
+  if (String(copyrighted ?? "").toLowerCase() === "false") return true;
+  return false;
+}
+
+function captionFromTitle(title: string): string {
+  return title
+    .replace(/^File:/, "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/_/g, " ")
+    .trim();
+}
+
+function cleanCaption(description: string, title: string): string {
+  const d = description.trim();
+  if (!d || /^subjects:?$/i.test(d) || d.length < 8) {
+    return captionFromTitle(title);
+  }
+  return d.slice(0, 280);
+}
+
+function extractTopic(userQuery: string): string {
+  const aboutMatch = userQuery.match(
+    /\b(?:about|tell me about|what is|who is|show me|picture of|photo of)\s+(.+)/i
+  );
+  return (aboutMatch?.[1] || userQuery)
+    .replace(/[^\w\s'-]/g, " ")
+    .replace(STOP_WORDS, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Pull nouns from retrieved source text that might improve image search. */
+function hintKeywords(sourceHints: string[]): string[] {
+  const text = sourceHints.join(" ").toLowerCase();
+  const found: string[] = [];
+  for (const word of [
+    "adobe",
+    "mission",
+    "rancho",
+    "downtown",
+    "street",
+    "harbor",
+    "wharf",
+    "port",
+    "creek",
+    "chumash",
+    "vaquero",
+    "ranch",
+    "railroad",
+    "courthouse",
+  ]) {
+    if (text.includes(word)) found.push(word);
+  }
+  const proper = sourceHints.join(" ").match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b/g);
+  if (proper) {
+    for (const p of proper.slice(0, 3)) {
+      if (p.length > 3 && !/San Luis|Obispo County|Captain/i.test(p)) {
+        found.push(p);
+      }
+    }
+  }
+  return [...new Set(found)];
+}
+
+/** Build several targeted Commons queries; a single broad query often misses good hits. */
+export function buildImageSearchQueries(
+  userQuery: string,
+  sourceHints: string[] = []
+): string[] {
+  const topic = extractTopic(userQuery);
+  if (!topic) return [];
+
+  const queries = new Set<string>();
+  const topicLower = topic.toLowerCase();
+
+  queries.add(`${topic} California historical photograph`);
+
+  const placeHints = PLACE_HINTS[topicLower];
+  if (placeHints) {
+    for (const h of placeHints) queries.add(h);
+  }
+
+  for (const kw of hintKeywords(sourceHints)) {
+    queries.add(`${topic} ${kw}`);
+    if (/adobe|mission|rancho/i.test(kw)) {
+      queries.add(`${kw} ${topic} HABS`);
+    }
+  }
+
+  // Short topic-only query as fallback (e.g. "nipomo") — always historical
+  if (topic.split(/\s+/).length <= 3) {
+    queries.add(`${topic} historical`);
+  }
+
+  return [...queries].slice(0, 6);
+}
+
+/** Intro / meta questions should not trigger a broad image search. */
+export function isIntroOrMetaQuery(userQuery: string): boolean {
+  return /\b(?:who are you|introduce yourself|why does .+ matter|what are you|tell me about yourself|how do you work|are you real|are you ai|what is echoes|your (?:childhood|family|wife|husband|children|private life|personal life)|what year is it)\b/i.test(
+    userQuery
+  );
+}
+
+/** True when asking about the persona's likeness — not places ("what did the marina look like"). */
+export function isPersonPortraitRequest(userQuery: string): boolean {
+  const q = userQuery.toLowerCase();
+  const aboutPerson =
+    /\b(?:you|your(?:self)?|I)\b/i.test(userQuery) ||
+    /\b(?:picture|photo|image|portrait|likeness) of you\b/i.test(q);
+  if (!aboutPerson) return false;
+  return /\b(?:(?:what|how) did you look|you look(?:ed)? like|your (?:appearance|portrait|likeness|face)|show me (?:your|the) portrait|(?:picture|photo|image) of you(?:rself)?)\b/i.test(
+    q
+  );
+}
+
+/** Only run live Commons search for questions about a specific historical subject. */
+export function queryWantsImageSearch(
+  userQuery: string,
+  contextQuery = ""
+): boolean {
+  if (isIntroOrMetaQuery(userQuery) && !/\b(?:images?|pictures?|photos?)\b/i.test(userQuery)) {
+    return isPersonPortraitRequest(userQuery);
+  }
+  if (
+    /\b(?:images?|pictures?|photos?|illustration|illustrate|accompany|show me)\b/i.test(
+      userQuery
+    )
+  ) {
+    return true;
+  }
+  const combined = `${userQuery} ${contextQuery}`.trim();
+  return /\b(?:tell me about|what is|what was|what happened|show me|picture of|photo of|look like|who was|who is|mission|rancho|adobe|rock|beach|creek|town|downtown|nipomo|avila|morro|pismo|arroyo|paso|chumash|vaquero|ranch|harbor|wharf|port|polytechnic|cal poly|courthouse|railroad|street|landmark|figure|native|indigenous|bandit|outlaw|vigilante|pioneer|history|county|settlement|farming|agriculture)\b/i.test(
+    combined
+  );
+}
+
+/** Visitor is asking for an image about the ongoing topic, not a new subject. */
+export function isImageFollowUpQuery(userQuery: string): boolean {
+  return /\b(?:any images?|do you have (?:any )?images?|images? to accompany|got (?:any )?images?|(?:and )?pics?|pictures?|photos?|show me (?:an? )?(?:image|picture|photo)|illustrat|accompany (?:this|that|the|what))\b/i.test(
+    userQuery
+  );
+}
+
+/** Latest message refers back to the conversation without naming the topic. */
+export function isContextualFollowUp(userQuery: string): boolean {
+  return (
+    isImageFollowUpQuery(userQuery) ||
+    /\b(?:this|that|those|it|them|what you (?:just )?(?:said|described|told|mentioned)|the information|more about that|tell me more|go on|continue)\b/i.test(
+      userQuery
+    )
+  );
+}
+
+/** Extract the most likely year from caption/title metadata. */
+export function extractImageYear(...texts: string[]): number | null {
+  const years: number[] = [];
+  for (const text of texts) {
+    for (const m of text.matchAll(/\b(1[789]\d{2}|19\d{2}|20\d{2})\b/g)) {
+      years.push(Number(m[1]));
+    }
+    for (const m of text.matchAll(/\bca\.?\s*(1[789]\d{2}|19[0-2]\d)\b/gi)) {
+      years.push(Number(m[1]));
+    }
+  }
+  if (years.length === 0) return null;
+  // Prefer the earliest year cited (usually the subject date, not upload date).
+  return Math.min(...years);
+}
+
+/** True when an image plausibly dates from Myron's era (roughly pre-1930s). */
+export function isHistoricalImageAsset(img: ImageAsset): boolean {
+  if (!img.id.startsWith("commons-")) return true;
+
+  const subjectHay = `${img.caption} ${img.alt}`;
+  if (
+    /\b(?:tomol|chumash tomol|plank canoe|elye'wun|channel islands crossing)\b/i.test(
+      subjectHay
+    )
+  ) {
+    return true;
+  }
+  if (MODERN_REJECT.test(subjectHay)) return false;
+
+  const year = extractImageYear(subjectHay);
+  if (year !== null) {
+    if (year >= 1950) return false;
+    if (year > MAX_CASUAL_YEAR) {
+      return /historic american buildings survey|habs/i.test(subjectHay);
+    }
+    return true;
+  }
+
+  return /habs|historic american|engraving|lithograph|daguerreotype|albumen|black.?and.?white|ca\.\s*1[89]\d{2}|ca\.\s*19[0-2]\d|19th century|18th century/i.test(
+    subjectHay
+  );
+}
+
+/** @deprecated use buildImageSearchQueries */
+export function buildImageSearchQuery(
+  userQuery: string,
+  sourceHints: string[] = []
+): string {
+  return buildImageSearchQueries(userQuery, sourceHints)[0] ?? "";
+}
+
+/** Map a visitor topic to Wikipedia article titles whose gallery images we prefer. */
+export function resolveWikipediaArticles(
+  topic: string,
+  sourceHints: string[] = []
+): string[] {
+  const pack = getActivePersona();
+  const hay = `${topic} ${sourceHints.join(" ")}`;
+  const articles = new Set<string>(
+    resolveWikipediaArticlesFromHaystack(
+      hay,
+      pack.wikipediaKeywordArticles ?? {}
+    )
+  );
+
+  const hayContains = (stack: string, term: string): boolean => {
+    const t = term.toLowerCase();
+    if (t.includes(" ")) return stack.includes(t);
+    return new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(
+      stack
+    );
+  };
+
+  const catalogHits = detectCatalogTopics(
+    pack.imageTopics,
+    hay.toLowerCase(),
+    hayContains
+  );
+  for (const { key } of catalogHits.slice(0, 6)) {
+    for (const title of wikipediaArticlesForTopicKeys(
+      pack.wikipediaByTopicKey,
+      [key]
+    )) {
+      articles.add(title);
+    }
+  }
+
+  return [...articles].slice(0, 8);
+}
+
+const cache = new Map<string, { at: number; images: ImageAsset[] }>();
+
+function scoreResult(title: string, caption: string, topic: string): number {
+  const topicTerms = String(topic ?? "")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 3);
+  const hay = `${title} ${caption}`.toLowerCase();
+  let score = 0;
+
+  for (const term of topicTerms) {
+    if (hay.includes(term)) score += 5;
+  }
+
+  if (/adobe|mission|rancho|street|photograph|ca\.\s*\d{4}|habs|historic american/i.test(hay)) {
+    score += 3;
+  }
+  if (/microfilm|blur|skew|tear|inherent to|\.pdf$/i.test(`${caption} ${title}`)) {
+    score -= 12;
+  }
+  const tomolTopic = /\btomol/i.test(String(topic ?? ""));
+  if (
+    !tomolTopic &&
+    /banner\.jpg|logo|icon|seal|locationof|202[0-9]|201[0-9]|200[0-9]|199[0-9]|19[89]\d|pickup|pick-up|truck|flag|protest|rally|color photo|digital/i.test(
+      hay
+    )
+  ) {
+    score -= 20;
+  }
+  if (tomolTopic && /\btomol|chumash canoe|plank canoe|elye'wun\b/i.test(hay)) {
+    score += 8;
+  }
+  if (/migrant|makeshift|regional park|arctostaphylos/i.test(hay)) {
+    score -= 4;
+  }
+
+  const year = extractImageYear(title, caption);
+  if (year !== null) {
+    if (year <= 1911) score += 4;
+    else if (year <= MAX_CASUAL_YEAR) score += 2;
+    else if (!/habs|historic american/i.test(hay)) score -= 15;
+  } else if (!/habs|historic american|engraving|lithograph|ca\.\s*1[89]|ca\.\s*19[0-2]/i.test(hay)) {
+    score -= 6;
+  }
+
+  return score;
+}
+
+interface WikiImagePage {
+  title?: string;
+  imageinfo?: Array<{
+    thumburl?: string;
+    url?: string;
+    descriptionurl?: string;
+    extmetadata?: Record<string, { value?: string }>;
+  }>;
+}
+
+function shouldSkipWikiFileTitle(title: string): boolean {
+  return (
+    !title.startsWith("File:") ||
+    /\.(?:svg|pdf|djvu|webm|ogv)$/i.test(title) ||
+    /\b(?:logo|icon|seal|flag|pog|commons-logo|edit-clear|question_book)\b/i.test(
+      title
+    )
+  );
+}
+
+function rankWikiImagePage(
+  page: WikiImagePage,
+  topic: string,
+  contextLabel: string,
+  scoreBonus = 0
+): { score: number; asset: ImageAsset } | null {
+  const title = page.title;
+  const info = page.imageinfo?.[0];
+  if (!title || !info || shouldSkipWikiFileTitle(title)) return null;
+
+  const src = info.thumburl || info.url;
+  if (!src) return null;
+
+  const ext = info.extmetadata;
+  const license =
+    metaValue(ext, "LicenseShortName") || metaValue(ext, "UsageTerms");
+  const copyrighted = metaValue(ext, "Copyrighted");
+  if (!isAllowedLicense(license, copyrighted)) return null;
+
+  const description = cleanCaption(metaValue(ext, "ImageDescription"), title);
+  const artist = metaValue(ext, "Artist") || metaValue(ext, "Credit");
+  const uploadDate =
+    metaValue(ext, "DateTimeOriginal") || metaValue(ext, "DateTime");
+  const subjectYear = extractImageYear(title, description);
+  const date =
+    subjectYear !== null
+      ? String(subjectYear)
+      : uploadDate.slice(0, 30) || undefined;
+  const score = scoreResult(title, description, topic) + scoreBonus;
+  if (score <= 0) return null;
+
+  const asset: ImageAsset = {
+    id: commonsId(title),
+    src,
+    caption: description,
+    alt: description.slice(0, 120) || "Historical photograph",
+    topics: [contextLabel],
+    dateRange: date,
+    citation: artist
+      ? `${artist}. Wikimedia Commons (via Wikipedia).`
+      : "Wikimedia Commons (via Wikipedia).",
+    url: info.descriptionurl,
+    license: license || "See Wikimedia Commons",
+  };
+  if (!isHistoricalImageAsset(asset)) return null;
+
+  return { score, asset };
+}
+
+async function fetchWikipediaArticleImages(
+  articleTitle: string,
+  topic: string
+): Promise<{ score: number; asset: ImageAsset }[]> {
+  const params = new URLSearchParams({
+    action: "query",
+    format: "json",
+    generator: "images",
+    titles: articleTitle,
+    gimlimit: "20",
+    prop: "imageinfo",
+    iiprop: "url|extmetadata",
+    iiurlwidth: "900",
+    origin: "*",
+  });
+
+  const res = await fetch(`${WIKIPEDIA_API}?${params.toString()}`, {
+    headers: { "User-Agent": WIKI_USER_AGENT },
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) return [];
+
+  const data = (await res.json()) as {
+    query?: { pages?: Record<string, WikiImagePage> };
+  };
+  const ranked: { score: number; asset: ImageAsset }[] = [];
+
+  for (const page of Object.values(data.query?.pages ?? {})) {
+    const item = rankWikiImagePage(page, topic, `Wikipedia:${articleTitle}`, 12);
+    if (item) ranked.push(item);
+  }
+
+  return ranked;
+}
+
+async function fetchCommonsSearch(
+  searchQuery: string,
+  limit: number,
+  topic: string
+): Promise<{ score: number; asset: ImageAsset }[]> {
+  const params = new URLSearchParams({
+    action: "query",
+    format: "json",
+    generator: "search",
+    gsrsearch: searchQuery,
+    gsrnamespace: "6",
+    gsrlimit: String(Math.min(limit * 2, 10)),
+    prop: "imageinfo",
+    iiprop: "url|extmetadata",
+    iiurlwidth: "900",
+    origin: "*",
+  });
+
+  const res = await fetch(`${COMMONS_API}?${params.toString()}`, {
+    headers: { "User-Agent": WIKI_USER_AGENT },
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) return [];
+
+  const data = (await res.json()) as {
+    query?: { pages?: Record<string, WikiImagePage> };
+  };
+  const ranked: { score: number; asset: ImageAsset }[] = [];
+
+  for (const page of Object.values(data.query?.pages ?? {})) {
+    const item = rankWikiImagePage(page, topic, searchQuery, 0);
+    if (item) ranked.push(item);
+  }
+
+  return ranked;
+}
+
+/**
+ * Search Wikipedia article galleries and Wikimedia Commons for public-domain /
+ * freely licensed historical images related to the user's question.
+ */
+export async function searchHistoricalImages(
+  userQuery: string,
+  sourceHints: string[] = []
+): Promise<ImageAsset[]> {
+  if (!SEARCH_ENABLED) return [];
+
+  const topic = extractTopic(userQuery);
+  if (!topic.trim()) return [];
+
+  const queries = buildImageSearchQueries(userQuery, sourceHints);
+  const wikiArticles = resolveWikipediaArticles(topic, sourceHints);
+  const cacheKey = `${topic.toLowerCase()}|wiki:${wikiArticles.join(",")}|${queries.join(";")}`;
+  const hit = cache.get(cacheKey);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.images;
+
+  try {
+    const batches = await Promise.all([
+      ...wikiArticles.map((a) => fetchWikipediaArticleImages(a, topic)),
+      ...queries.map((q) => fetchCommonsSearch(q, SEARCH_MAX, topic)),
+    ]);
+
+    const merged = new Map<string, { score: number; asset: ImageAsset }>();
+    for (const batch of batches) {
+      for (const item of batch) {
+        const existing = merged.get(item.asset.id);
+        if (!existing || item.score > existing.score) {
+          merged.set(item.asset.id, item);
+        }
+      }
+    }
+
+    const sorted = [...merged.values()].sort((a, b) => b.score - a.score);
+    const images = sorted
+      .filter((r) => r.score > 0 && isHistoricalImageAsset(r.asset))
+      .slice(0, SEARCH_MAX)
+      .map((r) => r.asset);
+
+    cache.set(cacheKey, { at: Date.now(), images });
+    return images;
+  } catch {
+    return [];
+  }
+}
+
+================================================================================
+FILE: lib/imageAvailability.ts
+================================================================================
+import fs from "node:fs";
+import path from "node:path";
+import { getActivePersona } from "@/lib/activePersona";
+import type { ImageAsset } from "@/lib/types";
+
+const PUBLIC_ROOT = path.join(process.cwd(), "public");
+
+/** True for paths served from /public (not external URLs). */
+export function isLocalImagePath(src: string): boolean {
+  return src.startsWith("/") && !src.startsWith("//");
+}
+
+/** Whether a local /public file exists and looks like a real image (>512 B). */
+export function localImageFileExists(src: string): boolean {
+  if (!isLocalImagePath(src)) return true;
+  const filePath = path.join(PUBLIC_ROOT, src.replace(/^\//, ""));
+  try {
+    const st = fs.statSync(filePath);
+    return st.isFile() && st.size > 512;
+  } catch {
+    return false;
+  }
+}
+
+/** Local files must exist on disk; remote URLs (Commons) are allowed as-is. */
+export function isServeableImage(img: ImageAsset): boolean {
+  if (!img.src?.trim()) return false;
+  if (/^https?:\/\//i.test(img.src)) return true;
+  return localImageFileExists(img.src);
+}
+
+export function filterServeableImages(images: ImageAsset[]): ImageAsset[] {
+  return images.filter(isServeableImage);
+}
+
+const availableBySlug = new Map<string, ImageAsset[]>();
+
+/** Library images for a persona whose files are present in /public. */
+export function availableImagesForPersona(slug: string, images: ImageAsset[]): ImageAsset[] {
+  const cached = availableBySlug.get(slug);
+  if (cached) return cached;
+
+  const available: ImageAsset[] = [];
+  const missing: string[] = [];
+
+  for (const img of images) {
+    if (isServeableImage(img)) {
+      available.push(img);
+    } else {
+      missing.push(img.src);
+    }
+  }
+
+  if (missing.length > 0) {
+    console.warn(
+      `[ECHOES] ${missing.length} catalogued image(s) missing for ${slug} — run npm run fetch-images:\n  ${missing.join("\n  ")}`
+    );
+  }
+
+  availableBySlug.set(slug, available);
+  return available;
+}
+
+/** Images for the currently active persona. */
+export function getAvailableLibraryImages(): ImageAsset[] {
+  const pack = getActivePersona();
+  return availableImagesForPersona(pack.public.slug, pack.images);
+}
+
+/**
+ * @deprecated Prefer getAvailableLibraryImages() — kept for Myron-era call sites.
+ */
+export const availableMyronAngelImages: ImageAsset[] = [];
+
+================================================================================
+FILE: lib/imageAccuracy.ts
+================================================================================
+/**
+ * Historical accuracy guards for the image library.
+ * Prevents showing a visual that depicts the wrong people, place, or era.
+ */
+
+/** Images that verifiably depict Chumash subjects or Chumash rock art. */
+export const CHUMASH_VERIFIED_IMAGE_IDS = new Set([
+  "img-chumash-musicians-1873",
+  "img-chumash-painted-cave",
+  "img-chumash-pictograph-oakbrook",
+]);
+
+/** Museum exhibit photos — traditional Chumash life (post-1905; say so in caption). */
+export const CHUMASH_EXHIBIT_IMAGE_IDS = new Set([
+  "img-chumash-mortars-exhibit",
+  "img-chumash-ap-replica",
+]);
+
+/** Chumash plank tomols — illustration or modern documentary photos (not period). */
+export const CHUMASH_TOMOL_IMAGE_IDS = new Set([
+  "img-chumash-tomol-kihn",
+  "img-chumash-tomol-elyewun-2006",
+  "img-chumash-tomol-crossing-2015",
+]);
+
+export const CHUMASH_APPROVED_IMAGE_IDS = new Set([
+  ...CHUMASH_VERIFIED_IMAGE_IDS,
+  ...CHUMASH_TOMOL_IMAGE_IDS,
+  ...CHUMASH_EXHIBIT_IMAGE_IDS,
+]);
+
+/**
+ * Louis Choris (1822) engravings from San Francisco Bay — Ohlone / Cholovones,
+ * NOT Chumash. Usable for general California indigenous / tule-boat context only.
+ */
+export const CHORIS_1822_IMAGE_IDS = new Set([
+  "img-choris-tule-canoe-1822",
+  "img-choris-california-people-1822",
+  "img-choris-cholovones-hunting-1822",
+]);
+
+/** Legacy ids kept so old sessions do not crash — never offer to the model. */
+export const DEPRECATED_IMAGE_IDS = new Set([
+  "img-chumash-choris-canoe-1822",
+  "img-chumash-choris-people-1822",
+  "img-chumash-choris-hunting-1822",
+]);
+
+export function storyMentionsChumash(storyHay: string): boolean {
+  return /\bchumash\b/i.test(storyHay);
+}
+
+export function storyMentionsTomol(storyHay: string): boolean {
+  return /\b(?:tomol|tomols|plank canoe|plank-built canoe)\b/i.test(storyHay);
+}
+
+/**
+ * Returns false when showing this image would misrepresent the story.
+ * Call after other relevance checks.
+ */
+export function isHistoricallyAccurateForStory(
+  imageId: string,
+  storyHay: string
+): boolean {
+  if (DEPRECATED_IMAGE_IDS.has(imageId)) return false;
+
+  const chumashStory = storyMentionsChumash(storyHay);
+  const tomolStory = storyMentionsTomol(storyHay);
+
+  // Choris ≠ Chumash — never pair with explicit Chumash narratives.
+  if (chumashStory && CHORIS_1822_IMAGE_IDS.has(imageId)) return false;
+
+  // Tule-rush boats (Choris) are not plank tomols — do not use for tomol stories.
+  if (tomolStory && CHORIS_1822_IMAGE_IDS.has(imageId)) return false;
+
+  // Tomol stories need verified tomol art — not Choris tule boats or unrelated images.
+  if (
+    tomolStory &&
+    chumashStory &&
+    !CHUMASH_VERIFIED_IMAGE_IDS.has(imageId) &&
+    !CHUMASH_TOMOL_IMAGE_IDS.has(imageId)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export const IMAGE_ACCURACY_PROMPT = `
+# HISTORICAL ACCURACY (IMAGES — CRITICAL)
+- **Chumash-specific stories:** Use img-chumash-musicians-1873, img-chumash-painted-cave,
+  img-chumash-pictograph-oakbrook (rock art), img-chumash-mortars-exhibit (acorn grinding —
+  modern museum photo), or img-chumash-ap-replica (village dwelling — modern replica).
+  Do NOT use any img-choris-* for Chumash — those engravings show Ohlone / Cholovones at
+  San Francisco Bay (Louis Choris, 1822), a different people.
+- **Tomols** are plank-built wooden canoes — NOT the tule-rush boats in the Choris engravings.
+  For tomol questions use img-chumash-tomol-kihn (artist's reconstruction, 1946),
+  img-chumash-tomol-elyewun-2006, or img-chumash-tomol-crossing-2015 (modern Chumash
+  crossings — post-1905; say so honestly). Never use img-choris-* for tomols.
+- **Choris images (img-choris-*):** Only for general California indigenous / tule-boat context
+  when you are NOT claiming they are Chumash. Always say they show Bay Area peoples, not
+  specifically our local Chumash.
+- **Chinese railroad engraving:** Illustrates Central Pacific labor (Sierra Nevada); cite as
+  representative of Chinese railroad workers, including those who helped build our Cuesta tunnels.
+- Never label an image as showing something its caption does not depict.
+`.trim();
+
+================================================================================
+FILE: lib/activePersona.ts
+================================================================================
+import {
+  DEFAULT_PERSONA_SLUG,
+  getPersonaPack,
+} from "@/personas";
+import type { PersonaPack } from "@/personas/types";
+
+/**
+ * Request-scoped active persona for RAG / image helpers.
+ * Set at the start of answerQuestion / warmIndex; safe for Node's
+ * single-threaded request handling (one chat at a time per isolate is fine).
+ */
+let active: PersonaPack | null = null;
+
+export function setActivePersona(pack: PersonaPack | null) {
+  active = pack;
+}
+
+export function getActivePersona(): PersonaPack {
+  return active ?? getPersonaPack(DEFAULT_PERSONA_SLUG);
+}
+
+export async function withPersona<T>(
+  pack: PersonaPack,
+  fn: () => Promise<T>
+): Promise<T> {
+  const prev = active;
+  active = pack;
+  try {
+    return await fn();
+  } finally {
+    active = prev;
+  }
+}
+
+================================================================================
+FILE: app/api/chat/route.ts
+================================================================================
+import { NextResponse } from "next/server";
+import { answerQuestion, warmIndex } from "@/lib/rag";
+import type { ChatMessage } from "@/lib/types";
+
+export const runtime = "nodejs";
+export const maxDuration = 120;
+
+/** GET /api/chat — pre-build the embedding index so the first chat is fast. */
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const persona = searchParams.get("persona") ?? undefined;
+    const status = await warmIndex(persona);
+    return NextResponse.json({ ok: true, ...status });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Unexpected server error.";
+    const isKeyError = message.includes("OPENAI_API_KEY");
+    return NextResponse.json(
+      {
+        ok: false,
+        error: isKeyError
+          ? "Add OPENAI_API_KEY to .env.local and restart, then reload this page."
+          : message,
+      },
+      { status: isKeyError ? 503 : 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const messages = body?.messages;
+    const persona =
+      typeof body?.persona === "string" ? body.persona : undefined;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { error: "Request must include a non-empty 'messages' array." },
+        { status: 400 }
+      );
+    }
+
+    const history: ChatMessage[] = messages
+      .filter(
+        (m: unknown): m is ChatMessage =>
+          !!m &&
+          typeof (m as ChatMessage).content === "string" &&
+          ((m as ChatMessage).role === "user" ||
+            (m as ChatMessage).role === "assistant")
+      )
+      .map((m: ChatMessage) => ({
+        role: m.role,
+        content: m.content,
+        ...(Array.isArray(m.imageIds) && m.imageIds.length
+          ? { imageIds: m.imageIds.filter((id) => typeof id === "string") }
+          : {}),
+      }));
+
+    const result = await answerQuestion(history, persona);
+    return NextResponse.json(result);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Unexpected server error.";
+    const isKeyError = message.includes("OPENAI_API_KEY");
+    return NextResponse.json(
+      {
+        error: isKeyError
+          ? "The server has no OpenAI API key configured. Add OPENAI_API_KEY to .env.local and restart."
+          : message,
+      },
+      { status: isKeyError ? 503 : 500 }
+    );
+  }
+}
+
+================================================================================
+FILE: personas/types.ts
+================================================================================
+import type { ImageAsset, PersonaPublic, SourceChunk } from "@/lib/types";
+
+/** Topic → buzzword → image map entry for a persona's visual library. */
+export interface ImageTopic {
+  key: string;
+  label: string;
+  buzzwords: string[];
+  imageIds: string[];
+}
+
+/**
+ * Full server-side persona pack. Client code should only import `public`.
+ * Each historian is one of these — same shape Myron uses today.
+ */
+export interface PersonaPack {
+  public: PersonaPublic;
+  /** System prompt: voice, era, guardrails. */
+  systemPrompt: string;
+  /** Hand-verified claim bank. */
+  sources: SourceChunk[];
+  /** Curated image library. */
+  images: ImageAsset[];
+  /** Topic catalog for image matching + prompt guide. */
+  imageTopics: ImageTopic[];
+  /** Catalog topic key → Wikipedia article titles. */
+  wikipediaByTopicKey: Record<string, string[]>;
+  /** Extra keyword → Wikipedia articles for live image search. */
+  wikipediaKeywordArticles?: Record<string, string[]>;
+  /**
+   * Optional paths (relative to process.cwd()) for ingested book/OCR chunks.
+   * Each file is one public-domain primary work; personas should have 2+ for depth.
+   */
+  bookChunksPaths?: string[];
+  /** @deprecated Use bookChunksPaths. Kept for single-book packs. */
+  bookChunksPath?: string;
+  /** Optional override for image accuracy rules in the prompt. */
+  accuracyPrompt?: string;
+  /**
+   * Source id prefixes pinned for "who are you" questions.
+   * Default: ["bio-"]
+   */
+  identitySourceIdPrefixes?: string[];
+  /** Speaking year for temporal guardrails (e.g. 1905). */
+  temporalYear?: number;
+  /** Label used in conversation brief, e.g. "You (Myron)". */
+  speakerLabel?: string;
+  /** Portrait image id for identity questions. Default: "img-portrait". */
+  portraitImageId?: string;
+  /**
+   * Optional OpenAI TTS overrides. When omitted, the default elderly-gentleman
+   * voice in lib/llm.ts is used (most California Speaks figures).
+   */
+  tts?: {
+    /** OpenAI voice id, e.g. "onyx", "nova", "coral", "shimmer". */
+    voice: string;
+    /** Delivery style for gpt-4o-mini-tts `instructions`. */
+    instructions: string;
+    /** Playback speed (default from OPENAI_TTS_SPEED / 1.12). */
+    speed?: number;
+  };
+}
+
+================================================================================
+FILE: personas/index.ts
+================================================================================
+import type { PersonaPublic } from "@/lib/types";
+import type { PersonaPack } from "@/personas/types";
+import { myronAngelPack } from "@/personas/myron-angel/pack";
+import { bancroftPack } from "@/personas/hubert-howe-bancroft/pack";
+import { hortonPack } from "@/personas/alonzo-horton/pack";
+import { masonPack } from "@/personas/jesse-d-mason/pack";
+import { twainPack } from "@/personas/mark-twain/pack";
+import { hemmePack } from "@/personas/august-hemme/pack";
+import { loosPack } from "@/personas/anita-loos/pack";
+
+/** Default persona when none is specified (backward compatible). */
+export const DEFAULT_PERSONA_SLUG = "myron-angel";
+
+/**
+ * Registered historians — display order on the landing page.
+ * Myron Angel remains the only San Luis Obispo representative.
+ */
+const REGISTRY: Record<string, PersonaPack> = {
+  [myronAngelPack.public.slug]: myronAngelPack,
+  [bancroftPack.public.slug]: bancroftPack,
+  [hortonPack.public.slug]: hortonPack,
+  [masonPack.public.slug]: masonPack,
+  [twainPack.public.slug]: twainPack,
+  [hemmePack.public.slug]: hemmePack,
+  [loosPack.public.slug]: loosPack,
+};
+
+/** Stable landing-page order — north to south. */
+const LANDING_ORDER = [
+  "mark-twain",
+  "hubert-howe-bancroft",
+  "august-hemme",
+  "myron-angel",
+  "jesse-d-mason",
+  "anita-loos",
+  "alonzo-horton",
+] as const;
+
+/** All registered persona packs (server-safe). */
+export function listPersonaPacks(): PersonaPack[] {
+  return LANDING_ORDER.map((slug) => REGISTRY[slug]).filter(Boolean);
+}
+
+/** Client-safe public cards for the landing page. */
+export function listPersonaPublic(): PersonaPublic[] {
+  return listPersonaPacks().map((p) => p.public);
+}
+
+export function getPersonaPack(slug?: string | null): PersonaPack {
+  const key = (slug || DEFAULT_PERSONA_SLUG).trim().toLowerCase();
+  return REGISTRY[key] ?? REGISTRY[DEFAULT_PERSONA_SLUG];
+}
+
+export function isKnownPersonaSlug(slug: string): boolean {
+  return slug.trim().toLowerCase() in REGISTRY;
+}
+
+export { REGISTRY };
+
+================================================================================
+FILE: personas/topicCatalog.ts
+================================================================================
+import type { ImageTopic } from "@/personas/types";
+
+/** Format topic → image guide for the grounding prompt. */
+export function formatTopicCatalogForPrompt(topics: ImageTopic[]): string {
+  return topics
+    .map((t) => {
+      const ids =
+        t.imageIds.length > 0
+          ? t.imageIds.slice(0, 3).join(", ") +
+            (t.imageIds.length > 3 ? ", …" : "")
+          : "(none — use empty image_ids)";
+      return `• ${t.label} (${t.key}): ${ids}\n  Buzzwords: ${t.buzzwords.slice(0, 12).join(", ")}${t.buzzwords.length > 12 ? ", …" : ""}`;
+    })
+    .join("\n");
+}
+
+export function catalogScoreForImage(
+  topics: ImageTopic[],
+  imageId: string,
+  storyHay: string,
+  hayContains: (hay: string, term: string) => boolean
+): number {
+  let score = 0;
+  for (const topic of topics) {
+    const rank = topic.imageIds.indexOf(imageId);
+    if (rank < 0) continue;
+
+    let hits = 0;
+    for (const word of topic.buzzwords) {
+      if (hayContains(storyHay, word)) hits++;
+    }
+    if (hits === 0) continue;
+
+    const priority = topic.imageIds.length - rank;
+    score += hits * (2 + priority);
+    if (hits >= 2) score += 4;
+    if (rank === 0) score += 2;
+  }
+  return score;
+}
+
+export function detectCatalogTopics(
+  topics: ImageTopic[],
+  storyHay: string,
+  hayContains: (hay: string, term: string) => boolean
+): { key: string; hits: number }[] {
+  const found: { key: string; hits: number }[] = [];
+  for (const topic of topics) {
+    let hits = 0;
+    for (const word of topic.buzzwords) {
+      if (hayContains(storyHay, word)) hits++;
+    }
+    if (hits > 0) found.push({ key: topic.key, hits });
+  }
+  return found.sort((a, b) => b.hits - a.hits);
+}
+
+export function wikipediaArticlesForTopicKeys(
+  byTopicKey: Record<string, string[]>,
+  keys: string[]
+): string[] {
+  const out = new Set<string>();
+  for (const key of keys) {
+    for (const title of byTopicKey[key] ?? []) out.add(title);
+  }
+  return [...out];
+}
+
+export function resolveWikipediaArticlesFromHaystack(
+  hay: string,
+  keywordArticles: Record<string, string[]> = {}
+): string[] {
+  const lower = hay.toLowerCase();
+  const out = new Set<string>();
+  for (const [keyword, titles] of Object.entries(keywordArticles)) {
+    if (lower.includes(keyword.toLowerCase())) {
+      for (const t of titles) out.add(t);
+    }
+  }
+  return [...out];
+}
+
+================================================================================
+FILE: scripts/uat-image-matching.mjs
+================================================================================
+#!/usr/bin/env node
+/**
+ * Image-matching UAT for all ECHOES personas.
+ *
+ * Usage: node scripts/uat-image-matching.mjs [--base http://localhost:3000] [--persona slug]
+ */
+
+const BASE = process.argv.includes("--base")
+  ? process.argv[process.argv.indexOf("--base") + 1]
+  : "http://localhost:3000";
+const ONLY = process.argv.includes("--persona")
+  ? process.argv[process.argv.indexOf("--persona") + 1]
+  : null;
+
+const MISSION_IMAGE =
+  /\b(?:mission(?:\s+(?:san|dolores|santa|de|del|los|la))?|(?:los\s+)?dolores|padres?|friars?|franciscan|1776|1772|1782|1786|adobe mission|mission church)\b/i;
+const GOLDEN_GATE_IMAGE =
+  /\b(?:golden gate|angel island|telegraph hill|mount tamalpais|tamalpais|the strait|ferry|marina|waterfront|bay shore)\b/i;
+const RAILROAD_IMAGE =
+  /\b(?:railroad|railway|train|depot|locomotive|southern pacific|right of way|hemme station|tracks|branch line)\b/i;
+const TAHOE_IMAGE =
+  /\b(?:tahoe|lake tahoe|timber claim|nevada|carson city|roughing it|sierra nevada|emerald bay|shore)\b/i;
+const HARBOR_IMAGE =
+  /\b(?:harbor|harbour|wharf|bay|pier|waterfront|dock|port)\b/i;
+const DOWNTOWN_IMAGE =
+  /\b(?:street|downtown|higuera|monterey|plaza|horton house|addition)\b/i;
+
+function imageAnswerAligned(answer, imageId) {
+  const a = (answer || "").toLowerCase();
+  if (!imageId || imageId === "img-portrait" || imageId === "img-portrait-engraving")
+    return true;
+  if (/mission/i.test(imageId)) return MISSION_IMAGE.test(a);
+  if (/golden-gate|angel-island|telegraph-hill|tamalpais/i.test(imageId))
+    return GOLDEN_GATE_IMAGE.test(a);
+  if (/railroad|train|depot|station|locomotive/i.test(imageId))
+    return RAILROAD_IMAGE.test(a);
+  if (/tahoe|timber|nevada|carson|emerald|tallac|steamer|washoe/i.test(imageId))
+    return TAHOE_IMAGE.test(a);
+  if (/morro|avila|beach|port-harford|wharf/i.test(imageId)) return HARBOR_IMAGE.test(a);
+  if (/street|downtown|plaza|horton-house|courthouse|gaslamp|slo-/i.test(imageId))
+    return DOWNTOWN_IMAGE.test(a);
+  if (/chumash|vaquero|rancho|fandango|tomol|choris|painted-cave/i.test(imageId))
+    return /\b(?:chumash|vaquero|rancho|fandango|tomol|native|pictograph|cave)\b/i.test(a);
+  if (/fairbanks/i.test(imageId))
+    return /\b(?:fairbanks|douglas fairbanks|swashbuckler)\b/i.test(a);
+  if (/hollywood-blvd|hollywood-streetcar|hollywoodland/i.test(imageId))
+    return /\b(?:hollywood|streetcar|boulevard|colony)\b/i.test(a);
+  if (/buchon-house/i.test(imageId))
+    return /\b(?:buchon|714|house|home|residence|resided)\b/i.test(a);
+  if (/bancroft-ranch/i.test(imageId))
+    return /\b(?:spring valley|bancroft ranch|country home|adobe)\b/i.test(a);
+  if (/gaslamp|davis/i.test(imageId))
+    return /\b(?:william heath davis|davis house|gaslamp)\b/i.test(a);
+  if (/washoe/i.test(imageId))
+    return /\b(?:washoe|washo|indigenous|native)\b/i.test(a);
+  if (/fandango/i.test(imageId))
+    return /\b(?:fandango|fiesta|californio|danc)\b/i.test(a);
+  if (/-1890|map/i.test(imageId)) return /\b(?:map|mapped|cartograph|survey|city)\b/i.test(a);
+  return true;
+}
+
+const TESTS = [
+  {
+    slug: "myron-angel",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      { q: "What do you look like?", wantPortrait: true, label: "appearance → portrait" },
+      {
+        q: "What did downtown San Luis Obispo look like in 1905?",
+        banPortrait: true,
+        label: "place look-like → no portrait",
+      },
+      {
+        q: "Show me a picture of the mission.",
+        wantImagePrefix: "img-mission-",
+        banPortrait: true,
+        label: "mission request → mission image",
+      },
+      {
+        q: "Tell me about Morro Rock.",
+        expectImage: /morro|avila|coast|rock/,
+        banPortrait: true,
+        label: "Morro Rock → coast image or none",
+      },
+      {
+        q: "Where did you live?",
+        expectImage: /buchon-house/,
+        banPortrait: true,
+        label: "residence → Buchon house, not Chumash",
+      },
+    ],
+  },
+  {
+    slug: "hubert-howe-bancroft",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      { q: "Show me your portrait.", wantPortrait: true, label: "portrait request" },
+      {
+        q: "What did the marina look like?",
+        banPortrait: true,
+        expectImage: /golden-gate|angel-island|telegraph|sf-1890|tamalpais/,
+        label: "marina look-like → waterfront, not portrait",
+      },
+      {
+        q: "Tell me about Mission Dolores.",
+        wantImagePrefix: "img-mission-",
+        banPortrait: true,
+        label: "Mission Dolores → mission image",
+      },
+      {
+        q: "Describe the Golden Gate before any bridge.",
+        banPortrait: true,
+        expectImage: /golden-gate|angel-island|telegraph|tamalpais/,
+        label: "Golden Gate → strait image or none",
+      },
+      {
+        q: "Where did you retire?",
+        expectImage: /bancroft-ranch/,
+        banPortrait: true,
+        label: "retirement home → Spring Valley ranch",
+      },
+      {
+        q: "Tell me a fun fact from your collecting years.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+  {
+    slug: "alonzo-horton",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      { q: "Show me what you looked like.", wantPortrait: true, label: "appearance → portrait" },
+      {
+        q: "What did the harbor look like when you arrived?",
+        banPortrait: true,
+        label: "harbor look-like → no portrait",
+      },
+      {
+        q: "Tell me about the Horton House hotel.",
+        expectImage: /horton-house|plaza|courthouse|gaslamp/,
+        banPortrait: true,
+        label: "Horton House → building image or none",
+      },
+      {
+        q: "What is Horton Plaza?",
+        expectImage: /plaza|fountain|horton/,
+        banPortrait: true,
+        label: "Horton Plaza → plaza image or none",
+      },
+      {
+        q: "Tell me about William Heath Davis and his house.",
+        expectImage: /gaslamp|davis/,
+        banImages: /horton-house/,
+        banPortrait: true,
+        label: "Davis house → Gaslamp, not Horton House",
+      },
+      {
+        q: "Tell me a fun fact about early San Diego.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+  {
+    slug: "jesse-d-mason",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      {
+        q: "Show me the mission.",
+        wantImagePrefix: "img-mission-",
+        banPortrait: true,
+        label: "mission request → mission image",
+      },
+      {
+        q: "What did the harbor look like in Santa Barbara?",
+        banPortrait: true,
+        banImages: /^img-mission-/,
+        label: "harbor look-like → no mission portrait",
+      },
+      {
+        q: "Describe the rancho era in Santa Barbara County.",
+        expectImage: /vaquero|rancho|fandango/,
+        banPortrait: true,
+        label: "rancho → rancho image or none",
+      },
+      {
+        q: "Who were the Chumash of this coast?",
+        expectImage: /chumash|tomol|painted-cave|musicians/,
+        banPortrait: true,
+        label: "Chumash → native image or none",
+      },
+      {
+        q: "Tell me a fun fact from your county history.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+  {
+    slug: "mark-twain",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      { q: "Show me your portrait.", wantPortrait: true, label: "portrait request" },
+      {
+        q: "Describe seeing Lake Tahoe for the first time.",
+        expectImage: /tahoe|emerald|steamer|washoe/,
+        banPortrait: true,
+        label: "Tahoe → lake image or none",
+      },
+      {
+        q: "What did the lake shore look like?",
+        banPortrait: true,
+        expectImage: /tahoe|shore|emerald|warm-springs/,
+        label: "lake look-like → Tahoe image, not portrait",
+      },
+      {
+        q: "Tell me about your timber claim.",
+        expectImage: /tahoe|timber|nevada/,
+        banPortrait: true,
+        label: "timber claim → Tahoe image or none",
+      },
+      {
+        q: "Tell me a fun fact about your Tahoe days.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+  {
+    slug: "august-hemme",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → illustrative portrait" },
+      {
+        q: "Show me the Danville depot.",
+        wantImagePrefix: "img-danville-",
+        banPortrait: true,
+        label: "depot request → depot image",
+      },
+      {
+        q: "What did the valley look like before the railroad?",
+        banPortrait: true,
+        label: "valley look-like → no portrait",
+      },
+      {
+        q: "Tell me about the first train trip in 1891.",
+        expectImage: /depot|danville|railroad|train|museum/,
+        banPortrait: true,
+        label: "first train → railroad image or none",
+      },
+      {
+        q: "Tell me about raising the $15,000 for the right of way.",
+        expectImage: /depot|railroad|train|museum/,
+        banPortrait: true,
+        label: "right of way → railroad image or none",
+      },
+      {
+        q: "Tell me about your ranch and walnuts.",
+        banImages: /fandango/,
+        banPortrait: true,
+        label: "walnut ranch → no Californio fandango",
+      },
+      {
+        q: "Tell me a fun fact about the valley.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+  {
+    slug: "anita-loos",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      { q: "Show me your portrait.", wantPortrait: true, label: "portrait request" },
+      {
+        q: "What did Hollywood look like in your day?",
+        banPortrait: true,
+        expectImage: /hollywood|blvd|streetcar|triangle|studio|sign/,
+        label: "Hollywood look-like → place image, not portrait",
+      },
+      {
+        q: "Tell me about Douglas Fairbanks.",
+        expectImage: /fairbanks/,
+        banPortrait: true,
+        label: "Fairbanks → Fairbanks image or none",
+      },
+      {
+        q: "Tell me about Intolerance and Griffith.",
+        expectImage: /intolerance|griffith|babylon|triangle/,
+        banPortrait: true,
+        label: "Griffith/Intolerance → film image or none",
+      },
+      {
+        q: "Tell me a fun fact from silent Hollywood.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+];
+
+async function ask(slug, q) {
+  const res = await fetch(`${BASE}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ persona: slug, messages: [{ role: "user", content: q }] }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function checkCase(persona, spec, r) {
+  const problems = [];
+  const ids = (r.images ?? []).map((i) => i.id);
+  const a = r.answer ?? "";
+
+  if ((r.images ?? []).length > 1) problems.push(`more than one image: [${ids.join(", ")}]`);
+
+  if (spec.wantPortrait && !ids.includes(persona.portrait))
+    problems.push(`expected portrait, got [${ids.join(", ") || "none"}]`);
+
+  if (spec.wantPortrait === false && ids.includes(persona.portrait))
+    problems.push(`unexpected portrait on identity`);
+
+  if (spec.banPortrait && ids.includes(persona.portrait))
+    problems.push(`portrait must not appear, got ${persona.portrait}`);
+
+  if (spec.wantImagePrefix && ids.length && !ids.some((id) => id.startsWith(spec.wantImagePrefix)))
+    problems.push(`expected prefix ${spec.wantImagePrefix}, got [${ids.join(", ")}]`);
+
+  if (spec.expectImage && ids.length && !ids.some((id) => spec.expectImage.test(id)))
+    problems.push(`expected matching image pattern ${spec.expectImage}, got [${ids.join(", ")}]`);
+
+  if (spec.banUnrelatedImages && ids.some((id) => id !== persona.portrait))
+    problems.push(`unrelated image on fun fact: [${ids.join(", ")}]`);
+
+  if (spec.banImages && ids.some((id) => spec.banImages.test(id)))
+    problems.push(`banned image used: [${ids.join(", ")}]`);
+
+  for (const imgId of ids) {
+    if (!imageAnswerAligned(a, imgId))
+      problems.push(`image ${imgId} not aligned with answer subject`);
+  }
+
+  return problems;
+}
+
+async function runPersona(persona) {
+  try {
+    await fetch(`${BASE}/api/chat?persona=${persona.slug}`);
+  } catch {}
+
+  const rows = [];
+  for (const spec of persona.cases) {
+    const started = Date.now();
+    try {
+      const r = await ask(persona.slug, spec.q);
+      const problems = checkCase(persona, spec, r);
+      rows.push({
+        slug: persona.slug,
+        label: spec.label,
+        q: spec.q,
+        ok: problems.length === 0,
+        problems,
+        images: (r.images ?? []).map((i) => i.id),
+        ms: Date.now() - started,
+        preview: (r.answer || "").slice(0, 120).replace(/\n/g, " "),
+      });
+    } catch (err) {
+      rows.push({
+        slug: persona.slug,
+        label: spec.label,
+        q: spec.q,
+        ok: false,
+        problems: [err.message],
+        ms: Date.now() - started,
+      });
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return rows;
+}
+
+async function main() {
+  console.log(`\nECHOES image-matching UAT → ${BASE}\n`);
+  const targets = TESTS.filter((p) => !ONLY || p.slug === ONLY);
+  const allRows = [];
+
+  for (const persona of targets) {
+    const rows = await runPersona(persona);
+    allRows.push(...rows);
+    const pass = rows.filter((r) => r.ok).length;
+    const fail = rows.filter((r) => !r.ok).length;
+    console.log(`════ ${persona.slug} — ${pass}/${rows.length} image checks passed ════`);
+    for (const row of rows) {
+      const mark = row.ok ? "✓" : "✗";
+      const imgs = row.images?.length ? `[${row.images.join(", ")}]` : "[none]";
+      console.log(`  ${mark} ${row.label}`);
+      console.log(`      Q: ${row.q}`);
+      console.log(`      Images: ${imgs}`);
+      if (!row.ok) {
+        for (const p of row.problems) console.log(`      → ${p}`);
+        if (row.preview) console.log(`      ans: ${row.preview}…`);
+      }
+    }
+    console.log("");
+  }
+
+  const pass = allRows.filter((r) => r.ok).length;
+  const fail = allRows.filter((r) => !r.ok).length;
+  const { writeFileSync } = await import("fs");
+  writeFileSync(
+    "uat-image-results.json",
+    JSON.stringify({ base: BASE, at: new Date().toISOString(), rows: allRows }, null, 2)
+  );
+
+  console.log(`──────────────────────────────────────────`);
+  console.log(`TOTAL: ${pass} passed, ${fail} failed (${allRows.length} image checks)`);
+  console.log(`Details written to uat-image-results.json\n`);
+  process.exit(fail > 0 ? 1 : 0);
+}
+
+main();
+
+================================================================================
+FILE: scripts/test-image-matching-static.ts
+================================================================================
+/**
+ * Offline image-matching scenarios — no API/LLM required.
+ * Run: npx tsx scripts/test-image-matching-static.ts
+ */
+
+import { listPersonaPacks } from "@/personas";
+import { withPersona } from "@/lib/activePersona";
+import {
+  answerSupportsImage,
+  detectStoryThemes,
+  imageMatchesQueryIntent,
+  imageStoryMatchScore,
+  pickBestStoryImage,
+} from "@/lib/imageMatching";
+
+interface Scenario {
+  slug: string;
+  label: string;
+  userQuery: string;
+  storyHay: string;
+  wantId?: string;
+  banIds?: RegExp;
+  minScore?: number;
+}
+
+const SCENARIOS: Scenario[] = [
+  // Myron — Buchon vs Chumash 'ap (original bug)
+  {
+    slug: "myron-angel",
+    label: "Buchon residence answer → house, not Chumash 'ap",
+    userQuery: "Where did you live?",
+    storyHay:
+      "I resided at 714 Buchon Street in San Luis Obispo — my house on Buchon, a modest Victorian home downtown.",
+    wantId: "img-buchon-house",
+    banIds: /chumash-ap|choris/,
+  },
+  {
+    slug: "myron-angel",
+    label: "Chumash 'ap village → replica ok",
+    userQuery: "What did a Chumash village look like?",
+    storyHay:
+      "The Chumash lived in 'ap houses — tule and willow dwellings at the village, not Victorian homes.",
+    wantId: "img-chumash-ap-replica",
+  },
+  // August Hemme — ranch vs fandango
+  {
+    slug: "august-hemme",
+    label: "Walnut ranch → not Californio fandango",
+    userQuery: "Tell me about your ranch.",
+    storyHay:
+      "My Hemme Ranch grew to three thousand acres — walnuts, grain, hay, and cattle on the San Ramon Valley floor.",
+    banIds: /fandango/,
+  },
+  {
+    slug: "august-hemme",
+    label: "Danville depot → depot image",
+    userQuery: "Show me the Danville depot.",
+    storyHay:
+      "The Southern Pacific combination depot on Railroad Avenue opened in 1891 when our branch line arrived.",
+    wantId: "img-danville-depot",
+  },
+  // Anita Loos — Hollywood place vs Griffith portrait
+  {
+    slug: "anita-loos",
+    label: "Hollywood look-like → boulevard, not Griffith",
+    userQuery: "What did Hollywood look like in your day?",
+    storyHay:
+      "Hollywood Boulevard in the 1920s — streetcars, storefronts, the colony inventing itself.",
+    wantId: "img-hollywood-blvd-1922",
+    banIds: /griffith-portrait|fairbanks/,
+  },
+  {
+    slug: "anita-loos",
+    label: "Fairbanks → Fairbanks image",
+    userQuery: "Tell me about Douglas Fairbanks.",
+    storyHay:
+      "Douglas Fairbanks — the athletic star whose swashbuckling adventure pictures Emerson and I helped shape.",
+    wantId: "img-fairbanks-1922",
+  },
+  // Alonzo Horton — Davis vs Horton House
+  {
+    slug: "alonzo-horton",
+    label: "Davis house → Gaslamp, not Horton House",
+    userQuery: "Tell me about William Heath Davis.",
+    storyHay:
+      "William Heath Davis built an earlier New Town attempt; his Davis house survives in the Gaslamp quarter.",
+    wantId: "img-gaslamp-william-heath-davis",
+    banIds: /horton-house/,
+  },
+  {
+    slug: "alonzo-horton",
+    label: "Horton House hotel → Horton House",
+    userQuery: "Tell me about the Horton House hotel.",
+    storyHay:
+      "The Horton House was my New Town hotel on the bay — Parker & Parker photographed the landmark.",
+    wantId: "img-horton-house",
+  },
+  // Bancroft — Spring Valley ranch
+  {
+    slug: "hubert-howe-bancroft",
+    label: "Spring Valley country home → ranch image",
+    userQuery: "Where did you retire?",
+    storyHay:
+      "I retired to my Spring Valley country home — the Bancroft Ranch adobe in San Diego County.",
+    wantId: "img-bancroft-ranch",
+  },
+  // Mark Twain — Washoe vs Tahoe city
+  {
+    slug: "mark-twain",
+    label: "Washoe people → Washoe image, not Tahoe City",
+    userQuery: "Who were the Washoe?",
+    storyHay:
+      "The Washoe people knew Lake Tahoe long before settlers — indigenous first peoples of the basin.",
+    wantId: "img-washoe-1866",
+    banIds: /tahoe-city|tallac/,
+  },
+  // Jesse Mason — Chumash vs mission on native query
+  {
+    slug: "jesse-d-mason",
+    label: "Chumash rock art → painted cave",
+    userQuery: "Tell me about Chumash pictographs.",
+    storyHay:
+      "Chumash pictographs and rock art in painted caves — spiritual symbols along the Santa Barbara coast.",
+    wantId: "img-chumash-painted-cave",
+    banIds: /^img-mission-/,
+  },
+];
+
+async function runScenario(s: Scenario): Promise<{
+  label: string;
+  slug: string;
+  ok: boolean;
+  problems: string[];
+  picked: string | null;
+  error?: string;
+}> {
+  const pack = listPersonaPacks().find((p) => p.public.slug === s.slug);
+  if (!pack) {
+    return {
+      label: s.label,
+      slug: s.slug,
+      ok: false,
+      problems: [],
+      picked: null,
+      error: `unknown slug ${s.slug}`,
+    };
+  }
+
+  return withPersona(pack, async () => {
+    const themes = detectStoryThemes(s.storyHay);
+    const candidates = pack.images;
+    const best = pickBestStoryImage(candidates, s.storyHay, themes, s.minScore ?? 3);
+    const problems: string[] = [];
+
+    if (s.wantId && best?.id !== s.wantId) {
+      problems.push(`expected ${s.wantId}, got ${best?.id ?? "none"}`);
+    }
+    if (s.banIds && best && s.banIds.test(best.id)) {
+      problems.push(`banned image matched: ${best.id}`);
+    }
+    if (best && !answerSupportsImage(best, s.storyHay)) {
+      problems.push(`answerSupportsImage failed for ${best.id}`);
+    }
+    if (best && !imageMatchesQueryIntent(s.userQuery, best)) {
+      problems.push(`imageMatchesQueryIntent failed for ${best.id}`);
+    }
+
+    // Also check no banned image scores high
+    if (s.banIds) {
+      for (const img of candidates) {
+        if (!s.banIds.test(img.id)) continue;
+        const score = imageStoryMatchScore(img, s.storyHay);
+        if (
+          score >= 4 &&
+          answerSupportsImage(img, s.storyHay) &&
+          imageMatchesQueryIntent(s.userQuery, img)
+        ) {
+          problems.push(`banned ${img.id} would match (score ${score})`);
+        }
+      }
+    }
+
+    return {
+      label: s.label,
+      slug: s.slug,
+      ok: problems.length === 0,
+      problems,
+      picked: best?.id ?? null,
+    };
+  });
+}
+
+async function main() {
+  console.log("\nECHOES static image-matching scenarios\n");
+  let pass = 0;
+  let fail = 0;
+
+  for (const s of SCENARIOS) {
+    const r = await runScenario(s);
+    const mark = r.ok ? "✓" : "✗";
+    console.log(`${mark} [${r.slug}] ${r.label}`);
+    if (!r.ok) {
+      for (const p of r.problems) console.log(`    → ${p}`);
+      if (r.error) console.log(`    → ${r.error}`);
+      console.log(`    picked: ${r.picked ?? "?"}`);
+      fail++;
+    } else {
+      console.log(`    picked: ${r.picked ?? "none"}`);
+      pass++;
+    }
+  }
+
+  console.log(`\nTOTAL: ${pass} passed, ${fail} failed\n`);
+  process.exit(fail > 0 ? 1 : 0);
+}
+
+main();
+
+================================================================================
+DATA LAYER: Persona curated SourceChunk arrays (one per persona)
+================================================================================
+FILE: personas/alonzo-horton/sources.ts (     328 lines)
+FILE: personas/anita-loos/sources.ts (     537 lines)
+FILE: personas/august-hemme/sources.ts (     345 lines)
+FILE: personas/hubert-howe-bancroft/sources.ts (     335 lines)
+FILE: personas/jesse-d-mason/sources.ts (     389 lines)
+FILE: personas/mark-twain/sources.ts (     302 lines)
+FILE: personas/myron-angel/sources.ts (     354 lines)
+
+Book/OCR chunks loaded by lib/rag.ts loadBookSources() from paths in pack.bookChunksPaths:
+personas/alonzo-horton/book-chunks-davis-sixty-years.json
+personas/alonzo-horton/book-chunks-smythe-san-diego.json
+personas/anita-loos/book-chunks-breaking-into-the-movies.json
+personas/anita-loos/book-chunks-gentlemen-prefer-blondes.json
+personas/august-hemme/book-chunks-bay-of-san-francisco-1892.json
+personas/august-hemme/book-chunks-contra-costa-1882.json
+personas/hubert-howe-bancroft/book-chunks-history-california-v5.json
+personas/hubert-howe-bancroft/book-chunks-literary-industries.json
+personas/jesse-d-mason/book-chunks-mason-amador-1881.json
+personas/jesse-d-mason/book-chunks-mason-santa-barbara-1883.json
+personas/mark-twain/book-chunks-el-dorado-1883.json
+personas/mark-twain/book-chunks-roughing-it.json
+personas/myron-angel/book-chunks-angel-1883.json
+personas/myron-angel/book-chunks-bancroft-california-v5.json
+personas/myron-angel/book-chunks.json

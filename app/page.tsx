@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { portraitCropStyle } from "@/lib/portraitCrop";
 import { listPersonaPublic } from "@/personas";
 
 export default function Home() {
@@ -32,6 +33,7 @@ export default function Home() {
                   src={p.portraitImage}
                   alt=""
                   referrerPolicy="no-referrer"
+                  style={portraitCropStyle(p.slug, "landing")}
                 />
               ) : (
                 <span className="persona-card-glyph">{p.portrait}</span>
