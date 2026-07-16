@@ -79,14 +79,29 @@ const TTS_INSTRUCTIONS =
   process.env.OPENAI_TTS_INSTRUCTIONS ||
   "Voice of a very old man, about 78 years old, in the year 1905 — a frail but dignified 19th-century gentleman. The timbre is aged and weathered: low, dry, and noticeably gravelly, with a slight tremor and quaver of old age, and a touch of breathiness as if speaking takes a little effort. He sounds like an elderly grandfather, not a middle-aged man. Keep the tone warm and kindly, with the cadence of an old storyteller, at a natural, easy conversational pace.";
 
+export type TtsOptions = {
+  voice?: string;
+  instructions?: string;
+  speed?: number;
+};
+
+function resolveTts(options?: TtsOptions) {
+  return {
+    voice: options?.voice || TTS_VOICE,
+    instructions: options?.instructions || TTS_INSTRUCTIONS,
+    speed: options?.speed ?? TTS_SPEED,
+  };
+}
+
 /** Synthesize speech for a persona's reply. Returns MP3 bytes. */
-export async function tts(text: string): Promise<Buffer> {
+export async function tts(text: string, options?: TtsOptions): Promise<Buffer> {
+  const { voice, instructions, speed } = resolveTts(options);
   const res = await getClient().audio.speech.create({
     model: TTS_MODEL,
-    voice: TTS_VOICE,
+    voice: voice as "onyx",
     input: text.slice(0, 4000),
-    instructions: TTS_INSTRUCTIONS,
-    speed: TTS_SPEED,
+    instructions,
+    speed,
   });
   const arrayBuffer = await res.arrayBuffer();
   return Buffer.from(arrayBuffer);
@@ -97,14 +112,16 @@ export async function tts(text: string): Promise<Buffer> {
  * so the client can begin playback before the whole file is ready.
  */
 export async function ttsStream(
-  text: string
+  text: string,
+  options?: TtsOptions
 ): Promise<ReadableStream<Uint8Array>> {
+  const { voice, instructions, speed } = resolveTts(options);
   const res = await getClient().audio.speech.create({
     model: TTS_MODEL,
-    voice: TTS_VOICE,
+    voice: voice as "onyx",
     input: text.slice(0, 4000),
-    instructions: TTS_INSTRUCTIONS,
-    speed: TTS_SPEED,
+    instructions,
+    speed,
     response_format: "mp3",
   });
   const body = res.body as ReadableStream<Uint8Array> | null;

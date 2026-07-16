@@ -13,9 +13,12 @@
     "fetch-images": "node scripts/fetch-images.mjs",
     "verify-images": "node scripts/verify-images.mjs",
     "smoke-test": "node scripts/smoke-test-myron.mjs",
-    "prebuild": "node scripts/verify-images.mjs"
+    "prebuild": "node scripts/verify-images.mjs",
+    "outreach:drafts": "node scripts/gmail-drafts/create-drafts.mjs",
+    "outreach:drafts:dry": "node scripts/gmail-drafts/create-drafts.mjs --dry-run --priority A --limit 5"
   },
   "dependencies": {
+    "googleapis": "^148.0.0",
     "next": "^15.3.0",
     "openai": "^4.77.0",
     "react": "^19.0.0",

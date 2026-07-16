@@ -46,4 +46,16 @@ export interface PersonaPack {
   speakerLabel?: string;
   /** Portrait image id for identity questions. Default: "img-portrait". */
   portraitImageId?: string;
+  /**
+   * Optional OpenAI TTS overrides. When omitted, the default elderly-gentleman
+   * voice in lib/llm.ts is used (most California Speaks figures).
+   */
+  tts?: {
+    /** OpenAI voice id, e.g. "onyx", "nova", "coral", "shimmer". */
+    voice: string;
+    /** Delivery style for gpt-4o-mini-tts `instructions`. */
+    instructions: string;
+    /** Playback speed (default from OPENAI_TTS_SPEED / 1.12). */
+    speed?: number;
+  };
 }

@@ -13,6 +13,11 @@ node_modules/
 .env.local
 .env*.local
 
+# Gmail outreach OAuth (never commit)
+outreach/.gmail-secrets/
+**/credentials.json
+**/token.json
+
 # generated / local-only
 .cache/
 data/raw/

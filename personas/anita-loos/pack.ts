@@ -43,4 +43,10 @@ export const loosPack: PersonaPack = {
   temporalYear: 1926,
   speakerLabel: "You (Anita)",
   portraitImageId: "img-portrait",
+  tts: {
+    voice: "coral",
+    speed: 1.05,
+    instructions:
+      "Voice of Anita Loos in 1926: a witty American woman in her thirties, Hollywood screenwriter and satirist. Feminine, clear, and urbane — light mid-Atlantic polish without sounding British. Warm, dry humor and quick intelligence; not breathy baby-talk, not Lorelei Lee from Gentlemen Prefer Blondes, and not an elderly man. Conversational pace, natural and lively.",
+  },
 };

@@ -1,95 +1,117 @@
 # ECHOES
 
-## Talk with San Luis Obispo's history.
+## Local history, made conversational.
 
-**ECHOES** is an interactive way for your visitors to have a real conversation with a
-figure from local history. The first is **Myron Angel (1827–1911)**, pioneer journalist,
-county historian, and the father of Cal Poly. Ask him anything, and he answers in his own
-1905 voice.
+**ECHOES** lets visitors have a real conversation with figures from California history, grounded in public-domain sources, primary records, and curated claim banks. Answers are labeled by evidence. Citations are one tap away. When the record is incomplete, the figure says so.
 
-What makes ECHOES different from ordinary AI: **every word Myron says is drawn only from
-real, validated historical sources:** primary documents, his own 1883 *History of San
-Luis Obispo County*, and other public-domain records. Never the open internet. Never
-invented. It is history that is **accountable to the evidence.**
+This is not a generic chatbot. It is history that stays accountable to the evidence.
 
----
-
-### How it works
-
-- **Ask a question** in plain language, or tap a suggested one.
-- **Myron answers in character**, grounded in real sources about our county.
-- **Every answer is labeled by evidence:** Documented · Reasonable inference · Contested ·
-Not in the sources.
-- **"Show evidence"** reveals the exact citations; **"Hear this"** reads the reply aloud in
-an aged, period voice.
-- **He shows historic photographs:** the Mission, Morro Rock, old downtown, Port Harford,
-the early Polytechnic, the Chumash, the rancho era, and more.
-- **When the sources don't support an answer, he says so.** It shows its work, so it
-teaches source-checking instead of replacing it.
-
----
-
-### Try it now (live beta)
-
-**https://echoes-inky-zeta.vercel.app/**
+**Live beta:** https://echoes-inky-zeta.vercel.app/
 
 ![Scan to try ECHOES](echoes-qr-code-production.png)
 
-Open on any phone or computer — no app, no account. Print the QR code above for an exhibit or front desk.
-
-**Note:** The first question may take 30–60 seconds while Myron's source library loads — like opening a heavy archive volume. After that, replies are much faster.
-
-Suggested questions: *Who were you?* · *Tell me about the mission.* · *What did San Luis
-Obispo look like in your time?*
+Open on any phone or computer. No app. No account.
 
 ---
 
-### Why I'm reaching out
+### The mission
 
-I'm **Matthew Kennedy**, a **Cal Poly MSBA alumnus and six-year resident of San Luis
-Obispo.** I'm building ECHOES for two reasons: to **promote history learning** in our
-community, and to **advance responsible research into accurate, source-grounded AI.**
+For most of history, the past has reached us through books, letters, photographs, archives, classrooms, and museums. AI can make that past more interactive, but only if the experience stays honest.
 
-You are the keepers of this history. Your knowledge and feedback are exactly what will make
-Myron, and the figures who follow him, accurate and worthy of trust. I want to build this
-*with* the people who safeguard San Luis Obispo's story.
+ECHOES exists to:
 
----
+1. Make local and regional history more accessible and engaging for the public  
+2. Keep AI answers tied to real sources, with visible evidence  
+3. Partner with the people who already safeguard history, not replace them  
+4. Grow from a web prototype into physical exhibit experiences communities can host  
 
-### Your role as a beta partner
-
-Try ECHOES, and tell me what's accurate, what's missing, and what would make it valuable to
-you. Optionally, suggest sources, photographs, or future figures from your collection. In
-return:
-
-- **Free use of the chatbot during the beta** (no licensing fee).
-- You cover **only the small AI usage cost**: a fraction of a cent per conversation
-(typically just a few dollars a month), billed **at cost** with an optional **monthly
-cap** so there are never surprises.
-- A **direct hand in shaping the product** before it goes fully live.
-
-**No software to install. No IT work.** Access is a simple web link or a QR code you can
-place beside an exhibit.
+Long term, the destination is a **living portrait**: you walk up, the figure comes to life, and the conversation sends visitors back into the cases, maps, and photographs, not away from them. The app is the prototype. The exhibit is the goal.
 
 ---
 
-### Where this is going
+### What visitors experience today
 
-Today, Myron is a text-and-voice conversation. Next, with your help, ECHOES becomes a
-**living portrait:** a "moving picture frame" of Myron you speak with face to face, like
-meeting the man himself. Beta partners help us get there, and help decide which San Luis
-Obispo stories we tell next.
+- Ask in plain language, or tap a starter question  
+- Hear answers in period voice (optional)  
+- See every reply labeled: **Documented · Reasonable inference · Contested · Not in the sources**  
+- Tap **Show evidence** for citations  
+- View matched historic images when the topic fits  
+- Get an honest “I don’t have that in the sources” instead of invented biography  
+
+**Note:** The first question for a figure may take 30–60 seconds while the source library loads. After that, replies are much faster.
 
 ---
 
-### Let's talk.
+### Who is speaking now (California Speaks)
 
-I'd be glad to show you a **15-minute live demo**, in person or by phone, whenever suits you.
+Seven figures, roughly north to south:
 
+1. **Mark Twain** — Lake Tahoe & the Nevada Territory  
+2. **Hubert Howe Bancroft** — San Francisco  
+3. **August Hemme** — San Ramon Valley  
+4. **Myron Angel** — San Luis Obispo County  
+5. **Jesse D. Mason** — Santa Barbara County  
+6. **Anita Loos** — Los Angeles / Hollywood  
+7. **Alonzo Horton** — San Diego  
 
-                                                                                                          
-| **Matthew Kennedy · ECHOES** Cal Poly MSBA alumnus · Six-year SLO resident 📧 matthewkennedy22@gmail.com · 📞 (925) 285-2090 |
+Each figure is built from curated sources and ingested public-domain primary texts for that place and era.
 
+---
 
-*ECHOES is an AI simulation grounded in public-domain historical sources. Answers are
-labeled by evidence and may contain errors, which is exactly why your expertise matters.*
+### Who I’m looking to partner with
+
+I’m actively seeking partners who care about accurate public history:
+
+- Museums and history centers  
+- Local historical societies  
+- Archives and special collections  
+- Libraries (local history rooms)  
+- Schools, universities, and education programs  
+- Exhibit designers and interpretive planners  
+- Mission sites, heritage sites, and cultural centers  
+
+If you steward a place’s story, I want to build with you.
+
+---
+
+### What partnership can look like
+
+**Free beta access for your organization and visitors**  
+A simple web link or QR code. No software install. No IT project.
+
+**Your expertise shapes the product**  
+Tell me what’s accurate, what’s missing, what’s confusing, and what would actually serve your visitors.
+
+**Optional: a custom figure for your town, region, or exhibit**  
+During the beta I can build a source-grounded conversational figure for a person or place you care about, using public-domain materials you recommend (and materials we research together). Ideal for:
+
+- A signature local historian, founder, or chronicler  
+- A figure tied to a current gallery or walking tour  
+- A “pilot” character for a classroom or temporary exhibit  
+
+Custom work is offered as a **collaborative pilot** while ECHOES is in beta: free to try, shaped by your feedback, with clear sourcing standards.
+
+**Where this can go next**  
+QR codes at desks and galleries → classroom use → living-portrait / physical exhibit pilots.
+
+---
+
+### About me
+
+I’m **Matthew Kennedy**, Cal Poly MSBA alumnus and longtime San Luis Obispo resident. I built ECHOES to promote history learning and to practice responsible, source-grounded AI for education and public interpretation.
+
+I’m not asking for a big commitment on first contact. I’m asking for a look, honest feedback, and a conversation if it feels useful.
+
+---
+
+### Let’s talk
+
+I’d be glad to give a **15-minute live demo** (in person, phone, or video) and discuss whether a custom figure or exhibit pilot is a fit for your organization.
+
+| **Matthew Kennedy · ECHOES** |
+| --- |
+| Cal Poly MSBA alumnus · San Luis Obispo, California |
+| matthewkennedy22@gmail.com · (925) 285-2090 |
+| Live beta: https://echoes-inky-zeta.vercel.app/ |
+
+*ECHOES is an AI simulation grounded in public-domain and curated historical sources. Answers are labeled by evidence and can be mistaken. That is exactly why partner expertise matters.*

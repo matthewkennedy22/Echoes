@@ -1,4 +1,5 @@
 import { ttsStream } from "@/lib/llm";
+import { ttsOptionsForPersona } from "@/lib/personaTts";
 import { verifyTtsPlayToken } from "@/lib/ttsToken";
 
 export const runtime = "nodejs";
@@ -13,8 +14,8 @@ export async function GET(req: Request) {
     });
   }
 
-  const text = verifyTtsPlayToken(token);
-  if (!text) {
+  const verified = verifyTtsPlayToken(token);
+  if (!verified) {
     return new Response(JSON.stringify({ error: "Invalid or expired token." }), {
       status: 403,
       headers: { "Content-Type": "application/json" },
@@ -22,7 +23,10 @@ export async function GET(req: Request) {
   }
 
   try {
-    const stream = await ttsStream(text);
+    const stream = await ttsStream(
+      verified.text,
+      ttsOptionsForPersona(verified.persona)
+    );
     return new Response(stream, {
       headers: {
         "Content-Type": "audio/mpeg",

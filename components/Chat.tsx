@@ -333,7 +333,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, format: "url" }),
+          body: JSON.stringify({ text, format: "url", persona: persona.slug }),
           signal: controller.signal,
         });
         if (!res.ok) {
@@ -358,7 +358,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, persona: persona.slug }),
         signal: controller.signal,
       });
       if (!res.ok) {

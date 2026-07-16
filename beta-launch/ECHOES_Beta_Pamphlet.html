@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>ECHOES Beta Pamphlet</title>
+  <title>ECHOES Partner Pamphlet</title>
   <style>
-    @page { margin: 0.55in; size: letter; }
+    @page { margin: 0.5in; size: letter; }
     * { box-sizing: border-box; }
     body {
       font-family: Georgia, "Times New Roman", serif;
@@ -12,45 +12,51 @@
       background: #faf6ee;
       max-width: 7.2in;
       margin: 0 auto;
-      padding: 0.35in;
-      line-height: 1.38;
+      padding: 0.3in;
+      line-height: 1.36;
       font-size: 9pt;
     }
     h1 {
-      font-size: 20pt;
+      font-size: 18pt;
       letter-spacing: 0.08em;
-      margin: 0 0 0.1em;
+      margin: 0 0 0.08em;
       text-align: center;
       border-bottom: 2px double #8a5a2b;
-      padding-bottom: 0.2em;
+      padding-bottom: 0.15em;
     }
     h2 {
-      font-size: 10.5pt;
+      font-size: 10pt;
       text-align: center;
       font-weight: normal;
       font-style: italic;
-      margin: 0 0 0.65em;
+      margin: 0 0 0.5em;
       color: #5c4a32;
     }
     h3 {
-      font-size: 8.5pt;
+      font-size: 8pt;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: #8a5a2b;
-      margin: 0.75em 0 0.3em;
+      margin: 0.65em 0 0.25em;
       border-top: 1px solid #d8c9ad;
-      padding-top: 0.4em;
+      padding-top: 0.35em;
     }
-    p { margin: 0.35em 0; }
-    ul { margin: 0.2em 0 0.35em 1.1em; padding: 0; }
-    li { margin: 0.15em 0; }
+    p { margin: 0.28em 0; }
+    ul { margin: 0.15em 0 0.3em 1.05em; padding: 0; }
+    li { margin: 0.12em 0; }
+    .cols {
+      display: flex;
+      gap: 0.75em;
+      align-items: flex-start;
+    }
+    .cols > div { flex: 1; }
     .try-box {
       background: #fff;
       border: 1px solid #d8c9ad;
       border-radius: 6px;
-      padding: 0.55em 0.75em;
+      padding: 0.45em 0.65em;
       text-align: center;
-      margin: 0.45em 0;
+      margin: 0.35em 0;
     }
     .try-box a {
       color: #8a5a2b;
@@ -58,33 +64,40 @@
       font-size: 8.5pt;
       word-break: break-all;
     }
-    .try-box p { font-size: 8pt; margin: 0.25em 0 0; }
+    .try-box p { font-size: 7.8pt; margin: 0.2em 0 0; }
     .qr {
-      width: 100px;
-      height: 100px;
-      margin: 0.35em auto 0.25em;
+      width: 88px;
+      height: 88px;
+      margin: 0.3em auto 0.2em;
       display: block;
     }
+    .figures {
+      columns: 2;
+      column-gap: 1em;
+      font-size: 8.2pt;
+      margin: 0.2em 0 0.3em;
+    }
+    .figures li { break-inside: avoid; }
     .contact {
       background: #fff;
       border: 1px solid #d8c9ad;
       border-radius: 6px;
-      padding: 0.5em 0.75em;
-      margin-top: 0.6em;
-      font-size: 8.5pt;
+      padding: 0.45em 0.65em;
+      margin-top: 0.45em;
+      font-size: 8.2pt;
     }
     .fine {
-      font-size: 7.5pt;
+      font-size: 7.2pt;
       color: #5c4a32;
       font-style: italic;
-      margin-top: 0.5em;
-      line-height: 1.35;
+      margin-top: 0.4em;
+      line-height: 1.3;
     }
+    strong.hl { color: #6b4420; }
     @media print {
       body {
         background: #fff;
         padding: 0;
-        font-size: 9pt;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
@@ -96,56 +109,70 @@
 <body>
 
   <h1>ECHOES</h1>
-  <h2>Talk with San Luis Obispo's history.</h2>
+  <h2>Local history, made conversational.</h2>
 
-  <p><strong>ECHOES</strong> is an interactive way for your visitors to have a real conversation with a figure from local history. The first is <strong>Myron Angel (1827–1911)</strong>, pioneer journalist, county historian, and the father of Cal Poly. Ask him anything, and he answers in his own 1905 voice.</p>
+  <p><strong>ECHOES</strong> lets visitors converse with figures from California history, grounded in public-domain sources, primary records, and curated claim banks. Answers are labeled by evidence. Citations are one tap away. When the record is incomplete, the figure says so.</p>
+  <p>Not a generic chatbot. History that stays accountable to the evidence.</p>
 
-  <p>What makes ECHOES different from ordinary AI: <strong>every word Myron says is drawn only from real, validated historical sources</strong> — primary documents, his own 1883 <em>History of San Luis Obispo County</em>, and other public-domain records. Never the open internet. Never invented. It is history that is <strong>accountable to the evidence.</strong></p>
-
-  <h3>How it works</h3>
-  <ul>
-    <li><strong>Ask a question</strong> in plain language, or tap a suggested one.</li>
-    <li><strong>Myron answers in character</strong>, grounded in real sources about our county.</li>
-    <li><strong>Every answer is labeled by evidence:</strong> Documented · Reasonable inference · Contested · Not in the sources.</li>
-    <li><strong>"Show evidence"</strong> reveals the exact citations; <strong>"Hear this"</strong> reads the reply aloud in an aged, period voice.</li>
-    <li><strong>He shows historic photographs:</strong> the Mission, Morro Rock, old downtown, Port Harford, the early Polytechnic, the Chumash, the rancho era, and more.</li>
-    <li><strong>When the sources don't support an answer, he says so.</strong> It shows its work, so it teaches source-checking instead of replacing it.</li>
-  </ul>
-
-  <h3>Try it now (live beta)</h3>
+  <h3>Try the live beta</h3>
   <div class="try-box">
     <a href="https://echoes-inky-zeta.vercel.app/">https://echoes-inky-zeta.vercel.app/</a>
     <img class="qr" src="echoes-qr-code-production.png" alt="QR code — scan to try ECHOES" />
-    <p>Open on any phone or computer — no app, no account.</p>
-    <p><strong>Note:</strong> The first question may take 30–60 seconds while Myron's source library loads — like opening a heavy archive volume. After that, replies are much faster.</p>
-    <p><em>Suggested questions:</em> Who were you? · Tell me about the mission. · What did San Luis Obispo look like in your time?</p>
+    <p>Any phone or computer. No app. No account.</p>
+    <p><strong>Note:</strong> First question for a figure may take 30–60 seconds while sources load; then it is much faster.</p>
   </div>
 
-  <h3>Why I'm reaching out</h3>
-  <p>I'm <strong>Matthew Kennedy</strong>, a <strong>Cal Poly MSBA alumnus and six-year resident of San Luis Obispo.</strong> I'm building ECHOES to <strong>promote history learning</strong> in our community and to <strong>advance responsible research into accurate, source-grounded AI.</strong> Your knowledge and feedback are exactly what will make Myron accurate and worthy of trust.</p>
-
-  <h3>Your role as a beta partner</h3>
-  <p>Try ECHOES and tell me what's accurate, what's missing, and what would make it valuable to you. In return:</p>
+  <h3>Mission</h3>
   <ul>
-    <li><strong>Free use during the beta</strong> (no licensing fee).</li>
-    <li><strong>Small at-cost AI usage only</strong> — typically a few dollars a month, with an optional monthly cap.</li>
-    <li><strong>A direct hand in shaping the product</strong> before it goes fully live.</li>
+    <li>Make local and regional history more accessible and engaging</li>
+    <li>Keep AI answers tied to real sources, with visible evidence</li>
+    <li>Partner with museums, archives, educators, and societies, not replace them</li>
+    <li>Grow from web prototype to <strong>living portrait</strong> exhibit experiences communities can host</li>
   </ul>
-  <p><strong>No software to install. No IT work.</strong> Just a web link or QR code beside an exhibit.</p>
+  <p>Long term: walk up to a portrait that comes to life. Conversation that sends visitors back into cases, maps, and photographs.</p>
 
-  <h3>Where this is going</h3>
-  <p>Today, Myron is a text-and-voice conversation. Next, with your help, ECHOES becomes a <strong>living portrait</strong> — a moving picture frame of Myron you speak with face to face. Beta partners help decide which San Luis Obispo stories we tell next.</p>
+  <h3>How it works</h3>
+  <ul>
+    <li>Ask in plain language or tap a starter</li>
+    <li>Evidence labels: Documented · Reasonable inference · Contested · Not in the sources</li>
+    <li><strong>Show evidence</strong> for citations · <strong>Hear this</strong> for period voice</li>
+    <li>Historic images when the topic fits</li>
+    <li>Honest refusal when sources do not support an answer</li>
+  </ul>
 
-  <h3>Let's talk</h3>
-  <p>I'd be glad to show you a <strong>15-minute live demo</strong>, in person or by phone, whenever suits you.</p>
+  <h3>Who is speaking (California Speaks)</h3>
+  <ol class="figures">
+    <li><strong>Mark Twain</strong> — Lake Tahoe &amp; Nevada Territory</li>
+    <li><strong>Hubert Howe Bancroft</strong> — San Francisco</li>
+    <li><strong>August Hemme</strong> — San Ramon Valley</li>
+    <li><strong>Myron Angel</strong> — San Luis Obispo County</li>
+    <li><strong>Jesse D. Mason</strong> — Santa Barbara County</li>
+    <li><strong>Anita Loos</strong> — Los Angeles / Hollywood</li>
+    <li><strong>Alonzo Horton</strong> — San Diego</li>
+  </ol>
+
+  <h3>Who I want to partner with</h3>
+  <p>Museums · history centers · historical societies · archives · libraries · schools &amp; universities · exhibit designers · mission and heritage sites · cultural centers</p>
+
+  <h3>Partnership (beta)</h3>
+  <ul>
+    <li><strong class="hl">Free beta access</strong> for your organization and visitors (link or QR). No install. No IT project.</li>
+    <li><strong class="hl">Your expertise shapes the product</strong>: accuracy, gaps, visitor fit.</li>
+    <li><strong class="hl">Custom figure for your town, region, or exhibit</strong>: collaborative pilot during beta. Source-grounded conversation for a person or place you care about, using public-domain materials you recommend and materials we research together.</li>
+    <li>Path forward: desk QR → classroom use → living-portrait / physical exhibit pilots.</li>
+  </ul>
+
+  <h3>About me · Let’s talk</h3>
+  <p>I’m <strong>Matthew Kennedy</strong>, Cal Poly MSBA alumnus and San Luis Obispo resident. I built ECHOES to promote history learning and practice responsible, source-grounded AI for education and public interpretation. Happy to give a <strong>15-minute live demo</strong> and discuss a custom figure or exhibit pilot.</p>
 
   <div class="contact">
     <strong>Matthew Kennedy · ECHOES</strong><br>
-    Cal Poly MSBA alumnus · Six-year SLO resident<br>
-    matthewkennedy22@gmail.com · (925) 285-2090
+    Cal Poly MSBA alumnus · San Luis Obispo, California<br>
+    matthewkennedy22@gmail.com · (925) 285-2090<br>
+    Live beta: <a href="https://echoes-inky-zeta.vercel.app/">https://echoes-inky-zeta.vercel.app/</a>
   </div>
 
-  <p class="fine">ECHOES is an AI simulation grounded in public-domain historical sources. Answers are labeled by evidence and may contain errors, which is exactly why your expertise matters.</p>
+  <p class="fine">ECHOES is an AI simulation grounded in public-domain and curated historical sources. Answers are labeled by evidence and can be mistaken. That is exactly why partner expertise matters.</p>
 
 </body>
 </html>
