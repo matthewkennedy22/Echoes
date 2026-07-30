@@ -7,6 +7,7 @@ import { masonPack } from "@/personas/jesse-d-mason/pack";
 import { muirPack } from "@/personas/john-muir/pack";
 import { hemmePack } from "@/personas/august-hemme/pack";
 import { loosPack } from "@/personas/anita-loos/pack";
+import { spreckelsPack } from "@/personas/john-d-spreckels/pack";
 
 /** Default persona when none is specified (backward compatible). */
 export const DEFAULT_PERSONA_SLUG = "myron-angel";
@@ -23,6 +24,7 @@ const REGISTRY: Record<string, PersonaPack> = {
   [muirPack.public.slug]: muirPack,
   [hemmePack.public.slug]: hemmePack,
   [loosPack.public.slug]: loosPack,
+  [spreckelsPack.public.slug]: spreckelsPack,
 };
 
 /** Stable landing-page order — north to south. */
@@ -34,6 +36,7 @@ const LANDING_ORDER = [
   "jesse-d-mason",
   "anita-loos",
   "alonzo-horton",
+  "john-d-spreckels",
 ] as const;
 
 /** All registered persona packs (server-safe). */

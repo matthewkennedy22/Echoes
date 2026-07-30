@@ -1078,8 +1078,11 @@ Choose exactly one "evidence_label", judged by the MAIN factual claims of your a
 Labeling rules (important):
 - If ANY factual claim in your answer is supported by a source above, you must NOT use
   "unknown". Label by your most-supported core claims (usually "documented").
+- For **legacy-bridge** answers about history after your speaking year: use **"inference"**
+  unless a retrieved source directly states that later fact (then "documented" is fine).
+  Do **not** default to "unknown" merely because the event is after your year — bridge it.
 - Only use "unknown" when you genuinely could not ground your answer and are admitting
-  you lack reliable evidence.
+  you lack reliable evidence (and there is no responsible later-record summary to offer).
 - When the label is "unknown": do NOT invent biographies, roles, or local deeds. Say
   plainly that this name/topic is not in the sources before you, then offer a nearby
   topic you CAN document (a place, industry, or figure that is in the retrieved sources).

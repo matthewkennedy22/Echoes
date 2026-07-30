@@ -650,6 +650,166 @@ export const CASES_BY_SLUG: Record<string, SemanticEvalCase[]> = {
     },
   ],
 
+  "john-d-spreckels": [
+    {
+      id: "identity-baseline",
+      query: "Who are you?",
+      expectAnyOf: ["bio-birth", "identity-coronado-forefather", "bio-lurline-1887"],
+      answerMustMatch: [/spreckels|coronado/i],
+    },
+    {
+      id: "birth-charleston",
+      query: "Where were you born?",
+      expectAnyOf: ["bio-birth"],
+      answerMustMatch: [/charleston|1853|south carolina/i],
+    },
+    {
+      id: "father-claus-sugar",
+      query: "Was your father the Sugar King Claus Spreckels?",
+      expectAnyOf: ["bio-father-sugar", "bio-birth", "bio-hawaii"],
+      answerMustMatch: [/claus|sugar|father/i],
+    },
+    {
+      id: "lurline-1887",
+      query: "How did your yacht Lurline bring you to San Diego in 1887?",
+      expectAnyOf: ["bio-lurline-1887", "bio-wharf-coal"],
+      answerMustMatch: [/lurline|1887|yacht|bay|harbor/i],
+    },
+    {
+      id: "hotel-del-ownership",
+      query: "How did you come to own the Hotel del Coronado?",
+      expectAnyOf: [
+        "del-spreckels-advances",
+        "del-third-partner-1889",
+        "del-full-ownership",
+        "del-founders-boom",
+      ],
+      answerMustMatch: [/hotel|del|coronado|babcock|company|own/i],
+    },
+    {
+      id: "babcock-story-credit",
+      query: "Didn't Babcock and Story found the Hotel del Coronado before you owned it?",
+      expectAnyOf: ["del-babcock-story-credit", "del-founders-boom", "bio-babcock-hinde"],
+      answerMustMatch: [/babcock|story|found|hotel|del/i],
+    },
+    {
+      id: "tent-city-1900",
+      query: "When did you establish Tent City on Coronado?",
+      expectAnyOf: [
+        "tent-city-1900",
+        "tent-city-not-original-construction",
+        "tent-city-amenities",
+        "tent-city-smythe",
+      ],
+      answerMustMatch: [/1900|tent city|strand|tent/i],
+    },
+    {
+      id: "tent-city-not-1888-build",
+      query: "Didn't you create Tent City because the Hotel del Coronado was still under construction?",
+      expectAnyOf: [
+        "tent-city-not-original-construction",
+        "del-opened-1888",
+        "tent-city-1900",
+      ],
+      answerMustMatch: [/1888|1900|twelve|already|opened|not|renovat|after/i],
+    },
+    {
+      id: "monte-carlo-bridge",
+      query: "Tell me about the SS Monte Carlo gambling ship and your part in those criminal activities",
+      expectAnyOf: ["later-monte-carlo-ship"],
+      answerMustMatch: [/after|record|later|1930|no (?:part|involvement)|never|not.*involvement|beyond/i],
+    },
+    {
+      id: "tent-city-amenities",
+      query: "What was Tent City like for summer visitors — tents, water, electricity?",
+      expectAnyOf: ["tent-city-amenities", "tent-city-1900", "tent-city-season"],
+      answerMustMatch: [/tent|electric|water|cottage|summer|strand|furnish/i],
+    },
+    {
+      id: "ferry-coronado",
+      query: "Tell me about the ferry between San Diego and Coronado.",
+      expectAnyOf: ["ferry-system", "coronado-belt-line"],
+      answerMustMatch: [/ferry|bay|coronado|san diego/i],
+    },
+    {
+      id: "glorietta-mansion",
+      query: "Tell me about your mansion on Glorietta Bay.",
+      expectAnyOf: ["mansion-glorietta", "mansion-earthquake-proof", "bio-move-after-quake"],
+      answerMustMatch: [/glorietta|mansion|albright|1908|home|coronado/i],
+    },
+    {
+      id: "quake-move-1906",
+      query: "Did the 1906 San Francisco earthquake make you move to Coronado?",
+      expectAnyOf: ["bio-move-after-quake", "mansion-earthquake-proof", "mansion-glorietta"],
+      answerMustMatch: [/1906|earthquake|coronado|san francisco|move|home/i],
+    },
+    {
+      id: "north-island-lands",
+      query: "Did you own North Island as part of the Coronado Beach Company?",
+      expectAnyOf: ["coronado-lands-islands", "del-full-ownership"],
+      answerMustMatch: [/north island|coronado|beach company|land/i],
+    },
+    {
+      id: "electric-railway-1892",
+      query: "When did you convert San Diego's streetcars from horse to electricity?",
+      expectAnyOf: ["electric-railway-1892", "rebuild-streetcars-1901"],
+      answerMustMatch: [/1892|electric|street|horse|railway|trolley/i],
+    },
+    {
+      id: "water-morena",
+      query: "How did your Mountain Water Company bring water to San Diego?",
+      expectAnyOf: ["water-company"],
+      answerMustMatch: [/water|morena|otay|1906|pipeline|reservoir/i],
+    },
+    {
+      id: "oceanic-hawaii",
+      query: "Tell me about your Oceanic steamship line to Hawaii and Australia.",
+      expectAnyOf: ["bio-oceanic", "bio-hawaii", "presidents-companies"],
+      answerMustMatch: [/oceanic|steam|hawaii|honolulu|australia|ship/i],
+    },
+    {
+      id: "marriage-lillie",
+      query: "Who did you marry, and when?",
+      expectAnyOf: ["bio-marriage"],
+      answerMustMatch: [/siebein|lillie|lily|1877|hoboken|married|wife/i],
+    },
+    {
+      id: "theatre-1912",
+      query: "Tell me about the Spreckels Theatre building downtown.",
+      expectAnyOf: ["theatre-building-1912", "union-building-1908"],
+      answerMustMatch: [/theatre|theater|building|d street|office/i],
+    },
+    {
+      id: "forefather-nickname",
+      query: "Why do Coronado people call you Coronado's Forefather?",
+      expectAnyOf: ["identity-coronado-forefather", "tent-city-1900", "del-full-ownership"],
+      answerMustMatch: [/forefather|coronado|tent|hotel|del|ferry/i],
+    },
+    {
+      id: "sda-underway-not-done",
+      query: "Have you finished the San Diego and Arizona Railroad yet?",
+      expectAnyOf: ["sda-underway"],
+      answerMustMatch: [/arizona|railroad|under|building|construct|not yet|1912|progress/i],
+    },
+    {
+      id: "contested-adams",
+      query: "Should I trust Austin Adams's flattering biography of you?",
+      expectAnyOf: ["contested-adams-flattery"],
+      answerMustMatch: [/adams|flatter|caution|error|booster|authorized|careful/i],
+    },
+    {
+      id: "speaking-year-1912",
+      query: "What year is it for you right now in Coronado?",
+      expectAnyOf: [
+        "bio-speaking-year-1912",
+        "tent-city-season",
+        "mansion-glorietta",
+        "theatre-building-1912",
+      ],
+      answerMustMatch: [/1912/i],
+    },
+  ],
+
   "hubert-howe-bancroft": [
     {
       id: "identity-baseline",

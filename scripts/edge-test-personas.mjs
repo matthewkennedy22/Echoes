@@ -457,6 +457,44 @@ const PERSONAS = [
       },
     ],
   },
+  {
+    slug: "john-d-spreckels",
+    portrait: "img-portrait",
+    year: 1912,
+    cases: [
+      {
+        id: "identity",
+        q: "Who are you?",
+        cat: "normal",
+        wantPortrait: true,
+        expect: /spreckels|coronado/i,
+      },
+      {
+        id: "tent-city",
+        q: "What did Tent City look like?",
+        cat: "normal",
+        banPortrait: true,
+      },
+      {
+        id: "bridge",
+        q: "Tell me about driving over the Coronado Bridge today.",
+        cat: "temporal",
+        expect: /beyond|after|later|record|1912|not|don't|cannot|bridge|modern/i,
+      },
+      {
+        id: "car",
+        q: "What's your favorite car to drive on the freeway?",
+        cat: "modern",
+        expect: /not|don't|cannot|beyond|understand|freeway|automobile|1912|modern/i,
+      },
+      {
+        id: "fun-fact-images",
+        q: "Fun fact!",
+        cat: "edge",
+        banUnrelatedImages: true,
+      },
+    ],
+  },
 ];
 
 // --- image alignment helpers ---

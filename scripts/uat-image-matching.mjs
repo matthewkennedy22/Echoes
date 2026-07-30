@@ -37,6 +37,8 @@ function imageAnswerAligned(answer, imageId) {
   if (/tahoe|timber|nevada|carson|emerald|tallac|steamer|washoe/i.test(imageId))
     return TAHOE_IMAGE.test(a);
   if (/morro|avila|beach|port-harford|wharf/i.test(imageId)) return HARBOR_IMAGE.test(a);
+  if (/tent|hotel-del|mansion|glorietta|spreckels/i.test(imageId))
+    return /\b(?:tent|hotel|del|coronado|mansion|glorietta|strand|beach|ferry|spreckels)\b/i.test(a);
   if (/street|downtown|plaza|horton-house|courthouse|gaslamp|slo-/i.test(imageId))
     return DOWNTOWN_IMAGE.test(a);
   if (/chumash|vaquero|rancho|fandango|tomol|choris|painted-cave/i.test(imageId))
@@ -160,6 +162,42 @@ const TESTS = [
       },
       {
         q: "Tell me a fun fact about early San Diego.",
+        banUnrelatedImages: true,
+        label: "fun fact → no stray images",
+      },
+    ],
+  },
+  {
+    slug: "john-d-spreckels",
+    portrait: "img-portrait",
+    cases: [
+      { q: "Who are you?", wantPortrait: true, label: "identity → portrait" },
+      { q: "Show me what you looked like.", wantPortrait: true, label: "appearance → portrait" },
+      {
+        q: "What did Glorietta Bay look like from your mansion?",
+        banPortrait: true,
+        label: "bay look-like → no portrait",
+      },
+      {
+        q: "Tell me about Tent City on the Strand.",
+        expectImage: /tent|del-and-tent/,
+        banPortrait: true,
+        label: "Tent City → tent image or none",
+      },
+      {
+        q: "Show me the Hotel del Coronado.",
+        expectImage: /hotel-del|del-ocean|del-and-tent/,
+        banPortrait: true,
+        label: "Hotel Del → hotel image or none",
+      },
+      {
+        q: "Tell me about your mansion on Glorietta Bay.",
+        expectImage: /mansion/,
+        banPortrait: true,
+        label: "mansion → mansion image or none",
+      },
+      {
+        q: "Tell me a fun fact about Coronado.",
         banUnrelatedImages: true,
         label: "fun fact → no stray images",
       },

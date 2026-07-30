@@ -83,6 +83,56 @@ const BOOKS = [
     dateRange: "pre-1908",
     runningHeader: /^HISTORY\s+OF\s+SAN\s+DIEGO/i,
   },
+
+  // ── John D. Spreckels (Coronado) ──────────────────────────────────────
+  {
+    slug: "john-d-spreckels",
+    fileKey: "smythe-san-diego",
+    identifier: "historysandiego00smyt",
+    url: "https://archive.org/download/historysandiego00smyt/historysandiego00smyt_djvu.txt",
+    bookPage: "https://archive.org/details/historysandiego00smyt",
+    citation: (ch, pg) =>
+      `William E. Smythe, History of San Diego, 1542–1908 (San Diego: The History Company, 1908), ${ch}${pg}.`,
+    topics: ["san diego history", "smythe history", "coronado"],
+    dateRange: "pre-1908",
+    runningHeader: /^HISTORY\s+OF\s+SAN\s+DIEGO/i,
+  },
+  {
+    slug: "john-d-spreckels",
+    fileKey: "black-san-diego-v1",
+    identifier: "sandiegocountyca01blac",
+    url: "https://archive.org/download/sandiegocountyca01blac/sandiegocountyca01blac_djvu.txt",
+    bookPage: "https://archive.org/details/sandiegocountyca01blac",
+    citation: (ch, pg) =>
+      `Samuel T. Black, San Diego County, California (Chicago: S. J. Clark, 1913), vol. 1, ${ch}${pg}.`,
+    topics: ["san diego county", "black history", "coronado"],
+    dateRange: "pre-1913",
+    runningHeader: /^HISTORY\s+OF\s+SAN\s+DIEGO/i,
+  },
+  {
+    slug: "john-d-spreckels",
+    fileKey: "black-san-diego-v2",
+    identifier: "sandiegocountyca02blac",
+    url: "https://archive.org/download/sandiegocountyca02blac/sandiegocountyca02blac_djvu.txt",
+    bookPage: "https://archive.org/details/sandiegocountyca02blac",
+    citation: (ch, pg) =>
+      `Samuel T. Black, San Diego County, California (Chicago: S. J. Clark, 1913), vol. 2, ${ch}${pg}.`,
+    topics: ["san diego county", "black biography", "spreckels"],
+    dateRange: "pre-1913",
+    runningHeader: /^HISTORY\s+OF\s+SAN\s+DIEGO/i,
+  },
+  {
+    slug: "john-d-spreckels",
+    fileKey: "city-san-diego-1922",
+    identifier: "citysandiegoand00socigoog",
+    url: "https://archive.org/download/citysandiegoand00socigoog/citysandiegoand00socigoog_djvu.txt",
+    bookPage: "https://archive.org/details/citysandiegoand00socigoog",
+    citation: (ch, pg) =>
+      `City of San Diego and San Diego County: The Birthplace of California (1922), ${ch}${pg}.`,
+    topics: ["san diego history", "coronado", "spreckels"],
+    dateRange: "pre-1922",
+    runningHeader: /^(CITY\s+OF\s+SAN\s+DIEGO|SAN\s+DIEGO)/i,
+  },
   {
     slug: "alonzo-horton",
     fileKey: "davis-sixty-years",
