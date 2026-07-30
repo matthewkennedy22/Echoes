@@ -5,15 +5,11 @@ import type { SourceChunk } from "@/lib/types";
  *
  * Contested items (esp. birth year 1888 vs 1893) are marked explicitly.
  * Post-1926 career peaks are persona-notes for temporal guardrails, not firsthand.
+ *
+ * Grounding citations prefer primary books / LOC / museum pages — not Wikipedia.
+ * (Wikipedia article maps remain for image search only, in wikipediaTopics.ts.)
  */
 
-const WIKI = "https://en.wikipedia.org/wiki/Anita_Loos";
-const WIKI_BLONDES = "https://en.wikipedia.org/wiki/Gentlemen_Prefer_Blondes_(novel)";
-const WIKI_GRIFFITH = "https://en.wikipedia.org/wiki/D._W._Griffith";
-const WIKI_INTOLERANCE = "https://en.wikipedia.org/wiki/Intolerance_(film)";
-const WIKI_FAIRBANKS = "https://en.wikipedia.org/wiki/Douglas_Fairbanks";
-const WIKI_TRIANGLE = "https://en.wikipedia.org/wiki/Triangle_Film_Corporation";
-const WIKI_HOLLYWOOD = "https://en.wikipedia.org/wiki/Hollywood,_Los_Angeles";
 const GUT_BREAKING = "https://www.gutenberg.org/ebooks/56570";
 const GUT_BLONDES = "https://www.gutenberg.org/ebooks/66829";
 const NYPL =
@@ -28,13 +24,13 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "name", "pronunciation", "who are you", "yourself", "identity"],
     dateRange: "career-long",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos (quoting Loos on pronunciation).",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
     id: "bio-birth-contested",
-    text: "Anita Loos was born April 26 in Sisson, California (now Mount Shasta). Her birth year is contested: many film histories and Wikipedia give 1888; Library of Congress and other authorities often print 1893. Loos herself was famously vague about her age (she joked that her birth certificate burned in the San Francisco fire). Do not invent a single definitive year.",
+    text: "Anita Loos was born April 26 in Sisson, California (now Mount Shasta). Her birth year is contested: many film histories give 1888; Library of Congress and other authorities often print 1893. Loos herself was famously vague about her age (she joked that her birth certificate burned in the San Francisco fire). Do not invent a single definitive year.",
     topics: [
       "biography",
       "birth",
@@ -49,9 +45,8 @@ export const loosSources: SourceChunk[] = [
     ],
     dateRange: "April 26, 1888 or 1893 (contested)",
     sourceType: "biographical",
-    citation:
-      "Wikipedia: Anita Loos (1888); Library of Congress Name Authority File (often 1893); NYT interview anecdote on age vagueness.",
-    url: WIKI,
+    citation: "Library of Congress Name Authority File (often 1893); NYT interview anecdote on age vagueness.",
+    url: LOC_NAF,
     reliability: "high",
   },
   {
@@ -60,8 +55,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "family", "father", "mother", "gladys", "who are you"],
     dateRange: "1890s-1900s",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -70,7 +65,7 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "san francisco", "childhood", "dramatic review", "california"],
     dateRange: "1892 onward",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos; NYPL 'Cast of Thousands' feature on Loos.",
+    citation: "NYPL 'Cast of Thousands' feature on Loos.",
     url: NYPL,
     reliability: "high",
   },
@@ -80,8 +75,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "child actress", "stage", "san francisco", "who are you"],
     dateRange: "1897-1900s",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -90,8 +85,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "san diego", "theater", "ink well", "california", "who are you"],
     dateRange: "1903 onward",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -109,8 +104,8 @@ export const loosSources: SourceChunk[] = [
     ],
     dateRange: "1911-1912",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -119,8 +114,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "scenarios", "photoplays", "prolific", "breaking into", "who are you"],
     dateRange: "1912-1915",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -129,8 +124,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "marriage", "pallma", "hollywood", "mother"],
     dateRange: "1915",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -148,8 +143,8 @@ export const loosSources: SourceChunk[] = [
     ],
     dateRange: "1915",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos; Triangle Film Corporation context.",
-    url: WIKI,
+    citation: "Triangle Film Corporation context.; John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -158,8 +153,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "john emerson", "marriage", "1919", "who are you"],
     dateRange: "1919",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos; wedding coverage in Moving Picture World (June 1919).",
-    url: WIKI,
+    citation: "wedding coverage in Moving Picture World (June 1919).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -168,8 +163,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "vanity fair", "new york", "crowninshield", "wit"],
     dateRange: "1916 onward",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -178,8 +173,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "1926", "temporal", "who are you", "yourself"],
     dateRange: "1926",
     sourceType: "persona-note",
-    citation: "ECHOES temporal guardrail (speaking year 1926); Wikipedia career timeline.",
-    url: WIKI,
+    citation: "ECHOES temporal guardrail (speaking year 1926)",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -188,20 +183,18 @@ export const loosSources: SourceChunk[] = [
     topics: ["biography", "legacy", "1981"],
     dateRange: "1981",
     sourceType: "persona-note",
-    citation: "Wikipedia: Anita Loos; ECHOES temporal guardrail.",
-    url: WIKI,
+    citation: "Library of Congress Name Authority File (Loos, Anita); ECHOES temporal guardrail (speaking year 1926).",
+    url: LOC_NAF,
     reliability: "high",
   },
-
-  // ---------------- Griffith / Triangle / Intolerance ----------------
   {
     id: "film-griffith-staff",
     text: "At Triangle, many of Loos's scripts for Griffith went unproduced; he sometimes found the laughs were all in the lines with no way to get them onto the silent screen — but he encouraged her because reading them amused him. Her first screen credit included an adaptation of Macbeth with billing after Shakespeare.",
     topics: ["griffith", "triangle", "scenarios", "macbeth", "silent film", "laughs"],
     dateRange: "1915-1916",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -218,8 +211,8 @@ export const loosSources: SourceChunk[] = [
     ],
     dateRange: "1916",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos; Intolerance (film).",
-    url: WIKI_INTOLERANCE,
+    citation: "Loos/Emerson, Breaking Into the Movies (1921); Gentlemen Prefer Blondes (1925); Library of Congress Name Authority File; NYPL Loos features.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -228,8 +221,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["intolerance", "griffith", "babylon", "sets", "hollywood", "silent film"],
     dateRange: "1916",
     sourceType: "reference",
-    citation: "Wikipedia: Intolerance (film); Intolerance Babylon set.",
-    url: WIKI_INTOLERANCE,
+    citation: "Intolerance Babylon set.; John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -238,8 +231,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["triangle", "studio", "culver city", "hollywood", "ince", "sennett"],
     dateRange: "1915-1917",
     sourceType: "reference",
-    citation: "Wikipedia: Triangle Film Corporation.",
-    url: WIKI_TRIANGLE,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -248,8 +241,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["griffith", "director", "biography", "hollywood"],
     dateRange: "1910s",
     sourceType: "reference",
-    citation: "Wikipedia: D. W. Griffith; Anita Loos.",
-    url: WIKI_GRIFFITH,
+    citation: "Loos/Emerson, Breaking Into the Movies (1921); Gentlemen Prefer Blondes (1925); Library of Congress Name Authority File; NYPL Loos features.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
 
@@ -267,8 +260,8 @@ export const loosSources: SourceChunk[] = [
     ],
     dateRange: "1916-1918",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos; Douglas Fairbanks.",
-    url: WIKI_FAIRBANKS,
+    citation: "Loos/Emerson, Breaking Into the Movies (1921); Gentlemen Prefer Blondes (1925); Library of Congress Name Authority File; NYPL Loos features.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -277,8 +270,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["fairbanks", "subtitles", "intertitles", "wit", "picture in the papers", "titles"],
     dateRange: "1916",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos (quoting Loos on the Count subtitle).",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -287,8 +280,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["fairbanks", "famous players", "emerson", "photoplay", "soubrette of satire", "salary"],
     dateRange: "1916-1918",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -297,8 +290,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["emerson", "collaboration", "credit", "john emerson", "contested"],
     dateRange: "1910s-1920s",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos (later autobiographical judgments).",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "medium",
   },
   {
@@ -325,8 +318,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["talmadge", "constance talmadge", "schenck", "new york", "paris"],
     dateRange: "1919-1920",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -335,8 +328,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["marion davies", "hearst", "getting mary married", "emerson"],
     dateRange: "1919",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -345,8 +338,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["theater", "whole town's talking", "broadway", "1923", "emerson"],
     dateRange: "1923",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
 
@@ -364,8 +357,8 @@ export const loosSources: SourceChunk[] = [
     ],
     dateRange: "1925",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos; Gentlemen Prefer Blondes (novel).",
-    url: WIKI_BLONDES,
+    citation: "Gentlemen Prefer Blondes (novel).; John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -374,8 +367,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["gentlemen prefer blondes", "harper's bazaar", "bestseller", "1925", "lorelei"],
     dateRange: "1925",
     sourceType: "biographical",
-    citation: "Wikipedia: Gentlemen Prefer Blondes (novel); Anita Loos.",
-    url: WIKI_BLONDES,
+    citation: "Loos/Emerson, Breaking Into the Movies (1921); Gentlemen Prefer Blondes (1925); Library of Congress Name Authority File; NYPL Loos features.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -384,8 +377,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["lorelei lee", "character", "dorothy", "fiction", "flapper", "composites"],
     dateRange: "1925",
     sourceType: "biographical",
-    citation: "Wikipedia: Gentlemen Prefer Blondes (novel); Anita Loos.",
-    url: WIKI_BLONDES,
+    citation: "Loos/Emerson, Breaking Into the Movies (1921); Gentlemen Prefer Blondes (1925); Library of Congress Name Authority File; NYPL Loos features.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -394,8 +387,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["gentlemen prefer blondes", "stage", "broadway", "1926", "adaptation"],
     dateRange: "1926",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -414,8 +407,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["gentlemen prefer blondes", "reception", "emerson", "wharton", "faulkner"],
     dateRange: "1925",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
 
@@ -426,7 +419,7 @@ export const loosSources: SourceChunk[] = [
     topics: ["intertitles", "subtitles", "silent film", "craft", "scenarios", "photoplays"],
     dateRange: "1910s-1920s",
     sourceType: "primary",
-    citation: "Breaking Into the Movies (1921); Wikipedia: Anita Loos on Fairbanks titles.",
+    citation: "Breaking Into the Movies (1921); John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
     url: GUT_BREAKING,
     reliability: "high",
   },
@@ -436,8 +429,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["women writers", "screenwriters", "hollywood", "photoplay", "1910s"],
     dateRange: "1910s-1920s",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -446,8 +439,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["frances marion", "women writers", "new york", "screenwriters"],
     dateRange: "1918",
     sourceType: "biographical",
-    citation: "Wikipedia: Anita Loos.",
-    url: WIKI,
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
 
@@ -458,8 +451,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["hollywood", "colony", "los angeles", "studios", "1910s", "place"],
     dateRange: "1910s",
     sourceType: "reference",
-    citation: "Wikipedia: Hollywood, Los Angeles; Anita Loos career move 1915.",
-    url: WIKI_HOLLYWOOD,
+    citation: "Anita Loos career move 1915.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -468,8 +461,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["hollywood boulevard", "hollywood", "los angeles", "1920s", "street", "place"],
     dateRange: "early 1920s",
     sourceType: "reference",
-    citation: "Wikimedia Commons historic Hollywood Boulevard photographs; Wikipedia: Hollywood.",
-    url: WIKI_HOLLYWOOD,
+    citation: "Wikimedia Commons historic Hollywood Boulevard photographs; John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "medium",
   },
   {
@@ -478,8 +471,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["intolerance", "babylon", "sunset boulevard", "hollywood", "los angeles", "sets"],
     dateRange: "1916-1919",
     sourceType: "reference",
-    citation: "Wikipedia: Intolerance Babylon set.",
-    url: "https://en.wikipedia.org/wiki/Intolerance_Babylon_set",
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -489,7 +482,7 @@ export const loosSources: SourceChunk[] = [
     dateRange: "n/a",
     sourceType: "persona-note",
     citation: "ECHOES scope guardrail for Anita Loos pack.",
-    url: WIKI,
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -498,8 +491,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["hollywoodland", "hollywood sign", "1923", "los angeles", "booster"],
     dateRange: "1923",
     sourceType: "reference",
-    citation: "Wikipedia: Hollywood Sign.",
-    url: "https://en.wikipedia.org/wiki/Hollywood_Sign",
+    citation: "John Emerson & Anita Loos, Breaking Into the Movies (1921); Anita Loos, Gentlemen Prefer Blondes (1925).",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
 
@@ -511,7 +504,7 @@ export const loosSources: SourceChunk[] = [
     dateRange: "1927+",
     sourceType: "persona-note",
     citation: "ECHOES temporal guardrail (speaking year 1926).",
-    url: WIKI,
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {
@@ -520,8 +513,8 @@ export const loosSources: SourceChunk[] = [
     topics: ["mgm", "the women", "gigi", "marilyn monroe", "temporal", "1930s", "1950s"],
     dateRange: "1930s-1950s",
     sourceType: "persona-note",
-    citation: "Wikipedia: Anita Loos career after 1926; ECHOES temporal guardrail.",
-    url: WIKI,
+    citation: "ECHOES temporal guardrail.",
+    url: "https://www.gutenberg.org/ebooks/56570",
     reliability: "high",
   },
   {

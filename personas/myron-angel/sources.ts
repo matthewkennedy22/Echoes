@@ -4,7 +4,7 @@ import type { SourceChunk } from "@/lib/types";
  * SERVER-ONLY source pack for Myron Angel.
  *
  * Each chunk is a fact-checked statement with a real citation. Facts were
- * verified (June 2026) against: the Wikipedia biography, the National Register
+ * verified (June 2026) against: the National Register
  * nomination for the Myron Angel House, Cal Poly's official history, a San Luis
  * Obispo Tribune historical feature, the Online Archive of California finding
  * aid for the Myron Angel Papers, and the 1883 book itself on the Internet
@@ -17,9 +17,11 @@ import type { SourceChunk } from "@/lib/types";
  * This pack is intentionally small and verified. The full OCR text of the 1883
  * "History of San Luis Obispo County" (archive.org/details/historyofsanluis00ange)
  * can be ingested later via a chunking script to deepen coverage.
+ *
+ * Grounding citations prefer primary books / LOC / museum pages — not Wikipedia.
+ * (Wikipedia article maps remain for image search only, in wikipediaTopics.ts.)
  */
 
-const WIKI = "https://en.wikipedia.org/wiki/Myron_Angel";
 const NOEHILL = "https://noehill.com/sanluisobispo/nat1982000988.asp";
 const CALPOLY = "https://www.calpoly.edu/historical-fact/school-established";
 const TRIBUNE =
@@ -35,8 +37,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["biography", "early life", "who are you", "yourself", "identity"],
     dateRange: "1827",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Myron Angel'; National Register nomination, Myron Angel House (1982).",
-    url: WIKI,
+    citation: "National Register nomination, Myron Angel House (1982).",
+    url: NOEHILL,
     reliability: "high",
   },
   {
@@ -45,8 +47,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["biography", "west point", "education"],
     dateRange: "1846-1848",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Myron Angel'.",
-    url: WIKI,
+    citation: "Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: ARCHIVE_1883,
     reliability: "high",
   },
   {
@@ -55,7 +57,7 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["biography", "gold rush", "california"],
     dateRange: "1849-1850s",
     sourceType: "biographical",
-    citation: "National Register nomination, Myron Angel House (1982); Wikipedia, 'Myron Angel'.",
+    citation: "National Register nomination, Myron Angel House (1982)",
     url: NOEHILL,
     reliability: "high",
   },
@@ -65,8 +67,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["biography", "journalism", "newspapers", "who are you", "yourself"],
     dateRange: "1850s-1883",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Myron Angel'.",
-    url: WIKI,
+    citation: "Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: ARCHIVE_1883,
     reliability: "high",
   },
   {
@@ -105,8 +107,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["biography", "legacy"],
     dateRange: "1911",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Myron Angel'; National Register nomination (1982).",
-    url: WIKI,
+    citation: "National Register nomination (1982); San Luis Obispo Tribune historical features on Angel.",
+    url: NOEHILL,
     reliability: "high",
   },
 
@@ -209,8 +211,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["philosophy", "education", "vocational"],
     dateRange: "1890s-1905",
     sourceType: "biographical",
-    citation: "Interpretation based on Wikipedia biography and Cal Poly's account of Angel's vocational advocacy.",
-    url: WIKI,
+    citation: "Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "medium",
   },
 
@@ -243,7 +245,7 @@ export const myronAngelSources: SourceChunk[] = [
     sourceType: "reference",
     citation:
       "Chumash ethnobotany and material culture; corroborated in Jan Timbrook, Chumash Ethnobotany (2007); Chumash Indian Museum interpretive materials.",
-    url: "https://en.wikipedia.org/wiki/Chumash_Indian_Museum",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
   {
@@ -254,7 +256,7 @@ export const myronAngelSources: SourceChunk[] = [
     sourceType: "reference",
     citation:
       "Archaeological and rock-art studies of southern California; Chumash Indian Museum, Oakbrook Regional Park pictographs.",
-    url: "https://en.wikipedia.org/wiki/Chumash_Indian_Museum",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
   {
@@ -265,7 +267,7 @@ export const myronAngelSources: SourceChunk[] = [
     sourceType: "reference",
     citation:
       "Chumash material culture; Chumash Indian Museum village reconstruction at the Sap'wi site, Thousand Oaks.",
-    url: "https://en.wikipedia.org/wiki/Chumash_Indian_Museum",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
   {
@@ -284,9 +286,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["san luis obispo", "railroad", "cuesta grade", "infrastructure"],
     dateRange: "1890s",
     sourceType: "secondary",
-    citation:
-      "Central Pacific Railroad and Southern Pacific history; Wikipedia: First Transcontinental Railroad.",
-    url: "https://en.wikipedia.org/wiki/First_Transcontinental_Railroad",
+    citation: "Central Pacific Railroad and Southern Pacific history; Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "medium",
   },
   {
@@ -295,8 +296,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["san luis obispo", "ah louis", "chinese community", "railroad"],
     dateRange: "1874-1894",
     sourceType: "secondary",
-    citation: "Wikipedia: Ah Louis Store; local San Luis Obispo history.",
-    url: "https://en.wikipedia.org/wiki/Ah_Louis_Store",
+    citation: "local San Luis Obispo history.",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "medium",
   },
   {
@@ -305,8 +306,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["mission", "san luis obispo", "1772", "franciscan"],
     dateRange: "1772–1905",
     sourceType: "reference",
-    citation: "Wikipedia: Mission San Luis Obispo de Tolosa; Myron Angel, History of San Luis Obispo County (1883).",
-    url: "https://en.wikipedia.org/wiki/Mission_San_Luis_Obispo_de_Tolosa",
+    citation: "Myron Angel, History of San Luis Obispo County (1883).",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
   {
@@ -315,8 +316,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["morro rock", "morro bay", "coast", "seven sisters"],
     dateRange: "geological / pre-1905",
     sourceType: "reference",
-    citation: "Wikipedia: Morro Rock, Morro Bay, California.",
-    url: "https://en.wikipedia.org/wiki/Morro_Rock",
+    citation: "Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
   {
@@ -325,8 +326,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["cal poly", "polytechnic", "education", "1901", "1902"],
     dateRange: "1901–1905",
     sourceType: "reference",
-    citation: "Wikipedia: California Polytechnic State University.",
-    url: "https://en.wikipedia.org/wiki/California_Polytechnic_State_University",
+    citation: "Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
   {
@@ -335,8 +336,8 @@ export const myronAngelSources: SourceChunk[] = [
     topics: ["gold rush", "1849", "mining", "california history"],
     dateRange: "1848–1850s",
     sourceType: "reference",
-    citation: "Wikipedia: California Gold Rush.",
-    url: "https://en.wikipedia.org/wiki/California_Gold_Rush",
+    citation: "Myron Angel, History of San Luis Obispo County, California (1883).",
+    url: "https://archive.org/details/historyofsanluis00ange",
     reliability: "high",
   },
 

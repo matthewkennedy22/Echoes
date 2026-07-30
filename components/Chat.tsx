@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type {
   EvidenceLabel,
   ImageAsset,
@@ -76,6 +76,40 @@ function ChatFigure({ img }: { img: ImageAsset }) {
       </figcaption>
     </figure>
   );
+}
+
+/** Plain text for TTS — drop **bold** / *italic* markers. */
+function stripInlineMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1$2")
+    .replace(/_([^_\n]+)_/g, "$1");
+}
+
+/**
+ * Render light Markdown inline emphasis the model often emits:
+ * **bold**, *italic*, _italic_. Asterisks are consumed (not shown).
+ */
+function FormattedText({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  // Prefer **bold** over *italic*; also allow _italic_
+  const re = /\*\*([^*]+)\*\*|\*([^*\n]+)\*|_([^_\n]+)_/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      nodes.push(text.slice(last, match.index));
+    }
+    if (match[1] != null) {
+      nodes.push(<strong key={key++}>{match[1]}</strong>);
+    } else {
+      nodes.push(<em key={key++}>{match[2] ?? match[3]}</em>);
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return <>{nodes}</>;
 }
 
 /** Tiny silent MP3 — played synchronously on tap so iOS/Android allow later playback. */
@@ -528,7 +562,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
         },
       ]);
       if (voiceOn && data.answer && aliveRef.current) {
-        speak(data.answer, assistantIndex);
+        speak(stripInlineMarkdown(data.answer), assistantIndex);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -603,7 +637,11 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                   ))}
                 </div>
               )}
-              {m.content}
+              {m.role === "assistant" ? (
+                <FormattedText text={m.content} />
+              ) : (
+                m.content
+              )}
             </div>
 
             {m.role === "assistant" && m.evidenceLabel && (
@@ -619,7 +657,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                     } else {
                       stopAudio();
                       unlockAudio();
-                      void speak(m.content, i);
+                      void speak(stripInlineMarkdown(m.content), i);
                     }
                   }}
                 >

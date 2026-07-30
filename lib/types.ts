@@ -2,6 +2,28 @@ export type EvidenceLabel = "documented" | "inference" | "contested" | "unknown"
 
 export type Reliability = "high" | "medium" | "low";
 
+/**
+ * Optional structured tags for the semantic layer.
+ * Used at retrieve time (filter/boost) and in the grounding prompt brief.
+ * Canonical ids should match the persona's semantic vocab when present.
+ */
+export interface SourceSemantic {
+  /** Canonical person ids (e.g. "myron-angel", "ah-louis"). */
+  people?: string[];
+  /** Canonical place ids (e.g. "san-luis-obispo", "morro-bay"). */
+  places?: string[];
+  /** Canonical organization ids. */
+  organizations?: string[];
+  /** Canonical event ids (e.g. "gold-rush", "cal-poly-founding"). */
+  events?: string[];
+  /** Historical period id (e.g. "early-statehood", "progressive-era"). */
+  period?: string;
+  /** Inclusive start year when known (parsed from dateRange or set by hand). */
+  yearStart?: number;
+  /** Inclusive end year when known. */
+  yearEnd?: number;
+}
+
 /** A single retrievable, cited chunk of historical knowledge. */
 export interface SourceChunk {
   id: string;
@@ -22,6 +44,8 @@ export interface SourceChunk {
   /** Optional URL to the underlying source. */
   url?: string;
   reliability: Reliability;
+  /** Structured who/what/where/when tags (semantic layer). */
+  semantic?: SourceSemantic;
 }
 
 /** A historical image the persona can show, with provenance. */

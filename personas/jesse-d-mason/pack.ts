@@ -1,6 +1,7 @@
 import type { PersonaPack } from "@/personas/types";
 import { masonSystemPrompt } from "./persona";
 import { masonPublic } from "./public";
+import { masonSourceAnnotations, masonVocab } from "./semantic";
 import { masonSources } from "./sources";
 import { masonImages } from "./images";
 import { MASON_IMAGE_TOPICS } from "./imageTopicCatalog";
@@ -38,4 +39,6 @@ export const masonPack: PersonaPack = {
   temporalYear: 1885,
   speakerLabel: "You (Mason)",
   portraitImageId: "img-portrait",
+  semanticVocab: masonVocab,
+  semanticAnnotations: masonSourceAnnotations,
 };

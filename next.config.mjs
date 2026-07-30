@@ -5,7 +5,10 @@ const nextConfig = {
   // Vercel/Next file tracing omits personas/**/*.json and production only gets
   // the small hand-curated claim banks (~30 chunks instead of thousands).
   outputFileTracingIncludes: {
-    "/api/chat": ["./personas/**/*.json"],
+    "/api/chat": [
+      "./personas/**/*.json",
+      "./personas/**/embeddings.json",
+    ],
   },
 };
 

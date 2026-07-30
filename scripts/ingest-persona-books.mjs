@@ -3,10 +3,15 @@
 // Each persona should have 2+ primary works for retrieval depth and citation diversity.
 //
 // No API key required — downloads, cleans, and chunks text only.
-// Run:  node scripts/ingest-persona-books.mjs [slug ...]
+// Run:  npm run ingest:persona [slug ...]
+//       node scripts/ingest-persona-books.mjs [slug ...]
 //
 // Output: personas/<slug>/book-chunks-<fileKey>.json
-
+//
+// After ingesting (or editing curated sources), rebuild shipped embeddings so
+// production does not cold-start re-embed thousands of chunks:
+//   npm run embed:persona -- <slug>
+//   → personas/<slug>/embeddings.json  (commit before deploy)
 import { mkdir, readFile, writeFile, access } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
@@ -117,30 +122,78 @@ const BOOKS = [
     runningHeader: /^HISTORY\s+OF\s+AMADOR/i,
   },
 
-  // ── Mark Twain (Lake Tahoe) ───────────────────────────────────────────
+  // ── John Muir (Sierra Nevada / Yosemite) ───────────────────────────────
   {
-    slug: "mark-twain",
-    fileKey: "roughing-it",
-    identifier: "gutenberg-3177",
-    url: "https://www.gutenberg.org/cache/epub/3177/pg3177.txt",
-    bookPage: "https://www.gutenberg.org/ebooks/3177",
+    slug: "john-muir",
+    fileKey: "my-first-summer",
+    identifier: "gutenberg-32540",
+    url: "https://www.gutenberg.org/cache/epub/32540/pg32540.txt",
+    bookPage: "https://www.gutenberg.org/ebooks/32540",
     citation: (ch, pg) =>
-      `Mark Twain, Roughing It (1872), ${ch}${pg === "n.p." ? "Project Gutenberg text" : pg}.`,
-    topics: ["roughing it", "nevada territory", "lake tahoe", "mark twain"],
-    dateRange: "1861-1872",
+      `John Muir, My First Summer in the Sierra (1911), ${ch}${pg === "n.p." ? "Project Gutenberg text" : pg}.`,
+    topics: [
+      "my first summer",
+      "sierra nevada",
+      "yosemite",
+      "john muir",
+      "1869",
+    ],
+    dateRange: "1869-1911",
     gutenberg: true,
   },
   {
-    slug: "mark-twain",
-    fileKey: "el-dorado-1883",
-    identifier: "historicalsouven00siol",
-    url: "https://archive.org/download/historicalsouven00siol/historicalsouven00siol_djvu.txt",
-    bookPage: "https://archive.org/details/historicalsouven00siol",
+    slug: "john-muir",
+    fileKey: "mountains-of-california",
+    identifier: "gutenberg-10012",
+    url: "https://www.gutenberg.org/cache/epub/10012/pg10012.txt",
+    bookPage: "https://www.gutenberg.org/ebooks/10012",
     citation: (ch, pg) =>
-      `Paolo Sioli, Historical Souvenir of El Dorado County, California (Oakland, 1883), ${ch}${pg}.`,
-    topics: ["el dorado county", "sierra foothills", "gold country", "tahoe region"],
-    dateRange: "pre-1883",
-    runningHeader: /^HISTORICAL\s+SOUVENIR/i,
+      `John Muir, The Mountains of California (1894), ${ch}${pg === "n.p." ? "Project Gutenberg text" : pg}.`,
+    topics: [
+      "mountains of california",
+      "sierra nevada",
+      "glaciers",
+      "sequoia",
+      "john muir",
+    ],
+    dateRange: "1894",
+    gutenberg: true,
+  },
+  {
+    slug: "john-muir",
+    fileKey: "the-yosemite",
+    identifier: "gutenberg-7091",
+    url: "https://www.gutenberg.org/cache/epub/7091/pg7091.txt",
+    bookPage: "https://www.gutenberg.org/ebooks/7091",
+    citation: (ch, pg) =>
+      `John Muir, The Yosemite (1912), ${ch}${pg === "n.p." ? "Project Gutenberg text" : pg}.`,
+    topics: [
+      "the yosemite",
+      "yosemite valley",
+      "hetch hetchy",
+      "waterfalls",
+      "john muir",
+    ],
+    dateRange: "1912",
+    gutenberg: true,
+  },
+  {
+    slug: "john-muir",
+    fileKey: "our-national-parks",
+    identifier: "gutenberg-60929",
+    url: "https://www.gutenberg.org/cache/epub/60929/pg60929.txt",
+    bookPage: "https://www.gutenberg.org/ebooks/60929",
+    citation: (ch, pg) =>
+      `John Muir, Our National Parks (1901), ${ch}${pg === "n.p." ? "Project Gutenberg text" : pg}.`,
+    topics: [
+      "our national parks",
+      "yosemite",
+      "sequoia",
+      "conservation",
+      "john muir",
+    ],
+    dateRange: "1901",
+    gutenberg: true,
   },
 
   // ── August Hemme (Danville / San Ramon Valley) ────────────────────────

@@ -1,0 +1,418 @@
+import type {
+  PersonaSemanticVocab,
+  SourceSemanticAnnotations,
+} from "@/lib/semantic";
+
+/** Controlled vocabulary for Myron Angel (pilot semantic layer). */
+export const myronAngelVocab: PersonaSemanticVocab = {
+  people: [
+    {
+      id: "myron-angel",
+      label: "Myron Angel",
+      aliases: ["myron w. angel", "myron w angel", "m. angel"],
+    },
+    {
+      id: "ah-louis",
+      label: "Ah Louis",
+      aliases: ["ah louis", "wong on"],
+    },
+    {
+      id: "junipero-serra",
+      label: "Junípero Serra",
+      aliases: ["father serra", "junipero serra", "fray junipero"],
+    },
+    {
+      id: "benjamin-brooks",
+      label: "Benjamin Brooks",
+      aliases: ["benjamin brooks"],
+    },
+    {
+      id: "henry-t-gage",
+      label: "Henry T. Gage",
+      aliases: ["governor gage", "henry gage"],
+    },
+    {
+      id: "eugene-angel",
+      label: "Eugene Angel",
+      aliases: ["eugene angel", "brother eugene"],
+    },
+  ],
+  places: [
+    {
+      id: "san-luis-obispo",
+      label: "San Luis Obispo",
+      aliases: ["slo", "san luis", "san luis obispo county"],
+    },
+    {
+      id: "oneonta",
+      label: "Oneonta",
+      aliases: ["oneonta new york"],
+    },
+    {
+      id: "milford",
+      label: "Milford",
+      aliases: ["milford new york"],
+    },
+    {
+      id: "west-point",
+      label: "West Point",
+      aliases: ["military academy", "usma"],
+    },
+    {
+      id: "buchon-street",
+      label: "Buchon Street",
+      aliases: ["714 buchon", "buchon"],
+    },
+    {
+      id: "morro-bay",
+      label: "Morro Bay",
+      aliases: ["morro rock", "morro"],
+    },
+    {
+      id: "cuesta-grade",
+      label: "Cuesta Grade",
+      aliases: ["cuesta", "cuesta pass"],
+    },
+    {
+      id: "chico",
+      label: "Chico",
+      aliases: ["near chico"],
+    },
+    {
+      id: "placerville",
+      label: "Placerville",
+      aliases: [],
+    },
+    {
+      id: "oakland",
+      label: "Oakland",
+      aliases: [],
+    },
+  ],
+  organizations: [
+    {
+      id: "cal-poly",
+      label: "Cal Poly",
+      aliases: [
+        "california polytechnic",
+        "polytechnic school",
+        "california polytechnic school",
+        "cal poly slo",
+      ],
+    },
+    {
+      id: "san-luis-obispo-tribune",
+      label: "San Luis Obispo Tribune",
+      aliases: ["weekly tribune", "the tribune", "tribune"],
+    },
+    {
+      id: "southern-pacific",
+      label: "Southern Pacific",
+      aliases: ["southern pacific railroad", "sp railroad"],
+    },
+    {
+      id: "pacific-coast-railway",
+      label: "Pacific Coast Railway",
+      aliases: ["pacific coast railroad"],
+    },
+    {
+      id: "thompson-west",
+      label: "Thompson & West",
+      aliases: ["thompson and west"],
+    },
+    {
+      id: "society-of-california-pioneers",
+      label: "Society of California Pioneers",
+      aliases: ["california pioneers"],
+    },
+  ],
+  events: [
+    {
+      id: "gold-rush",
+      label: "Gold Rush",
+      aliases: ["california gold rush", "forty-niners", "1849"],
+    },
+    {
+      id: "railroad-development",
+      label: "Railroad development",
+      aliases: ["railroad", "railway", "rail road", "bringing the railroad"],
+    },
+    {
+      id: "newspapers-journalism",
+      label: "Newspaper journalism",
+      aliases: [
+        "newspapers",
+        "newspaper",
+        "editor",
+        "journalism",
+        "weekly tribune",
+      ],
+    },
+    {
+      id: "cal-poly-founding",
+      label: "Cal Poly founding",
+      aliases: [
+        "founding cal poly",
+        "polytechnic founding",
+        "state school",
+        "establish the school",
+      ],
+    },
+    {
+      id: "mission-founding",
+      label: "Mission founding",
+      aliases: ["mission founded", "founded the mission", "1772"],
+    },
+    {
+      id: "droughts-1860s",
+      label: "1860s droughts",
+      aliases: ["drought", "droughts", "1862", "1864"],
+    },
+    {
+      id: "secularization",
+      label: "Mission secularization",
+      aliases: ["secularization", "mexican rule"],
+    },
+  ],
+  periods: [
+    {
+      id: "spanish-mission",
+      label: "Spanish mission era",
+      yearStart: 1769,
+      yearEnd: 1821,
+      aliases: ["spanish period", "mission era", "spanish era"],
+    },
+    {
+      id: "mexican-period",
+      label: "Mexican period",
+      yearStart: 1821,
+      yearEnd: 1848,
+      aliases: ["mexican era", "rancho era"],
+    },
+    {
+      id: "early-statehood",
+      label: "Early statehood",
+      yearStart: 1850,
+      yearEnd: 1880,
+      aliases: ["early california", "after statehood"],
+    },
+    {
+      id: "progressive-era",
+      label: "Progressive era",
+      yearStart: 1890,
+      yearEnd: 1915,
+      aliases: ["progressive era", "turn of the century"],
+    },
+  ],
+};
+
+/** Hand tags for curated Myron claims (pilot). Book OCR enrichment comes later. */
+export const myronAngelSourceAnnotations: SourceSemanticAnnotations = {
+  "bio-birth": {
+    people: ["myron-angel"],
+    places: ["oneonta", "milford"],
+    yearStart: 1827,
+    yearEnd: 1827,
+    period: "early-statehood",
+  },
+  "bio-westpoint": {
+    people: ["myron-angel", "eugene-angel"],
+    places: ["west-point"],
+    yearStart: 1846,
+    yearEnd: 1848,
+  },
+  "bio-goldrush": {
+    people: ["myron-angel"],
+    places: ["chico"],
+    events: ["gold-rush"],
+    yearStart: 1849,
+    yearEnd: 1859,
+    period: "early-statehood",
+  },
+  "bio-journalism": {
+    people: ["myron-angel"],
+    places: ["placerville", "oakland", "san-luis-obispo"],
+    events: ["newspapers-journalism"],
+    yearStart: 1850,
+    yearEnd: 1883,
+  },
+  "bio-slo-arrival": {
+    people: ["myron-angel"],
+    places: ["san-luis-obispo"],
+    organizations: ["san-luis-obispo-tribune"],
+    yearStart: 1883,
+    yearEnd: 1883,
+  },
+  "bio-buchon-house": {
+    people: ["myron-angel"],
+    places: ["buchon-street", "san-luis-obispo"],
+    yearStart: 1889,
+    yearEnd: 1911,
+  },
+  "bio-tribune-trouble": {
+    people: ["myron-angel", "benjamin-brooks"],
+    places: ["san-luis-obispo"],
+    organizations: ["san-luis-obispo-tribune"],
+    yearStart: 1880,
+    yearEnd: 1899,
+  },
+  "bio-death": {
+    people: ["myron-angel"],
+    organizations: ["cal-poly"],
+    yearStart: 1911,
+    yearEnd: 1911,
+  },
+  "books-overview": {
+    people: ["myron-angel"],
+    organizations: ["thompson-west"],
+    yearStart: 1881,
+    yearEnd: 1891,
+  },
+  "books-1883-history": {
+    people: ["myron-angel"],
+    places: ["san-luis-obispo"],
+    organizations: ["thompson-west"],
+    yearStart: 1883,
+    yearEnd: 1883,
+  },
+  "books-calpoly-history": {
+    people: ["myron-angel"],
+    organizations: ["cal-poly"],
+    events: ["cal-poly-founding"],
+    yearStart: 1908,
+    yearEnd: 1908,
+  },
+  "calpoly-inspiration": {
+    people: ["myron-angel"],
+    places: ["oneonta", "san-luis-obispo"],
+    organizations: ["cal-poly"],
+    events: ["cal-poly-founding"],
+    yearStart: 1893,
+    yearEnd: 1893,
+    period: "progressive-era",
+  },
+  "calpoly-lobbying": {
+    people: ["myron-angel"],
+    places: ["san-luis-obispo"],
+    organizations: ["cal-poly"],
+    events: ["cal-poly-founding"],
+    yearStart: 1894,
+    yearEnd: 1901,
+    period: "progressive-era",
+  },
+  "calpoly-signed": {
+    people: ["myron-angel", "henry-t-gage"],
+    places: ["san-luis-obispo"],
+    organizations: ["cal-poly"],
+    events: ["cal-poly-founding"],
+    yearStart: 1901,
+    yearEnd: 1901,
+    period: "progressive-era",
+  },
+  "calpoly-opened": {
+    organizations: ["cal-poly"],
+    places: ["san-luis-obispo"],
+    events: ["cal-poly-founding"],
+    yearStart: 1903,
+    yearEnd: 1903,
+  },
+  "calpoly-father": {
+    people: ["myron-angel"],
+    organizations: ["cal-poly"],
+    events: ["cal-poly-founding"],
+    yearStart: 1901,
+    yearEnd: 1911,
+  },
+  "philosophy-nail": {
+    people: ["myron-angel"],
+    events: ["gold-rush"],
+    yearStart: 1849,
+    yearEnd: 1849,
+  },
+  "philosophy-handbrain": {
+    people: ["myron-angel"],
+    places: ["west-point"],
+    organizations: ["cal-poly"],
+    yearStart: 1890,
+    yearEnd: 1905,
+    period: "progressive-era",
+  },
+  "slo-mission": {
+    people: ["junipero-serra", "myron-angel"],
+    places: ["san-luis-obispo"],
+    events: ["mission-founding", "secularization"],
+    yearStart: 1772,
+    yearEnd: 1834,
+    period: "spanish-mission",
+  },
+  "slo-chumash": {
+    places: ["san-luis-obispo"],
+    people: ["myron-angel"],
+    period: "spanish-mission",
+  },
+  "chumash-acorn-life": {
+    places: ["san-luis-obispo"],
+    period: "spanish-mission",
+  },
+  "chumash-rock-art": {
+    places: ["san-luis-obispo"],
+  },
+  "chumash-village-life": {
+    places: ["san-luis-obispo"],
+    period: "spanish-mission",
+  },
+  "slo-droughts": {
+    places: ["san-luis-obispo"],
+    events: ["droughts-1860s"],
+    yearStart: 1862,
+    yearEnd: 1864,
+    period: "early-statehood",
+  },
+  "slo-railroad": {
+    people: ["myron-angel"],
+    places: ["san-luis-obispo", "cuesta-grade"],
+    organizations: ["southern-pacific"],
+    events: ["railroad-development"],
+    yearStart: 1890,
+    yearEnd: 1899,
+    period: "progressive-era",
+  },
+  "slo-ah-louis": {
+    people: ["ah-louis"],
+    places: ["san-luis-obispo", "cuesta-grade"],
+    organizations: ["pacific-coast-railway"],
+    events: ["railroad-development"],
+    yearStart: 1874,
+    yearEnd: 1894,
+    period: "early-statehood",
+  },
+  "slo-mission-wiki": {
+    places: ["san-luis-obispo"],
+    events: ["mission-founding"],
+    yearStart: 1772,
+    yearEnd: 1772,
+    period: "spanish-mission",
+  },
+  "slo-morro-wiki": {
+    places: ["morro-bay", "san-luis-obispo"],
+  },
+  "slo-cal-poly-wiki": {
+    places: ["san-luis-obispo"],
+    organizations: ["cal-poly"],
+    events: ["cal-poly-founding"],
+    yearStart: 1901,
+    yearEnd: 1905,
+  },
+  "slo-gold-rush-wiki": {
+    events: ["gold-rush"],
+    yearStart: 1848,
+    yearEnd: 1859,
+    period: "early-statehood",
+  },
+  "primary-1906-letter": {
+    people: ["myron-angel"],
+    organizations: ["society-of-california-pioneers"],
+    yearStart: 1906,
+    yearEnd: 1906,
+  },
+};

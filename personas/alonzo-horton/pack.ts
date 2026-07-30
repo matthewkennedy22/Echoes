@@ -1,6 +1,7 @@
 import type { PersonaPack } from "@/personas/types";
 import { hortonSystemPrompt } from "./persona";
 import { hortonPublic } from "./public";
+import { hortonSourceAnnotations, hortonVocab } from "./semantic";
 import { hortonSources } from "./sources";
 import { hortonImages } from "./images";
 import { HORTON_IMAGE_TOPICS } from "./imageTopicCatalog";
@@ -45,4 +46,6 @@ export const hortonPack: PersonaPack = {
   temporalYear: 1905,
   speakerLabel: "You (Horton)",
   portraitImageId: "img-portrait",
+  semanticVocab: hortonVocab,
+  semanticAnnotations: hortonSourceAnnotations,
 };

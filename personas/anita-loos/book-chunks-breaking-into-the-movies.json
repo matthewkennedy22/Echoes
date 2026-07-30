@@ -16,7 +16,16 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": null
+    "chapter": null,
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "john-emerson",
+        "mary-pickford"
+      ],
+      "yearStart": 1921,
+      "yearEnd": 1921
+    }
   },
   {
     "id": "breaking-into-the-movies-0002",
@@ -56,7 +65,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Introduction"
+    "chapter": "Introduction",
+    "semantic": {
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0004",
@@ -116,7 +130,15 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "What The Jobs Are"
+    "chapter": "What The Jobs Are",
+    "semantic": {
+      "people": [
+        "constance-talmadge"
+      ],
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0007",
@@ -156,7 +178,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "What The Jobs Are"
+    "chapter": "What The Jobs Are",
+    "semantic": {
+      "organizations": [
+        "actors-equity"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0009",
@@ -196,7 +223,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Acting For The Screen"
+    "chapter": "Acting For The Screen",
+    "semantic": {
+      "places": [
+        "new-york"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0011",
@@ -276,7 +308,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "CHAPTER IV"
+    "chapter": "CHAPTER IV",
+    "semantic": {
+      "people": [
+        "constance-talmadge"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0015",
@@ -336,7 +373,13 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "CHAPTER IV"
+    "chapter": "CHAPTER IV",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "john-emerson"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0018",
@@ -356,7 +399,15 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Make-Up"
+    "chapter": "Make-Up",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "john-emerson",
+        "mary-pickford",
+        "constance-talmadge"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0019",
@@ -376,7 +427,13 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Make-Up"
+    "chapter": "Make-Up",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "john-emerson"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0020",
@@ -396,7 +453,13 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Make-Up"
+    "chapter": "Make-Up",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "john-emerson"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0021",
@@ -436,7 +499,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Make-Up"
+    "chapter": "Make-Up",
+    "semantic": {
+      "people": [
+        "john-emerson"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0023",
@@ -536,7 +604,16 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Movie Manners"
+    "chapter": "Movie Manners",
+    "semantic": {
+      "places": [
+        "hollywood",
+        "paris"
+      ],
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0028",
@@ -576,7 +653,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Movie Manners"
+    "chapter": "Movie Manners",
+    "semantic": {
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0030",
@@ -596,7 +678,18 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Reading Your Part"
+    "chapter": "Reading Your Part",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "minnie-loos",
+        "john-emerson",
+        "constance-talmadge"
+      ],
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0031",
@@ -616,7 +709,18 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Reading Your Part"
+    "chapter": "Reading Your Part",
+    "semantic": {
+      "people": [
+        "minnie-loos"
+      ],
+      "places": [
+        "new-york"
+      ],
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0032",
@@ -736,7 +840,13 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Inside The Brain Of A Movie Star"
+    "chapter": "Inside The Brain Of A Movie Star",
+    "semantic": {
+      "people": [
+        "mary-pickford",
+        "constance-talmadge"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0038",
@@ -836,7 +946,13 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Scenarios"
+    "chapter": "Scenarios",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "john-emerson"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0043",
@@ -856,7 +972,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Scenarios"
+    "chapter": "Scenarios",
+    "semantic": {
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0044",
@@ -876,7 +997,11 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "How Others Have Done It"
+    "chapter": "How Others Have Done It",
+    "semantic": {
+      "yearStart": 1907,
+      "yearEnd": 1909
+    }
   },
   {
     "id": "breaking-into-the-movies-0045",
@@ -896,7 +1021,16 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "How Others Have Done It"
+    "chapter": "How Others Have Done It",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "douglas-fairbanks"
+      ],
+      "places": [
+        "hollywood"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0046",
@@ -916,7 +1050,15 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "How Others Have Done It"
+    "chapter": "How Others Have Done It",
+    "semantic": {
+      "people": [
+        "anita-loos",
+        "douglas-fairbanks",
+        "mary-pickford",
+        "constance-talmadge"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0047",
@@ -936,7 +1078,16 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "How Others Have Done It"
+    "chapter": "How Others Have Done It",
+    "semantic": {
+      "people": [
+        "dw-griffith",
+        "constance-talmadge"
+      ],
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0048",
@@ -956,7 +1107,13 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "How Others Have Done It"
+    "chapter": "How Others Have Done It",
+    "semantic": {
+      "people": [
+        "douglas-fairbanks",
+        "constance-talmadge"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0049",
@@ -976,7 +1133,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0050",
@@ -996,7 +1158,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0051",
@@ -1036,7 +1203,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "organizations": [
+        "photoplay"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0053",
@@ -1336,7 +1508,14 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "places": [
+        "new-york"
+      ],
+      "yearStart": 1920,
+      "yearEnd": 1920
+    }
   },
   {
     "id": "breaking-into-the-movies-0068",
@@ -1476,7 +1655,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "places": [
+        "new-york"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0075",
@@ -1496,7 +1680,14 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "places": [
+        "los-angeles",
+        "new-york",
+        "chicago"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0076",
@@ -1516,7 +1707,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "places": [
+        "los-angeles"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0077",
@@ -1536,7 +1732,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "places": [
+        "los-angeles"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0078",
@@ -1556,7 +1757,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "places": [
+        "los-angeles"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0079",
@@ -2416,7 +2622,12 @@
     "url": "https://www.gutenberg.org/ebooks/56570",
     "reliability": "medium",
     "page": null,
-    "chapter": "Amateur Movie Making"
+    "chapter": "Amateur Movie Making",
+    "semantic": {
+      "people": [
+        "constance-talmadge"
+      ]
+    }
   },
   {
     "id": "breaking-into-the-movies-0122",

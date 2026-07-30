@@ -1,3 +1,7 @@
+import type {
+  PersonaSemanticVocab,
+  SourceSemanticAnnotations,
+} from "@/lib/semantic";
 import type { ImageAsset, PersonaPublic, SourceChunk } from "@/lib/types";
 
 /** Topic → buzzword → image map entry for a persona's visual library. */
@@ -46,6 +50,13 @@ export interface PersonaPack {
   speakerLabel?: string;
   /** Portrait image id for identity questions. Default: "img-portrait". */
   portraitImageId?: string;
+  /**
+   * Optional semantic layer: controlled vocab + per-source entity/year tags.
+   * When omitted, retrieval falls back to cosine + lexical only.
+   */
+  semanticVocab?: PersonaSemanticVocab;
+  /** Optional hand/auto annotations keyed by curated source id. */
+  semanticAnnotations?: SourceSemanticAnnotations;
   /**
    * Optional OpenAI TTS overrides. When omitted, the default elderly-gentleman
    * voice in lib/llm.ts is used (most California Speaks figures).

@@ -1,6 +1,7 @@
 import type { PersonaPack } from "@/personas/types";
 import { hemmeSystemPrompt } from "./persona";
 import { hemmePublic } from "./public";
+import { hemmeSourceAnnotations, hemmeVocab } from "./semantic";
 import { hemmeSources } from "./sources";
 import { hemmeImages } from "./images";
 import { HEMME_IMAGE_TOPICS } from "./imageTopicCatalog";
@@ -38,4 +39,6 @@ export const hemmePack: PersonaPack = {
   temporalYear: 1900,
   speakerLabel: "You (Hemme)",
   portraitImageId: "img-portrait",
+  semanticVocab: hemmeVocab,
+  semanticAnnotations: hemmeSourceAnnotations,
 };

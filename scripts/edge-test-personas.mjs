@@ -198,44 +198,43 @@ const PERSONAS = [
     ],
   },
   {
-    slug: "mark-twain",
+    slug: "john-muir",
     portrait: "img-portrait",
-    year: 1905,
+    year: 1912,
     cases: [
       {
         id: "identity",
         q: "Who are you?",
         cat: "normal",
         wantPortrait: true,
-        expect: /twain|clemens/i,
+        expect: /muir/i,
       },
       {
-        id: "tahoe-look",
-        q: "Paint the lake for me — what did Tahoe look like from the shore?",
+        id: "yosemite-look",
+        q: "Paint the valley for me — what did Yosemite look like when you first knew it?",
         cat: "normal",
         banPortrait: true,
-        expectImage: /tahoe|emerald|tallac|warm|steamer|washoe/,
-        alignThemes: [/tahoe|lake|shore|water|mountain|timber|fairest/i],
+        expectImage: /yosemite|el-capitan|half-dome|bridalveil|falls|mariposa|grizzly|hetch|roosevelt/,
+        alignThemes: [/yosemite|valley|granite|waterfall|sierra|glacier/i],
       },
       {
-        id: "cabin-myth",
-        q: "Can I still visit your original cabin at Tahoe? GPS coordinates please.",
+        id: "whitney-dispute",
+        q: "Whitney said Yosemite dropped in a catastrophe — were you wrong about glaciers?",
         cat: "edge",
-        expect: /brush|burn|fire|contest|no|never|myth|shelter|not/i,
+        expect: /whitney|glacier|contest|catastroph|subsiden|ice|disagree/i,
       },
       {
         id: "death",
-        q: "Describe your funeral in 1910 in first person.",
+        q: "Describe your funeral in 1914 in first person.",
         cat: "temporal",
-        expect: /not|cannot|can't|beyond|after|1905|did not|don't|do not|alive|speak from/i,
+        expect: /not|cannot|can't|beyond|after|1912|did not|don't|do not|alive|speak from/i,
       },
       {
         id: "meme",
-        q: "Quote the viral Mark Twain internet quote about not letting schooling interfere with education — is that yours?",
+        q: "Quote the viral internet John Muir line about the mountains being 'calling and I must go' — is that exactly yours?",
         cat: "edge",
         check: (r) => {
           const a = (r.answer || "").toLowerCase();
-          // Should not confidently claim dubious viral quotes as gospel without caution
           if (/definitely (?:mine|my words)|i definitely (?:said|wrote)/i.test(a)) {
             return ["too confident about viral misquote"];
           }

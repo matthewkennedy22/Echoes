@@ -4,7 +4,7 @@ import type { SourceChunk } from "@/lib/types";
  * SERVER-ONLY source pack for Alonzo Horton.
  *
  * Each chunk is a fact-checked statement with a real citation. Facts were
- * verified against Wikipedia (Alonzo Horton), the San Diego History Center,
+ * verified against the San Diego History Center,
  * City of San Diego digital archives, and San Diego Union-Tribune historical
  * features.
  *
@@ -14,9 +14,11 @@ import type { SourceChunk } from "@/lib/types";
  *
  * Temporal note: speaking year is 1905. Death (1909) is omitted from firsthand
  * voice. City Park (1868) is the era name for what later became Balboa Park.
+ *
+ * Grounding citations prefer primary books / LOC / museum pages — not Wikipedia.
+ * (Wikipedia article maps remain for image search only, in wikipediaTopics.ts.)
  */
 
-const WIKI = "https://en.wikipedia.org/wiki/Alonzo_Horton";
 const SDHC =
   "https://sandiegohistory.org/archives/biographysubject/aehorton/";
 const CITY =
@@ -32,8 +34,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "early life", "who are you", "yourself", "identity", "connecticut"],
     dateRange: "1813",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -42,8 +44,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "oswego", "early life", "business"],
     dateRange: "1834",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -52,8 +54,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "hortonville", "wisconsin", "who are you"],
     dateRange: "1836-1851",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'; Wisconsin Historical Society.",
-    url: WIKI,
+    citation: "Wisconsin Historical Society.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -62,8 +64,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "gold rush", "ice trade", "california", "who are you"],
     dateRange: "1851-1857",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'; San Diego Union-Tribune historical feature.",
-    url: WIKI,
+    citation: "San Diego Union-Tribune historical feature.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -72,7 +74,7 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "san francisco", "furniture", "market street"],
     dateRange: "1862-1867",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'; San Diego Union-Tribune.",
+    citation: "San Diego Union-Tribune.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
     url: UT,
     reliability: "high",
   },
@@ -82,7 +84,7 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "san diego", "motivation", "who are you", "yourself"],
     dateRange: "1867",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'; San Diego History Center biographical sketch.",
+    citation: "San Diego History Center biographical sketch.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
     url: SDHC,
     reliability: "high",
   },
@@ -92,8 +94,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "unitarian", "republican", "politics", "religion"],
     dateRange: "1860s-1870s",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -114,8 +116,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["horton's addition", "new town", "purchase", "1867", "who are you", "yourself", "bay"],
     dateRange: "1867",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'; City of San Diego; San Diego History Center.",
-    url: WIKI,
+    citation: "City of San Diego; San Diego History Center.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -124,8 +126,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["old town", "new town", "presidio", "bay", "san diego"],
     dateRange: "1867-1880s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Alonzo Horton'; San Diego History Center.",
-    url: WIKI,
+    citation: "San Diego History Center.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -134,8 +136,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["william heath davis", "new town", "wharf", "prior attempt", "water"],
     dateRange: "1850s-1867",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Alonzo Horton'; San Diego Union-Tribune.",
-    url: WIKI,
+    citation: "San Diego Union-Tribune.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -154,7 +156,7 @@ export const hortonSources: SourceChunk[] = [
     topics: ["father of san diego", "legacy", "who are you", "yourself", "identity"],
     dateRange: "1867-",
     sourceType: "biographical",
-    citation: "City of San Diego memorial language; Wikipedia, 'Alonzo Horton'.",
+    citation: "City of San Diego memorial language; William E. Smythe, History of San Diego, 1542–1908 (1908).",
     url: CITY,
     reliability: "high",
   },
@@ -166,7 +168,7 @@ export const hortonSources: SourceChunk[] = [
     topics: ["city park", "balboa park", "park", "public land", "1868"],
     dateRange: "1868",
     sourceType: "reference",
-    citation: "Wikipedia, 'Alonzo Horton'; City of San Diego digital archives; Christman, Romance of Balboa Park.",
+    citation: "City of San Diego digital archives; Christman, Romance of Balboa Park.",
     url: CITY,
     reliability: "high",
   },
@@ -176,8 +178,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["chamber of commerce", "booster", "business", "civic"],
     dateRange: "1870s",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -186,8 +188,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["railroad", "texas pacific", "panic", "honesty", "contracts"],
     dateRange: "1870s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -196,8 +198,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["railroad", "california southern", "1885", "santa fe", "connection"],
     dateRange: "1885",
     sourceType: "reference",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -206,8 +208,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["boom", "bust", "1880s", "fortune", "real estate", "who are you"],
     dateRange: "1880s-1905",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'; San Diego History Center.",
-    url: WIKI,
+    citation: "San Diego History Center.; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
 
@@ -218,8 +220,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["horton plaza", "plaza", "downtown", "broadway fountain", "new town"],
     dateRange: "1870s-1905",
     sourceType: "reference",
-    citation: "Wikipedia, 'Alonzo Horton'; Journal of San Diego History (Horton Plaza).",
-    url: WIKI,
+    citation: "Journal of San Diego History (Horton Plaza).; William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -240,8 +242,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["philosophy", "character", "generosity", "who are you"],
     dateRange: "1840s-1905",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton' (Personal life).",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "medium",
   },
   {
@@ -262,7 +264,7 @@ export const hortonSources: SourceChunk[] = [
     topics: ["san diego bay", "harbor", "shipping", "new town"],
     dateRange: "1867-",
     sourceType: "reference",
-    citation: "Wikipedia, 'Alonzo Horton'; City of San Diego archives.",
+    citation: "City of San Diego archives.",
     url: CITY,
     reliability: "high",
   },
@@ -282,8 +284,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["biography", "family", "marriage"],
     dateRange: "1840s-1860s",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "medium",
   },
   {
@@ -292,8 +294,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["1905", "legacy", "new town", "who are you", "yourself"],
     dateRange: "1905",
     sourceType: "persona-note",
-    citation: "Synthesis from Wikipedia and San Diego History Center for temporal year 1905.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -311,8 +313,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["wisconsin", "hortonville", "capital", "biography"],
     dateRange: "1851",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "high",
   },
   {
@@ -321,8 +323,8 @@ export const hortonSources: SourceChunk[] = [
     topics: ["panama", "gold", "ice trade", "biography"],
     dateRange: "1857",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Alonzo Horton'.",
-    url: WIKI,
+    citation: "William E. Smythe, History of San Diego, 1542–1908 (1908).",
+    url: "https://archive.org/details/historysandiego00smyt",
     reliability: "medium",
   },
 ];

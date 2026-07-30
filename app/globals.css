@@ -393,6 +393,12 @@ body {
   border-bottom-left-radius: 3px;
   max-width: min(100%, 520px);
 }
+.msg.assistant .bubble strong {
+  font-weight: 700;
+}
+.msg.assistant .bubble em {
+  font-style: italic;
+}
 .msg.assistant .bubble .figures {
   margin-top: 0;
   margin-bottom: 12px;

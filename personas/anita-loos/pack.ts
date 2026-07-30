@@ -1,6 +1,7 @@
 import type { PersonaPack } from "@/personas/types";
 import { loosSystemPrompt } from "./persona";
 import { loosPublic } from "./public";
+import { loosSourceAnnotations, loosVocab } from "./semantic";
 import { loosSources } from "./sources";
 import { loosImages } from "./images";
 import { LOOS_IMAGE_TOPICS } from "./imageTopicCatalog";
@@ -43,6 +44,8 @@ export const loosPack: PersonaPack = {
   temporalYear: 1926,
   speakerLabel: "You (Anita)",
   portraitImageId: "img-portrait",
+  semanticVocab: loosVocab,
+  semanticAnnotations: loosSourceAnnotations,
   tts: {
     voice: "coral",
     speed: 1.05,

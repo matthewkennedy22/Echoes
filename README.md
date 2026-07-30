@@ -69,7 +69,8 @@ ECHOES combines a modern web application with a retrieval-augmented generation p
 - Retrieval-augmented generation
 - Embedding-based source search
 - Curated historical source library
-- Cached indexing for faster retrieval
+- **Shipped persona embeddings** (`personas/<slug>/embeddings.json`) so production does not re-embed thousands of chunks on every cold start
+- Local `.cache/` fallback for development
 - Evidence classification for response transparency
 
 **Product and deployment**
@@ -78,6 +79,15 @@ ECHOES combines a modern web application with a retrieval-augmented generation p
 - Designed for museum and education use cases
 - Partner outreach materials created for beta testing
 
+### Updating sources (ingest → embed → deploy)
+
+When you add or change a persona's books or curated claim bank:
+
+1. Ingest books (if needed): `npm run ingest:persona -- <slug>`
+2. Rebuild embeddings: `npm run embed:persona -- <slug>`
+3. Commit `personas/<slug>/book-chunks-*.json` and `personas/<slug>/embeddings.json`, then deploy
+
+Without step 2, Vercel falls back to live embedding on first chat (slow + OpenAI cost).
 ## What makes it different
 
 ECHOES is not meant to be a general-purpose chatbot. It is designed around three principles:

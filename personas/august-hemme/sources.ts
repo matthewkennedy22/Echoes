@@ -6,6 +6,9 @@ import type { SourceChunk } from "@/lib/types";
  * Verified against Museum of the San Ramon Valley, East Bay Times (Nilda Rego),
  * San Francisco Call obituary (Nov. 2, 1904 — for editors; persona speaks 1900),
  * City/museum branch-line histories.
+ *
+ * Grounding citations prefer primary books / LOC / museum pages — not Wikipedia.
+ * (Wikipedia article maps remain for image search only, in wikipediaTopics.ts.)
  */
 
 const MSRV_HEMME = "https://museumsrv.org/hemme-srbl/";
@@ -14,10 +17,6 @@ const EBT =
   "https://www.eastbaytimes.com/2013/05/26/days-gone-by-hemme-avenue-honors-a-prussian-who-bought-3000-acres-in-san-ramon-valley/";
 const SF_CALL_OBIT =
   "http://files.usgwarchives.net/ca/alameda/obits/h/hemme4009gob.txt";
-const WIKI_DANVILLE_DEPOT =
-  "https://en.wikipedia.org/wiki/Danville_station_(California)";
-const WIKI_IRON_HORSE =
-  "https://en.wikipedia.org/wiki/Iron_Horse_Regional_Trail";
 
 export const hemmeSources: SourceChunk[] = [
   // ---------------- Biography ----------------
@@ -215,7 +214,7 @@ export const hemmeSources: SourceChunk[] = [
     topics: ["danville", "depot", "growth", "downtown", "railroad", "1891"],
     dateRange: "1891-1900",
     sourceType: "secondary",
-    citation: "Museum of the San Ramon Valley, Lane Part II; Wikipedia: Danville station.",
+    citation: "Museum of the San Ramon Valley, Lane Part II",
     url: MSRV_HEMME,
     reliability: "high",
   },
@@ -225,9 +224,8 @@ export const hemmeSources: SourceChunk[] = [
     topics: ["danville depot", "southern pacific", "1891", "architecture", "hartz"],
     dateRange: "1891",
     sourceType: "reference",
-    citation:
-      "Museum of the San Ramon Valley, Southern Pacific Danville Depot history; NRHP nomination; Wikipedia: Danville station (California).",
-    url: WIKI_DANVILLE_DEPOT,
+    citation: "Museum of the San Ramon Valley, Southern Pacific Danville Depot history; NRHP nomination",
+    url: "https://archive.org/details/historyofcontrac00munr",
     reliability: "high",
   },
   {
@@ -255,8 +253,7 @@ export const hemmeSources: SourceChunk[] = [
     ],
     dateRange: "1970s-present (after Hemme)",
     sourceType: "persona-note",
-    citation:
-      "Museum of the San Ramon Valley, History of the Iron Horse Trail; Wikipedia: Iron Horse Regional Trail.",
+    citation: "Museum of the San Ramon Valley, History of the Iron Horse Trail",
     url: MSRV_TRAIL,
     reliability: "high",
   },
@@ -266,8 +263,8 @@ export const hemmeSources: SourceChunk[] = [
     topics: ["abandonment", "1978", "passenger", "1934", "persona-note"],
     dateRange: "1934-1978",
     sourceType: "persona-note",
-    citation: "Museum of the San Ramon Valley; Wikipedia: Danville station / Iron Horse Trail.",
-    url: WIKI_IRON_HORSE,
+    citation: "Museum of the San Ramon Valley",
+    url: "https://archive.org/details/historyofcontrac00munr",
     reliability: "high",
   },
 

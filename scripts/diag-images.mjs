@@ -8,7 +8,7 @@ const portraits = [
   ["horton", "Alonzo_Horton.jpg"],
   ["horton2", "HORTON,_Alonzo_Erastus_(1813-1909).jpg"],
   ["mason", "Mission_Santa_Barbara_by_Carleton_Watkins,_1876.jpg"],
-  ["twain", "Mark_Twain_1907.jpg"],
+  ["muir", "John_Muir_1912.jpg"],
   ["hemme", "Danville_Southern_Pacific_Railroad_Depot_(Danville,_CA).JPG"],
   ["myron-local", null],
 ];

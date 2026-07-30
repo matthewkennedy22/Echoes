@@ -1,6 +1,7 @@
 import type { PersonaPack } from "@/personas/types";
 import { bancroftSystemPrompt } from "./persona";
 import { bancroftPublic } from "./public";
+import { bancroftSourceAnnotations, bancroftVocab } from "./semantic";
 import { bancroftSources } from "./sources";
 import { bancroftImages } from "./images";
 import { BANCROFT_IMAGE_TOPICS } from "./imageTopicCatalog";
@@ -43,4 +44,6 @@ export const bancroftPack: PersonaPack = {
   temporalYear: 1905,
   speakerLabel: "You (Bancroft)",
   portraitImageId: "img-portrait",
+  semanticVocab: bancroftVocab,
+  semanticAnnotations: bancroftSourceAnnotations,
 };

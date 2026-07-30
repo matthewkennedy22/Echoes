@@ -2,6 +2,10 @@ import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
 import type { PersonaPack } from "@/personas/types";
 import { myronAngelSystemPrompt } from "./persona";
 import { myronAngelPublic } from "./public";
+import {
+  myronAngelSourceAnnotations,
+  myronAngelVocab,
+} from "./semantic";
 import { myronAngelSources } from "./sources";
 import { myronAngelImages } from "./images";
 import { MYRON_IMAGE_TOPICS } from "./imageTopicCatalog";
@@ -27,4 +31,6 @@ export const myronAngelPack: PersonaPack = {
   temporalYear: 1905,
   speakerLabel: "You (Myron)",
   portraitImageId: "img-portrait",
+  semanticVocab: myronAngelVocab,
+  semanticAnnotations: myronAngelSourceAnnotations,
 };

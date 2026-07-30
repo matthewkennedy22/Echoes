@@ -32,6 +32,14 @@ import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
 import { chatJSON, embed, embedMany, EMBED_DIM } from "@/lib/llm";
 import { withPersona } from "@/lib/activePersona";
 import {
+  applySemanticAnnotations,
+  detectQueryIntent,
+  formatSemanticBrief,
+  parseYearSpan,
+  semanticScoreForChunk,
+  type QuerySemanticIntent,
+} from "@/lib/semantic";
+import {
   DEFAULT_PERSONA_SLUG,
   getPersonaPack,
 } from "@/personas";
@@ -168,6 +176,14 @@ function lexicalScoreForChunk(
 }
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 
+/** On-disk shape for shipped + local embedding indexes. */
+export type EmbeddingIndexFile = {
+  hash: string;
+  dim: number;
+  count: number;
+  vectors: number[][];
+};
+
 interface PersonaIndex {
   corpus: SourceChunk[];
   curatedCount: number;
@@ -218,6 +234,16 @@ function loadBookSources(paths: string[]): SourceChunk[] {
       const raw = fs.readFileSync(resolved, "utf8");
       const data = JSON.parse(raw) as SourceChunk[];
       for (const d of data) {
+        const parsed = parseYearSpan(d.dateRange);
+        const semantic = d.semantic
+          ? {
+              ...d.semantic,
+              yearStart: d.semantic.yearStart ?? parsed.yearStart,
+              yearEnd: d.semantic.yearEnd ?? parsed.yearEnd,
+            }
+          : parsed.yearStart != null
+            ? { yearStart: parsed.yearStart, yearEnd: parsed.yearEnd }
+            : undefined;
         out.push({
           id: d.id,
           text: d.text,
@@ -227,6 +253,7 @@ function loadBookSources(paths: string[]): SourceChunk[] {
           citation: d.citation,
           url: d.url,
           reliability: d.reliability ?? "medium",
+          ...(semantic ? { semantic } : {}),
         });
       }
     } catch (err) {
@@ -239,11 +266,41 @@ function loadBookSources(paths: string[]): SourceChunk[] {
   return out;
 }
 
-function corpusHashFor(corpus: SourceChunk[]): string {
+/** Stable hash for corpus + embedding dimension (must match embed script). */
+export function corpusHashFor(corpus: SourceChunk[]): string {
   const h = crypto.createHash("sha1");
   h.update(`dim:${EMBED_DIM}|n:${corpus.length}`);
   for (const c of corpus) h.update(`${c.id}:${c.text.length}|`);
   return h.digest("hex");
+}
+
+/** Build the same corpus the runtime RAG index uses (curated + book chunks). */
+export function buildPersonaCorpus(pack: PersonaPack): {
+  corpus: SourceChunk[];
+  curatedCount: number;
+  hash: string;
+} {
+  const bookSources = loadBookSources(bookChunkPathsFor(pack));
+  const curated = applySemanticAnnotations(
+    pack.sources,
+    pack.semanticAnnotations
+  );
+  const corpus: SourceChunk[] = [...curated, ...bookSources];
+  return {
+    corpus,
+    curatedCount: curated.length,
+    hash: corpusHashFor(corpus),
+  };
+}
+
+/** Shipped production index (committed / traced with the deploy). */
+export function shippedEmbeddingsPath(slug: string): string {
+  return path.join(process.cwd(), "personas", slug, "embeddings.json");
+}
+
+/** Local-dev cache (gitignored; ephemeral on Vercel). */
+export function cacheEmbeddingsPath(slug: string): string {
+  return path.join(CACHE_DIR, `${slug}-embeddings.json`);
 }
 
 function getOrCreateIndex(pack: PersonaPack): PersonaIndex {
@@ -251,30 +308,26 @@ function getOrCreateIndex(pack: PersonaPack): PersonaIndex {
   let idx = indexes.get(slug);
   if (idx) return idx;
 
-  const bookSources = loadBookSources(bookChunkPathsFor(pack));
-  const corpus: SourceChunk[] = [...pack.sources, ...bookSources];
+  const built = buildPersonaCorpus(pack);
   idx = {
-    corpus,
-    curatedCount: pack.sources.length,
+    corpus: built.corpus,
+    curatedCount: built.curatedCount,
     corpusEmbeddings: null,
     embeddingJob: null,
     imageEmbeddings: null,
     imageEmbeddingJob: null,
-    hash: corpusHashFor(corpus),
+    hash: built.hash,
   };
   indexes.set(slug, idx);
   return idx;
 }
 
-function cachePathFor(slug: string): string {
-  return path.join(CACHE_DIR, `${slug}-embeddings.json`);
-}
-
-function tryLoadCache(idx: PersonaIndex, slug: string): number[][] | null {
+function parseEmbeddingFile(
+  raw: string,
+  idx: PersonaIndex
+): number[][] | null {
   try {
-    const raw = fs.readFileSync(cachePathFor(slug), "utf8");
-    const cached = JSON.parse(raw) as {
-      hash: string;
+    const cached = JSON.parse(raw) as EmbeddingIndexFile & {
       vectors: number[][];
     };
     if (
@@ -284,17 +337,48 @@ function tryLoadCache(idx: PersonaIndex, slug: string): number[][] | null {
       return cached.vectors;
     }
   } catch {
-    /* no usable cache */
+    /* unusable */
   }
   return null;
+}
+
+function tryLoadEmbeddingFile(
+  filePath: string,
+  idx: PersonaIndex
+): number[][] | null {
+  try {
+    return parseEmbeddingFile(fs.readFileSync(filePath, "utf8"), idx);
+  } catch {
+    return null;
+  }
+}
+
+function tryLoadShipped(idx: PersonaIndex, slug: string): number[][] | null {
+  return tryLoadEmbeddingFile(shippedEmbeddingsPath(slug), idx);
+}
+
+function tryLoadCache(idx: PersonaIndex, slug: string): number[][] | null {
+  return tryLoadEmbeddingFile(cacheEmbeddingsPath(slug), idx);
+}
+
+function embeddingPayload(
+  idx: PersonaIndex,
+  vectors: number[][]
+): EmbeddingIndexFile {
+  return {
+    hash: idx.hash,
+    dim: EMBED_DIM,
+    count: vectors.length,
+    vectors,
+  };
 }
 
 function saveCache(idx: PersonaIndex, slug: string, vectors: number[][]) {
   try {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
     fs.writeFileSync(
-      cachePathFor(slug),
-      JSON.stringify({ hash: idx.hash, vectors }),
+      cacheEmbeddingsPath(slug),
+      JSON.stringify(embeddingPayload(idx, vectors)),
       "utf8"
     );
   } catch {
@@ -306,7 +390,15 @@ async function ensureEmbeddings(pack: PersonaPack): Promise<number[][]> {
   const idx = getOrCreateIndex(pack);
   if (idx.corpusEmbeddings) return idx.corpusEmbeddings;
 
-  const cached = tryLoadCache(idx, pack.public.slug);
+  const slug = pack.public.slug;
+
+  const shipped = tryLoadShipped(idx, slug);
+  if (shipped) {
+    idx.corpusEmbeddings = shipped;
+    return shipped;
+  }
+
+  const cached = tryLoadCache(idx, slug);
   if (cached) {
     idx.corpusEmbeddings = cached;
     return cached;
@@ -314,17 +406,18 @@ async function ensureEmbeddings(pack: PersonaPack): Promise<number[][]> {
 
   if (!idx.embeddingJob) {
     const texts = idx.corpus.map((c) => `${c.topics.join(", ")}: ${c.text}`);
-    console.log(
-      `[ECHOES] Indexing ${texts.length} source chunks for ${pack.public.slug}…`
+    console.warn(
+      `[ECHOES] No shipped embeddings for ${slug} (expected ${shippedEmbeddingsPath(slug)}). ` +
+        `Live-embedding ${texts.length} chunks — run: npm run embed:persona -- ${slug}`
     );
     idx.embeddingJob = embedMany(texts, (done, total) => {
       if (done % 480 === 0 || done === total) {
-        console.log(`[ECHOES] ${pack.public.slug}: embedded ${done}/${total}`);
+        console.log(`[ECHOES] ${slug}: embedded ${done}/${total}`);
       }
     }).then((vectors) => {
       idx.corpusEmbeddings = vectors;
-      saveCache(idx, pack.public.slug, vectors);
-      console.log(`[ECHOES] Index ready for ${pack.public.slug}.`);
+      saveCache(idx, slug, vectors);
+      console.log(`[ECHOES] Index ready for ${slug}.`);
       return vectors;
     });
   }
@@ -385,8 +478,109 @@ function cosine(a: number[], b: number[]): number {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
+export type RankedSourceHit = {
+  id: string;
+  score: number;
+  curated: boolean;
+  rank: number;
+};
+
+/**
+ * Rank corpus for a query (eval / A/B). Same scoring path as chat retrieval,
+ * without image search. `useSemantic: false` = cosine + lexical + curated only.
+ */
+export async function rankSourcesForQuery(
+  pack: PersonaPack,
+  query: string,
+  opts?: { useSemantic?: boolean; topK?: number }
+): Promise<{
+  hits: RankedSourceHit[];
+  intent: QuerySemanticIntent;
+}> {
+  const useSemantic = opts?.useSemantic !== false;
+  const topK = opts?.topK ?? TOP_K;
+  const idx = getOrCreateIndex(pack);
+  const [embeddings, [queryEmbedding]] = await Promise.all([
+    ensureEmbeddings(pack),
+    embed([query]),
+  ]);
+
+  const lexTerms = queryLexicalTerms(query);
+  const rareBoosts = rareTermBoosts(idx.corpus, lexTerms);
+  const intent = detectQueryIntent(
+    query,
+    useSemantic ? pack.semanticVocab : null
+  );
+
+  const scored = idx.corpus.map((chunk, i) => ({
+    id: chunk.id,
+    curated: i < idx.curatedCount,
+    score:
+      cosine(queryEmbedding, embeddings[i]) +
+      (i < idx.curatedCount ? CURATED_BOOST : 0) +
+      lexicalScoreForChunk(chunk.text, lexTerms, rareBoosts) +
+      (useSemantic
+        ? semanticScoreForChunk(chunk, intent, {
+            curated: i < idx.curatedCount,
+          })
+        : 0),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+
+  let hits = scored.slice(0, topK).map((h, rank) => ({ ...h, rank: rank + 1 }));
+
+  if (isIdentityQuery(query)) {
+    const prefixes = pack.identitySourceIdPrefixes ?? ["bio-"];
+    const pinned = idx.corpus.filter((c) =>
+      prefixes.some((p) => c.id.startsWith(p))
+    );
+    const seen = new Set(hits.map((h) => h.id));
+    for (const c of pinned) {
+      if (seen.has(c.id)) continue;
+      hits.push({
+        id: c.id,
+        score: 1,
+        curated: true,
+        rank: hits.length + 1,
+      });
+      seen.add(c.id);
+    }
+  }
+
+  // Birth/parentage questions have weak embedding signal ("born") and drown in OCR
+  // biographies — inject curated birth/parent sources at the front of the hit list.
+  if (isBirthOrParentageQuery(query)) {
+    const birth = idx.corpus.filter((c) =>
+      /^(?:bio-birth|bio-parents|bio-loc-birth|bio-abolitionist|bio-brother|bio-name)/i.test(
+        c.id
+      )
+    );
+    if (birth.length) {
+      const birthHits: RankedSourceHit[] = birth.map((c, i) => ({
+        id: c.id,
+        score: 1.5,
+        curated: true,
+        rank: i + 1,
+      }));
+      const seen = new Set(birthHits.map((h) => h.id));
+      const rest = hits.filter((h) => !seen.has(h.id));
+      hits = [...birthHits, ...rest]
+        .slice(0, topK)
+        .map((h, rank) => ({ ...h, rank: rank + 1 }));
+    }
+  }
+
+  return { hits, intent };
+}
+
 function isIdentityQuery(query: string): boolean {
   return /\b(?:who are you|introduce yourself|tell me about yourself|why does .+ matter to you)\b/i.test(
+    query
+  );
+}
+
+function isBirthOrParentageQuery(query: string): boolean {
+  return /\b(?:where (?:were|was) you born|when (?:were|was) you born|were you born|your birth(?:place| year)?\b|who were your parents|your (?:mother|father|parents)\b|how did you get to america)\b/i.test(
     query
   );
 }
@@ -499,9 +693,16 @@ async function retrieveContext(
     userQuery: string;
     topicContext: string;
     isImageFollowUp: boolean;
+    /** When false, skip semantic boosts (baseline A/B). Default true. */
+    useSemantic?: boolean;
   }
-): Promise<{ sources: SourceChunk[]; candidateImages: ImageAsset[] }> {
+): Promise<{
+  sources: SourceChunk[];
+  candidateImages: ImageAsset[];
+  intent: QuerySemanticIntent;
+}> {
   const { userQuery, topicContext, isImageFollowUp } = opts;
+  const useSemantic = opts.useSemantic !== false;
   const idx = getOrCreateIndex(pack);
   const library = getAvailableLibraryImages();
   const [embeddings, imgEmbeddings, [queryEmbedding]] = await Promise.all([
@@ -512,12 +713,21 @@ async function retrieveContext(
 
   const lexTerms = queryLexicalTerms(`${retrievalQuery} ${userQuery}`);
   const rareBoosts = rareTermBoosts(idx.corpus, lexTerms);
+  const intent = detectQueryIntent(
+    `${userQuery} ${retrievalQuery} ${topicContext}`,
+    useSemantic ? pack.semanticVocab : null
+  );
   const scored = idx.corpus.map((chunk, i) => ({
     index: i,
     score:
       cosine(queryEmbedding, embeddings[i]) +
       (i < idx.curatedCount ? CURATED_BOOST : 0) +
-      lexicalScoreForChunk(chunk.text, lexTerms, rareBoosts),
+      lexicalScoreForChunk(chunk.text, lexTerms, rareBoosts) +
+      (useSemantic
+        ? semanticScoreForChunk(chunk, intent, {
+            curated: i < idx.curatedCount,
+          })
+        : 0),
   }));
   scored.sort((a, b) => b.score - a.score);
   const topHits = scored.slice(0, TOP_K);
@@ -550,6 +760,19 @@ async function retrieveContext(
     .map((i) => idx.corpus[i]);
   if (isIdentityQuery(userQuery)) {
     sources = pinIdentitySources(pack, sources);
+  }
+  if (isBirthOrParentageQuery(userQuery)) {
+    const birth = idx.corpus.filter((c) =>
+      /^(?:bio-birth|bio-parents|bio-loc-birth|bio-abolitionist|bio-brother|bio-name)/i.test(
+        c.id
+      )
+    );
+    const seen = new Set(sources.map((s) => s.id));
+    for (const c of birth) {
+      if (seen.has(c.id)) continue;
+      sources = [c, ...sources];
+      seen.add(c.id);
+    }
   }
 
   const sourceHints = sources.slice(0, 3).map((s) => s.text.slice(0, 100));
@@ -596,7 +819,11 @@ async function retrieveContext(
     candidateImages.push(img);
   }
 
-  return { sources, candidateImages: filterServeableImages(candidateImages) };
+  return {
+    sources,
+    candidateImages: filterServeableImages(candidateImages),
+    intent,
+  };
 }
 
 function isRepetitionComplaint(userQuery: string): boolean {
@@ -698,6 +925,7 @@ function buildGroundingPrompt(
     isFunFactQuery?: boolean;
     conversationBrief?: string;
     shownImageIds?: string[];
+    semanticIntent?: QuerySemanticIntent;
   }
 ): string {
   const year = pack.temporalYear ?? 1905;
@@ -718,6 +946,19 @@ function buildGroundingPrompt(
           .join("\n")
       : "(none available)";
 
+  const semanticBrief = formatSemanticBrief(
+    sources,
+    opts?.semanticIntent ?? {
+      people: [],
+      places: [],
+      organizations: [],
+      events: [],
+      periods: [],
+      hasSignal: false,
+    },
+    pack.semanticVocab
+  );
+
   return `
 ${pack.systemPrompt}
 
@@ -728,6 +969,7 @@ ${opts.conversationBrief}
 `
     : ""
 }
+${semanticBrief ? `${semanticBrief}\n` : ""}
 # SOURCES RETRIEVED FOR THIS QUESTION
 Use ONLY the facts below for historical claims. Each is tagged with an id like [bio-birth] or [book-0123].
 Some entries may be dense historical prose; paraphrase clearly for the visitor.
@@ -850,13 +1092,14 @@ Labeling rules (important):
 # OUTPUT FORMAT (STRICT)
 Respond with a single JSON object, nothing else:
 {
-  "answer": "<plain-text reply only — NO Markdown, NO image links, NO URLs for pictures>",
+  "answer": "<reply — light **bold** / *italic* OK for names & emphasis; NO image links, NO picture URLs>",
   "evidence_label": "documented" | "inference" | "contested" | "unknown",
   "used_source_ids": ["<id>", ...],
   "image_ids": ["<img-id>", ...]
 }
-The "answer" field is shown as plain text. Images listed in image_ids render automatically
-above your reply — never embed ![...](...) syntax, HTML, or wikimedia URLs in "answer".
+The "answer" field is shown to visitors with **bold** and *italic* rendered (markers hidden).
+Images listed in image_ids render automatically above your reply — never embed
+![...](...) syntax, HTML, or wikimedia URLs in "answer".
 `.trim();
 }
 
@@ -925,16 +1168,21 @@ function sanitizeAnswerText(answer: string): string {
 
 export async function answerQuestion(
   history: ChatMessage[],
-  personaSlug?: string
+  personaSlug?: string,
+  opts?: { useSemantic?: boolean }
 ): Promise<GroundedAnswer> {
   const pack = getPersonaPack(personaSlug ?? DEFAULT_PERSONA_SLUG);
-  return withPersona(pack, () => answerQuestionForPack(pack, history));
+  return withPersona(pack, () =>
+    answerQuestionForPack(pack, history, opts)
+  );
 }
 
 async function answerQuestionForPack(
   pack: PersonaPack,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  opts?: { useSemantic?: boolean }
 ): Promise<GroundedAnswer> {
+  const useSemantic = opts?.useSemantic !== false;
   const pid = portraitId(pack);
   const { userQuery, retrievalQuery, topicContext, isImageFollowUp } =
     buildRetrievalQuery(history);
@@ -944,11 +1192,22 @@ async function answerQuestionForPack(
   );
   const shownImageIds = collectPreviouslyShownImageIds(history.slice(0, -1));
 
-  let { sources: retrieved, candidateImages } = await retrieveContext(
+  let { sources: retrieved, candidateImages, intent } = await retrieveContext(
     pack,
     retrievalQuery,
-    { userQuery, topicContext, isImageFollowUp }
+    { userQuery, topicContext, isImageFollowUp, useSemantic }
   );
+
+  const promptIntent = useSemantic
+    ? intent
+    : {
+        people: [],
+        places: [],
+        organizations: [],
+        events: [],
+        periods: [],
+        hasSignal: false as const,
+      };
 
   candidateImages = candidateImages.filter((img) => {
     if (!shownImageIds.has(normId(img.id))) return true;
@@ -960,6 +1219,7 @@ async function answerQuestionForPack(
   const system = buildGroundingPrompt(pack, retrieved, candidateImages, {
     isImageFollowUp,
     topicContext,
+    semanticIntent: promptIntent,
     isRepetitionComplaint: isRepetitionComplaint(userQuery),
     isShortFollowUp: isShortFollowUp(userQuery),
     isFunFactQuery: isFunFactQuery(userQuery),

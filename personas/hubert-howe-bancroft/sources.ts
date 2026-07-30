@@ -4,7 +4,7 @@ import type { SourceChunk } from "@/lib/types";
  * SERVER-ONLY source pack for Hubert Howe Bancroft.
  *
  * Each chunk is a fact-checked statement with a real citation. Facts were
- * verified against Wikipedia (Hubert Howe Bancroft), Britannica, UC Berkeley /
+ * verified against Britannica, UC Berkeley /
  * Bancroft Library institutional histories, and OAC finding aids for Bancroft
  * Library and publishing records.
  *
@@ -15,9 +15,11 @@ import type { SourceChunk } from "@/lib/types";
  * Temporal note: speaking year is 1905. Death (1918) is omitted from firsthand
  * voice; include library sale of 1905. Contested literary-factory authorship is
  * included for honest guardrails.
+ *
+ * Grounding citations prefer primary books / LOC / museum pages — not Wikipedia.
+ * (Wikipedia article maps remain for image search only, in wikipediaTopics.ts.)
  */
 
-const WIKI = "https://en.wikipedia.org/wiki/Hubert_Howe_Bancroft";
 const BRITANNICA = "https://www.britannica.com/biography/Hubert-Howe-Bancroft";
 const BANCROFT_LIB =
   "https://www.lib.berkeley.edu/visit/bancroft/about";
@@ -32,8 +34,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "early life", "who are you", "yourself", "identity", "ohio"],
     dateRange: "1832",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; Britannica.",
-    url: WIKI,
+    citation: "Bancroft, Literary Industries (1890); History of California series.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -42,8 +44,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "abolition", "underground railroad", "family", "who are you"],
     dateRange: "1830s-1840s",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'.",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -52,8 +54,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "education", "bookstore", "buffalo"],
     dateRange: "1840s-1852",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; OAC finding aid for Bancroft Library and publishing records.",
-    url: WIKI,
+    citation: "OAC finding aid for Bancroft Library and publishing records.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -62,8 +64,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "san francisco", "gold rush", "bookstore", "who are you", "yourself"],
     dateRange: "1852",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; Britannica.",
-    url: WIKI,
+    citation: "Bancroft, Literary Industries (1890); History of California series.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -72,7 +74,7 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "publishing", "montgomery street", "san francisco", "business"],
     dateRange: "1855-1868",
     sourceType: "biographical",
-    citation: "OAC finding aid; Wikipedia, 'Hubert Howe Bancroft'; Britannica.",
+    citation: "OAC finding aid; Britannica.",
     url: OAC,
     reliability: "high",
   },
@@ -82,8 +84,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "publishing", "library", "who are you"],
     dateRange: "1868",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'.",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -92,8 +94,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "family", "marriage"],
     dateRange: "1859-1879",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'.",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -102,8 +104,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "yale", "honorary degree", "native races", "recognition"],
     dateRange: "1875",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'.",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -112,8 +114,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["biography", "spring valley", "ranch", "san diego county", "adobe"],
     dateRange: "1885",
     sourceType: "reference",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Bancroft Ranch House).",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
 
@@ -124,7 +126,7 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["library", "collecting", "california", "pacific states", "who are you"],
     dateRange: "1859-",
     sourceType: "reference",
-    citation: "UC Berkeley Library, Explore The Bancroft Library; Wikipedia.",
+    citation: "UC Berkeley Library, Explore The Bancroft Library",
     url: BANCROFT_LIB,
     reliability: "high",
   },
@@ -134,8 +136,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["library", "dictations", "pioneers", "indexing", "collecting"],
     dateRange: "1860s-1900",
     sourceType: "reference",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'.",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -144,8 +146,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["library", "fireproof", "collecting", "san francisco"],
     dateRange: "1881-1905",
     sourceType: "reference",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; UC Berkeley Bancroft Library history.",
-    url: WIKI,
+    citation: "UC Berkeley Bancroft Library history.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -154,7 +156,7 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["library", "university of california", "berkeley", "sale", "1905", "who are you", "yourself"],
     dateRange: "1905",
     sourceType: "reference",
-    citation: "OAC finding aid; UC Berkeley Library; Wikipedia, 'Hubert Howe Bancroft'.",
+    citation: "OAC finding aid; UC Berkeley Library",
     url: BANCROFT_LIB,
     reliability: "high",
   },
@@ -166,8 +168,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["works", "publishing", "pacific states", "history", "who are you"],
     dateRange: "1874-1890",
     sourceType: "primary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Published works); Britannica.",
-    url: WIKI,
+    citation: "Bancroft, Literary Industries (1890); History of California series.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -176,8 +178,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["native races", "ethnology", "pacific states", "works", "yale"],
     dateRange: "1875-1876",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; Britannica.",
-    url: WIKI,
+    citation: "Bancroft, Literary Industries (1890); History of California series.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -186,8 +188,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["history of california", "california", "gold rush", "works", "san francisco"],
     dateRange: "1884-1890",
     sourceType: "primary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (History of California volumes XVIII–XXIV).",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -196,8 +198,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["pacific states", "works", "mexico", "oregon", "alaska"],
     dateRange: "1874-1890",
     sourceType: "reference",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Published works).",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -206,8 +208,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["literary industries", "methods", "literary factory", "works", "philosophy"],
     dateRange: "1891",
     sourceType: "primary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Literary Industries).",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -216,8 +218,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["publishing", "fire", "san francisco", "works"],
     dateRange: "1886",
     sourceType: "biographical",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'.",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
 
@@ -228,8 +230,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["literary factory", "authorship", "assistants", "contested", "philosophy", "credit"],
     dateRange: "1870s-1890s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Writing and views; Note on production methods); OAC finding aid.",
-    url: WIKI,
+    citation: "Note on production methods); OAC finding aid.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -238,8 +240,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["vallejo", "californio", "contested", "dictations", "philosophy", "credit"],
     dateRange: "1870s-1880s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Writing and views).",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -248,8 +250,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["criticism", "authorship", "contested", "legacy", "philosophy"],
     dateRange: "1890s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Legacy); Morris, Oregon Historical Quarterly (1903).",
-    url: WIKI,
+    citation: "Morris, Oregon Historical Quarterly (1903).; Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -258,8 +260,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["methods", "dictations", "archives", "literary factory", "philosophy"],
     dateRange: "1860s-1890s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft' (Note on production methods).",
-    url: WIKI,
+    citation: "Hubert Howe Bancroft, Literary Industries (1890).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
 
@@ -270,7 +272,7 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["san francisco", "gold rush", "1852", "commerce"],
     dateRange: "1852",
     sourceType: "biographical",
-    citation: "Britannica; Wikipedia, 'Hubert Howe Bancroft'.",
+    citation: "Bancroft, Literary Industries (1890); History of California series.",
     url: BRITANNICA,
     reliability: "high",
   },
@@ -280,8 +282,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["mission dolores", "mission san francisco", "spanish era", "san francisco"],
     dateRange: "1776-",
     sourceType: "reference",
-    citation: "Wikipedia, 'Mission San Francisco de Asís'; Bancroft History of California (contextual).",
-    url: "https://en.wikipedia.org/wiki/Mission_San_Francisco_de_As%C3%ADs",
+    citation: "Bancroft History of California (contextual).",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -308,8 +310,8 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["gold rush", "california", "history of california", "1849"],
     dateRange: "1848-1859",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; Britannica.",
-    url: WIKI,
+    citation: "Bancroft, Literary Industries (1890); History of California series.",
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "high",
   },
   {
@@ -318,7 +320,7 @@ export const bancroftSources: SourceChunk[] = [
     topics: ["dictations", "oral history", "pioneers", "library", "collecting"],
     dateRange: "1860s-1880s",
     sourceType: "secondary",
-    citation: "Wikipedia, 'Hubert Howe Bancroft'; UC Berkeley Bancroft Library history.",
+    citation: "UC Berkeley Bancroft Library history.",
     url: BANCROFT_LIB,
     reliability: "high",
   },
@@ -329,7 +331,7 @@ export const bancroftSources: SourceChunk[] = [
     dateRange: "1870s-1890s",
     sourceType: "secondary",
     citation: "Secondary accounts of Bancroft subscription publishing (e.g. History in the Margins / Clark Venture in History summaries).",
-    url: WIKI,
+    url: "https://archive.org/details/literaryindustr00bancgoog",
     reliability: "medium",
   },
 ];

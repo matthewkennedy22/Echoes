@@ -104,15 +104,15 @@ const SCENARIOS: Scenario[] = [
       "I retired to my Spring Valley country home — the Bancroft Ranch adobe in San Diego County.",
     wantId: "img-bancroft-ranch",
   },
-  // Mark Twain — Washoe vs Tahoe city
+  // John Muir — sequoias vs valley landmarks
   {
-    slug: "mark-twain",
-    label: "Washoe people → Washoe image, not Tahoe City",
-    userQuery: "Who were the Washoe?",
+    slug: "john-muir",
+    label: "Mariposa Grove sequoias → Grizzly Giant, not El Capitan",
+    userQuery: "Tell me about the Grizzly Giant sequoia.",
     storyHay:
-      "The Washoe people knew Lake Tahoe long before settlers — indigenous first peoples of the basin.",
-    wantId: "img-washoe-1866",
-    banIds: /tahoe-city|tallac/,
+      "The Grizzly Giant in the Mariposa Grove — a living sequoia monument among the big trees.",
+    wantId: "img-grizzly-giant",
+    banIds: /el-capitan|half-dome|hetch/,
   },
   // Jesse Mason — Chumash vs mission on native query
   {

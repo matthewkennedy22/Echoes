@@ -4,7 +4,7 @@ import { myronAngelPack } from "@/personas/myron-angel/pack";
 import { bancroftPack } from "@/personas/hubert-howe-bancroft/pack";
 import { hortonPack } from "@/personas/alonzo-horton/pack";
 import { masonPack } from "@/personas/jesse-d-mason/pack";
-import { twainPack } from "@/personas/mark-twain/pack";
+import { muirPack } from "@/personas/john-muir/pack";
 import { hemmePack } from "@/personas/august-hemme/pack";
 import { loosPack } from "@/personas/anita-loos/pack";
 
@@ -20,14 +20,14 @@ const REGISTRY: Record<string, PersonaPack> = {
   [bancroftPack.public.slug]: bancroftPack,
   [hortonPack.public.slug]: hortonPack,
   [masonPack.public.slug]: masonPack,
-  [twainPack.public.slug]: twainPack,
+  [muirPack.public.slug]: muirPack,
   [hemmePack.public.slug]: hemmePack,
   [loosPack.public.slug]: loosPack,
 };
 
 /** Stable landing-page order — north to south. */
 const LANDING_ORDER = [
-  "mark-twain",
+  "john-muir",
   "hubert-howe-bancroft",
   "august-hemme",
   "myron-angel",

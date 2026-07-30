@@ -16,11 +16,12 @@ Use this checklist so every persona reaches Myron-quality before going live.
 - [ ] `imageTopicCatalog.ts` — topic → buzzwords → imageIds
 - [ ] `wikipediaTopics.ts` — topic/keyword → Wikipedia articles
 - [ ] `pack.ts` — assemble `PersonaPack` and register in `personas/index.ts`
-- [ ] **2+ primary works** as `book-chunks-<key>.json` via `node scripts/ingest-persona-books.mjs <slug>`
+- [ ] **2+ primary works** as `book-chunks-<key>.json` via `npm run ingest:persona -- <slug>`
 - [ ] List all book files in `pack.ts` → `bookChunksPaths: [...]`
+- [ ] **Shipped embeddings** via `npm run embed:persona -- <slug>` → `personas/<slug>/embeddings.json` (commit before deploy; kills Vercel cold-start re-embed)
 
 ## 3. Claim bank quality
-- [ ] Every chunk has citation + reliability
+- [ ] Every chunk has citation + reliability (**do not cite Wikipedia for grounding** — use primary books, LOC, statutes, museum/NPS pages; Wikipedia maps stay in `wikipediaTopics.ts` for images only)
 - [ ] Identity facts use `bio-*` (or declared prefixes)
 - [ ] Contested topics marked; taboo list in prompt
 - [ ] No post-cutoff events presented as firsthand knowledge

@@ -4,20 +4,17 @@ import type { SourceChunk } from "@/lib/types";
  * SERVER-ONLY source pack for Jesse D. Mason.
  *
  * Facts verified against: Mason's 1883 History of Santa Barbara County
- * (Internet Archive), Wikipedia (Mission Santa Barbara, Chumash, Santa Barbara
- * history), standard California mission / rancho reference, and the Amador
+ * (Internet Archive), standard California mission / rancho reference, and the Amador
  * Ledger Dispatch local-history article on Jesse Dimon Mason (drawing on the
  * Amador County Archives).
+ *
+ * Grounding citations prefer primary books / LOC / museum pages — not Wikipedia.
+ * (Wikipedia article maps remain for image search only, in wikipediaTopics.ts.)
  */
 
 const ARCHIVE_1883 = "https://archive.org/details/historyofsantaba00maso";
 const LEDGER_BIO =
   "https://www.ledger.news/the-village-smithy-part-vi-ione-blacksmiths/article_23de0188-d009-11e9-815b-2b8339b7ef3d.html";
-const WIKI_MISSION = "https://en.wikipedia.org/wiki/Mission_Santa_Barbara";
-const WIKI_CHUMASH = "https://en.wikipedia.org/wiki/Chumash";
-const WIKI_SB = "https://en.wikipedia.org/wiki/Santa_Barbara,_California";
-const WIKI_PRESIDIO = "https://en.wikipedia.org/wiki/Presidio_of_Santa_Barbara";
-const WIKI_VENTURA = "https://en.wikipedia.org/wiki/Ventura_County,_California";
 
 export const masonSources: SourceChunk[] = [
   // ---------------- Biography / identity (honest thin record) ----------------
@@ -126,8 +123,7 @@ export const masonSources: SourceChunk[] = [
     topics: ["ventura", "county", "1883 history", "american period", "books"],
     dateRange: "1872-1883",
     sourceType: "primary",
-    citation:
-      "Mason 1883 volume contents / Open Library notes on Ventura material; Wikipedia: Ventura County, California.",
+    citation: "Mason 1883 volume contents / Open Library notes on Ventura material",
     url: ARCHIVE_1883,
     reliability: "high",
   },
@@ -137,8 +133,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["ventura", "county", "american period", "government"],
     dateRange: "1872-1873",
     sourceType: "reference",
-    citation: "Wikipedia: Ventura County, California.",
-    url: WIKI_VENTURA,
+    citation: "Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
 
@@ -149,8 +145,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "mission santa barbara", "founding", "1786", "franciscan"],
     dateRange: "1786",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara; corroborated in Mason 1883 county history.",
-    url: WIKI_MISSION,
+    citation: "corroborated in Mason 1883 county history.",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -159,8 +155,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "serra", "lasuén", "presidio", "founding"],
     dateRange: "1782-1786",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara.",
-    url: WIKI_MISSION,
+    citation: "Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -169,8 +165,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "earthquake", "1812", "church", "architecture"],
     dateRange: "1812-1820",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara; National Register documentation.",
-    url: WIKI_MISSION,
+    citation: "National Register documentation.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -179,8 +175,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "chumash", "labor", "building"],
     dateRange: "1786-1830s",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara; SAH Archipedia mission history.",
-    url: WIKI_MISSION,
+    citation: "SAH Archipedia mission history.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -189,9 +185,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "chumash", "contested", "colonization", "conversion"],
     dateRange: "1786-1834",
     sourceType: "reference",
-    citation:
-      "Wikipedia: Mission Santa Barbara (missionization and Chumash experience); treat Mason 1883 with critical caution on Native topics.",
-    url: WIKI_MISSION,
+    citation: "treat Mason 1883 with critical caution on Native topics.",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -200,8 +195,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "secularization", "mexican era", "franciscan"],
     dateRange: "1834-1846",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara; National Register nomination summary.",
-    url: WIKI_MISSION,
+    citation: "National Register nomination summary.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -210,8 +205,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "american period", "1865", "catholic church"],
     dateRange: "1865",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara; National Register documentation.",
-    url: WIKI_MISSION,
+    citation: "National Register documentation.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
 
@@ -222,8 +217,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["presidio", "spanish era", "1782", "santa barbara", "military"],
     dateRange: "1782",
     sourceType: "reference",
-    citation: "Wikipedia: Presidio of Santa Barbara.",
-    url: WIKI_PRESIDIO,
+    citation: "Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -232,8 +227,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["santa barbara", "town", "harbor", "american period", "county seat"],
     dateRange: "1782-1885",
     sourceType: "reference",
-    citation: "Wikipedia: Santa Barbara, California; Mason 1883 county history.",
-    url: WIKI_SB,
+    citation: "Mason 1883 county history.",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
 
@@ -244,8 +239,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["chumash", "native history", "channel islands", "homeland"],
     dateRange: "pre-contact",
     sourceType: "reference",
-    citation: "Wikipedia: Chumash.",
-    url: WIKI_CHUMASH,
+    citation: "Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -254,8 +249,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["chumash", "village", "dwelling", "basket", "native history"],
     dateRange: "pre-contact through mission era",
     sourceType: "reference",
-    citation: "Wikipedia: Chumash; Chumash material-culture summaries.",
-    url: WIKI_CHUMASH,
+    citation: "Chumash material-culture summaries.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -264,8 +259,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["chumash", "tomol", "channel islands", "canoe", "seafaring"],
     dateRange: "pre-contact through mission era",
     sourceType: "reference",
-    citation: "Wikipedia: Chumash; Tomol.",
-    url: WIKI_CHUMASH,
+    citation: "Mason, History of Santa Barbara County (1883); History of Amador County (1881).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -274,8 +269,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["chumash", "acorn", "food", "mortar", "native history"],
     dateRange: "pre-contact through mission era",
     sourceType: "reference",
-    citation: "Chumash / California Indian ethnobotany; Wikipedia: Chumash.",
-    url: WIKI_CHUMASH,
+    citation: "Chumash / California Indian ethnobotany; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -284,9 +279,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["chumash", "pictograph", "rock art", "painted cave", "spiritual"],
     dateRange: "pre-contact (centuries–millennia)",
     sourceType: "reference",
-    citation:
-      "Wikipedia: Chumash Painted Cave State Historic Park; Chumash rock-art studies.",
-    url: "https://en.wikipedia.org/wiki/Chumash_Painted_Cave_State_Historic_Park",
+    citation: "Chumash rock-art studies.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -295,8 +289,7 @@ export const masonSources: SourceChunk[] = [
     topics: ["chumash", "mason", "1883 history", "contested", "sources"],
     dateRange: "1883",
     sourceType: "persona-note",
-    citation:
-      "Critical reading note for Mason 1883 Native chapters; pair with Wikipedia: Chumash.",
+    citation: "Critical reading note for Mason 1883 Native chapters",
     url: ARCHIVE_1883,
     reliability: "medium",
   },
@@ -308,8 +301,7 @@ export const masonSources: SourceChunk[] = [
     topics: ["ranchos", "mexican era", "cattle", "vaquero", "californio"],
     dateRange: "1830s-1840s",
     sourceType: "reference",
-    citation:
-      "Mason 1883 county history (rancho chapters); Wikipedia: Ranchos of California.",
+    citation: "Mason 1883 county history (rancho chapters)",
     url: ARCHIVE_1883,
     reliability: "high",
   },
@@ -330,8 +322,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["ranchos", "american period", "land title", "californio"],
     dateRange: "1848-1860s",
     sourceType: "reference",
-    citation: "Wikipedia: Ranchos of California; California Land Act of 1851.",
-    url: "https://en.wikipedia.org/wiki/Ranchos_of_California",
+    citation: "California Land Act of 1851.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
 
@@ -342,8 +334,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["american period", "mexican american war", "statehood", "1850"],
     dateRange: "1846-1850",
     sourceType: "reference",
-    citation: "Wikipedia: Santa Barbara, California; California statehood history.",
-    url: WIKI_SB,
+    citation: "California statehood history.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -362,8 +354,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["channel islands", "coast", "harbor", "geography", "santa barbara"],
     dateRange: "pre-contact–1885",
     sourceType: "reference",
-    citation: "Wikipedia: Santa Barbara Channel; Santa Barbara, California.",
-    url: WIKI_SB,
+    citation: "Santa Barbara, California.; Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
@@ -372,8 +364,8 @@ export const masonSources: SourceChunk[] = [
     topics: ["mission", "queen of the missions", "architecture", "santa barbara"],
     dateRange: "1786-1885",
     sourceType: "reference",
-    citation: "Wikipedia: Mission Santa Barbara.",
-    url: WIKI_MISSION,
+    citation: "Jesse D. Mason, History of Santa Barbara County, California (1883).",
+    url: "https://archive.org/details/historyofsantaba00maso",
     reliability: "high",
   },
   {
