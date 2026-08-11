@@ -18,6 +18,7 @@
     "prebuild": "node scripts/verify-images.mjs",
     "audit:images": "node scripts/audit-image-topics.mjs",
     "test:images": "npx tsx scripts/test-image-matching-static.ts",
+    "test:verifier": "npx tsx scripts/test-answer-verifier.ts",
     "enrich:semantic": "npx tsx scripts/enrich-persona-semantic.ts",
     "audit:semantic": "npx tsx scripts/audit-semantic-tags.ts",
     "eval:semantic": "npx tsx scripts/eval-semantic-layer.ts",

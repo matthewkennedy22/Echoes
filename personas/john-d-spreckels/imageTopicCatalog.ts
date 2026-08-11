@@ -34,7 +34,7 @@ export const SPRECKELS_IMAGE_TOPICS: ImageTopic[] = [
       "babcock",
       "story",
     ],
-    imageIds: ["img-hotel-del", "img-del-ocean-plaza", "img-del-and-tent-city"],
+    imageIds: ["img-hotel-del", "img-hotel-del-beach", "img-del-and-tent-city"],
   },
   {
     key: "tent-city",

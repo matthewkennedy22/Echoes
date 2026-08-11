@@ -248,8 +248,16 @@ export function extractImageYear(...texts: string[]): number | null {
   return Math.min(...years);
 }
 
-/** True when an image plausibly dates from Myron's era (roughly pre-1930s). */
+/** True when an image plausibly dates from a historical era (roughly pre-1930s). */
 export function isHistoricalImageAsset(img: ImageAsset): boolean {
+  const metaHay = `${img.dateRange ?? ""} ${img.caption} ${img.alt}`;
+  // Explicit modern library tags / contemporary photo dates.
+  if (/\bmodern\b/i.test(img.dateRange ?? "")) return false;
+  if (/\b(?:20(?:0[1-9]|[1-9]\d)|19[5-9]\d)\b/.test(img.dateRange ?? "")) {
+    return false;
+  }
+
+  // Curated library assets (non live-search) pass unless tagged modern above.
   if (!img.id.startsWith("commons-")) return true;
 
   const subjectHay = `${img.caption} ${img.alt}`;
@@ -262,7 +270,7 @@ export function isHistoricalImageAsset(img: ImageAsset): boolean {
   }
   if (MODERN_REJECT.test(subjectHay)) return false;
 
-  const year = extractImageYear(subjectHay);
+  const year = extractImageYear(metaHay);
   if (year !== null) {
     if (year >= 1950) return false;
     if (year > MAX_CASUAL_YEAR) {
@@ -271,7 +279,7 @@ export function isHistoricalImageAsset(img: ImageAsset): boolean {
     return true;
   }
 
-  return /habs|historic american|engraving|lithograph|daguerreotype|albumen|black.?and.?white|ca\.\s*1[89]\d{2}|ca\.\s*19[0-2]\d|19th century|18th century/i.test(
+  return /habs|historic american|engraving|lithograph|daguerreotype|albumen|black.?and.?white|ca\.\s*1[89]\d{2}|ca\.\s*19[0-2]\d|19th century|18th century|photochrom/i.test(
     subjectHay
   );
 }

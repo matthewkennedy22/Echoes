@@ -67,10 +67,10 @@ export const spreckelsImages: ImageAsset[] = [
   },
   {
     id: "img-hotel-del",
-    src: commonsFileUrl("CoronadoDelCoronadoHotel_CoronadoCalifornia.jpg"),
+    src: commonsFileUrl("Hotel_Del_c1900b.jpg"),
     caption:
-      "Hotel del Coronado — the great Victorian resort on Coronado Beach that I came to own through the Coronado Beach Company.",
-    alt: "Historic view of Hotel del Coronado",
+      "Hotel del Coronado, about 1900 — the great Victorian resort on Coronado Beach that I came to own through the Coronado Beach Company.",
+    alt: "Hotel del Coronado photochrom, circa 1900",
     topics: [
       "hotel del coronado",
       "the del",
@@ -79,11 +79,11 @@ export const spreckelsImages: ImageAsset[] = [
       "resort",
       "victorian",
     ],
-    dateRange: "historic view",
+    dateRange: "c. 1900",
     citation:
-      "Hotel del Coronado, Coronado, California. Wikimedia Commons.",
-    url: "https://commons.wikimedia.org/wiki/File:CoronadoDelCoronadoHotel_CoronadoCalifornia.jpg",
-    license: "see Commons file page",
+      "Hotel del Coronado, Coronado Beach, California, c. 1900 (Detroit Publishing / William Henry Jackson). Public domain via Wikimedia Commons / Library of Congress.",
+    url: "https://commons.wikimedia.org/wiki/File:Hotel_Del_c1900b.jpg",
+    license: "Public domain",
   },
   {
     id: "img-del-and-tent-city",
@@ -185,22 +185,23 @@ export const spreckelsImages: ImageAsset[] = [
     license: "Public domain",
   },
   {
-    id: "img-del-ocean-plaza",
-    src: commonsFileUrl("Ocean_facing_plaza,_Hotel_del_Coronado,_Coronado,_CA.jpg"),
+    id: "img-hotel-del-beach",
+    src: commonsFileUrl("Hotel-Del-Coronado-Beach-cropped.jpg"),
     caption:
-      "Ocean-facing plaza at the Hotel del Coronado — the resort’s seaside heart on Coronado Beach.",
-    alt: "Ocean-facing plaza at Hotel del Coronado",
+      "Hotel del Coronado from the beach, about 1900 — red roofs and turrets as visitors knew the Del in my day.",
+    alt: "Hotel del Coronado from the beach, circa 1900",
     topics: [
       "hotel del coronado",
-      "plaza",
-      "ocean",
       "the del",
       "beach",
+      "ocean",
+      "coronado beach",
+      "resort",
     ],
-    dateRange: "modern photo of historic hotel",
+    dateRange: "c. 1900",
     citation:
-      "Ocean facing plaza, Hotel del Coronado. Wikimedia Commons.",
-    url: "https://commons.wikimedia.org/wiki/File:Ocean_facing_plaza,_Hotel_del_Coronado,_Coronado,_CA.jpg",
-    license: "see Commons file page",
+      "Hotel del Coronado, Coronado Beach, California, c. 1900. Public domain via Wikimedia Commons / Library of Congress.",
+    url: "https://commons.wikimedia.org/wiki/File:Hotel-Del-Coronado-Beach-cropped.jpg",
+    license: "Public domain",
   },
 ];

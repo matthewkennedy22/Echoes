@@ -7,6 +7,10 @@ import {
   anachronismRetry,
 } from "@/lib/temporalPolicy";
 import {
+  verifyGroundedAnswer,
+  verifierRewritePrompt,
+} from "@/lib/answerVerifier";
+import {
   isContextualFollowUp,
   isHistoricalImageAsset,
   isImageFollowUpQuery,
@@ -1095,12 +1099,13 @@ Labeling rules (important):
 # OUTPUT FORMAT (STRICT)
 Respond with a single JSON object, nothing else:
 {
-  "answer": "<reply — light **bold** / *italic* OK for names & emphasis; NO image links, NO picture URLs>",
+  "answer": "<reply — light **bold** / *italic* OK for short names & emphasis only; NEVER wrap whole paragraphs or the entire answer in italics; NO image links, NO picture URLs>",
   "evidence_label": "documented" | "inference" | "contested" | "unknown",
   "used_source_ids": ["<id>", ...],
   "image_ids": ["<img-id>", ...]
 }
 The "answer" field is shown to visitors with **bold** and *italic* rendered (markers hidden).
+Do not italicize entire sentences or paragraphs — plain prose is the default.
 Images listed in image_ids render automatically above your reply — never embed
 ![...](...) syntax, HTML, or wikimedia URLs in "answer".
 `.trim();
@@ -1155,18 +1160,54 @@ function parseModelAnswer(raw: string): {
   return { answer: raw };
 }
 
+/**
+ * Models sometimes wrap every paragraph (or the whole answer) in *italics* /
+ * _underscores_, which renders as an all-italic bubble. Keep short emphasis;
+ * unwrap paragraph-scale wrapping.
+ */
+function unwrapParagraphEmphasis(answer: string): string {
+  return answer
+    .split(/\n\n+/)
+    .map((block) => {
+      const t = block.trim();
+      if (t.length <= 40) return block;
+      // Whole-paragraph *wrap* with no inner asterisks.
+      if (
+        t.startsWith("*") &&
+        t.endsWith("*") &&
+        !t.slice(1, -1).includes("*")
+      ) {
+        return t.slice(1, -1);
+      }
+      if (
+        t.startsWith("_") &&
+        t.endsWith("_") &&
+        !t.slice(1, -1).includes("_")
+      ) {
+        return t.slice(1, -1);
+      }
+      return block;
+    })
+    .join("\n\n");
+}
+
 /** Strip markdown/HTML image embeds the model sometimes adds despite image_ids. */
 function sanitizeAnswerText(answer: string): string {
-  return answer
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
-    .replace(/<img\b[^>]*>/gi, "")
-    .replace(
-      /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
-      ""
-    )
-    .replace(/^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return unwrapParagraphEmphasis(
+    answer
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/<img\b[^>]*>/gi, "")
+      .replace(
+        /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
+        ""
+      )
+      .replace(
+        /^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim,
+        ""
+      )
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 export async function answerQuestion(
@@ -1248,7 +1289,7 @@ async function answerQuestionForPack(
 
   // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
   // so match on a normalized form rather than exact string equality.
-  const usedIds = asStringIds(parsed.used_source_ids);
+  let usedIds = asStringIds(parsed.used_source_ids);
   const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
   const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
@@ -1414,13 +1455,121 @@ async function answerQuestionForPack(
     );
   });
 
+  let answerText = sanitizeAnswerText(
+    parsed.answer?.trim() ||
+      "Forgive me — I find I cannot put words to that just now."
+  );
+
+  const runVerifier = (ans: string, label: EvidenceLabel, ids: string[], imgs: ImageAsset[]) =>
+    verifyGroundedAnswer({
+      answer: ans,
+      evidenceLabel: label,
+      usedSourceIds: ids,
+      retrieved,
+      images: imgs,
+      userQuery,
+      pack,
+      portraitImageId: pid,
+      isIdentityQuery: isIdentityQuery(userQuery),
+      isAppearanceQuery: isAppearanceQuery(userQuery),
+    });
+
+  let verified = runVerifier(answerText, evidenceLabel, usedIds, images);
+
+  // One rewrite pass when chronology / involvement / unframed post-era fails.
+  if (verified.needsRewrite && verified.rewriteHint) {
+    raw = await chatJSON(
+      `${system}\n\n${verifierRewritePrompt(pack, verified.rewriteHint)}`,
+      history
+    );
+    parsed = parseModelAnswer(raw);
+    answerText = sanitizeAnswerText(
+      parsed.answer?.trim() || answerText
+    );
+    evidenceLabel = EVIDENCE_LABELS.includes(
+      parsed.evidence_label as EvidenceLabel
+    )
+      ? (parsed.evidence_label as EvidenceLabel)
+      : evidenceLabel;
+    const rewriteIds = asStringIds(parsed.used_source_ids);
+    if (rewriteIds.length > 0) {
+      usedIds = rewriteIds;
+    }
+    const rewriteNorm = new Set(usedIds.map(normId).filter(Boolean));
+    const rewriteUsed = retrieved.filter((s) => rewriteNorm.has(normId(s.id)));
+    if (evidenceLabel === "unknown") {
+      displaySources = [];
+    } else if (rewriteUsed.length > 0) {
+      displaySources = rewriteUsed;
+    } else {
+      displaySources = retrieved;
+    }
+    if (
+      evidenceLabel === "unknown" &&
+      isIdentityQuery(userQuery) &&
+      answerText.trim()
+    ) {
+      const prefixes = pack.identitySourceIdPrefixes ?? ["bio-"];
+      const bioSources = retrieved.filter((s) =>
+        prefixes.some((p) => s.id.startsWith(p))
+      );
+      if (bioSources.length > 0) {
+        evidenceLabel = "documented";
+        displaySources = rewriteUsed.length > 0 ? rewriteUsed : bioSources.slice(0, 6);
+      }
+    }
+
+    const rewriteHay = answerText.toLowerCase();
+    const rewriteThemes = detectStoryThemes(rewriteHay);
+    const rewriteImageIds = asStringIds(parsed.image_ids);
+    const rewriteImageNorm = new Set(rewriteImageIds.map(normId).filter(Boolean));
+    images = eligibleCandidates(candidateImages).filter((img) => {
+      if (img.id === pid) {
+        return isIdentityQuery(userQuery) || isAppearanceQuery(userQuery);
+      }
+      if (rewriteImageNorm.size > 0 && !rewriteImageNorm.has(normId(img.id))) {
+        return false;
+      }
+      return (
+        answerSupportsImage(img, rewriteHay) &&
+        isStrongStoryMatch(img, rewriteHay, rewriteThemes) &&
+        imageMatchesQueryIntent(userQuery, img)
+      );
+    });
+    if (images.length > 1) {
+      images = [...images].sort(
+        (a, b) =>
+          imageStoryMatchScore(b, rewriteHay) - imageStoryMatchScore(a, rewriteHay)
+      );
+      images = [images[0]];
+    }
+    if (isAppearanceQuery(userQuery) || isIdentityQuery(userQuery)) {
+      const portrait =
+        candidateImages.find((img) => img.id === pid) ??
+        getAvailableLibraryImages().find((img) => img.id === pid);
+      if (portrait && (isAppearanceQuery(userQuery) || images.length === 0)) {
+        images = [portrait];
+      }
+    }
+
+    // Deterministic label/image fixes only — no second rewrite.
+    verified = runVerifier(answerText, evidenceLabel, usedIds, images);
+  }
+
+  evidenceLabel = verified.evidenceLabel;
+  images = verified.images;
+  if (evidenceLabel === "unknown") {
+    displaySources = [];
+  } else if (verified.usedSourceIds.length > 0) {
+    const vNorm = new Set(verified.usedSourceIds.map(normId).filter(Boolean));
+    const cited = retrieved.filter((s) => vNorm.has(normId(s.id)));
+    if (cited.length > 0) displaySources = cited;
+  }
+
   return {
-    answer: sanitizeAnswerText(
-      parsed.answer?.trim() ||
-        "Forgive me — I find I cannot put words to that just now."
-    ),
+    answer: verified.answer,
     evidenceLabel,
-    usedSourceIds: usedIds,
+    usedSourceIds: verified.usedSourceIds,
     sources: displaySources,
     images: filterServeableImages(images),
   };
