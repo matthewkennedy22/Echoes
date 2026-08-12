@@ -54,6 +54,58 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     license: "CC BY (USC Libraries / California Historical Society)",
   },
   {
+    id: "img-adobe-1900-porch",
+    src: "/images/william-g-dana/dana-adobe-ca1900-porch.jpg",
+    caption:
+      "Another view of the Nipomo adobe about 1900, with a long porch of wooden posts — after my lifetime, not a picture of 1855.",
+    alt: "Historic photograph of the Dana Adobe porch, about 1900",
+    topics: ["adobe", "house", "porch", "nipomo", "casa de dana"],
+    dateRange: "c. 1900",
+    citation:
+      "“Exterior view of Captain William G. Dana's Nipomo adobe… ca.1900,” California Historical Society Collection. Courtesy of USC Libraries and the California Historical Society. CC BY.",
+    url: "https://calisphere.org/item/d986ab527ecf64695f87e3a084ceff54/",
+    license: "CC BY (USC Libraries / California Historical Society)",
+  },
+  {
+    id: "img-diseno",
+    src: "/images/william-g-dana/nipomo-diseno.jpg",
+    caption:
+      "Plan of the Rancho of Nipomo — the grant map Dana Adobe publishes, giving 37,887.91 acres. A later archival copy, not a sketch from 1855.",
+    alt: "Archival map titled Plan of the Rancho of Nipomo, 37,887.91 acres",
+    topics: ["acres", "acreage", "grant", "map", "diseno", "rancho nipomo"],
+    dateRange: "19th-century diseño (archival copy)",
+    citation:
+      "Plan of the Rancho of Nipomo, published by Dana Adobe on the History page.",
+    url: "https://www.danaadobe.org/history/",
+    license: "Used from Dana Adobe (partner site)",
+  },
+  {
+    id: "img-adobe-vineyard",
+    src: "/images/william-g-dana/dana-adobe-vineyard.jpg",
+    caption:
+      "The adobe and a later Mission-grape vineyard on the historic park — a modern view of the house, not a picture from 1855.",
+    alt: "Modern photograph of the restored Dana Adobe behind a vineyard",
+    topics: ["adobe", "vineyard", "estate", "house", "nipomo"],
+    dateRange: "2020s",
+    citation:
+      "Dana Adobe, Dana Family page photograph of the adobe and vineyard.",
+    url: "https://www.danaadobe.org/family/",
+    license: "Used from Dana Adobe (partner site)",
+  },
+  {
+    id: "img-adobe-oxcart",
+    src: "/images/william-g-dana/dana-adobe-oxcart.jpg",
+    caption:
+      "The restored adobe with an ox cart in the grass — a later view of the house and grounds, not a picture from 1855.",
+    alt: "Modern photograph of the restored Dana Adobe with a wooden ox cart",
+    topics: ["adobe", "ox cart", "estate", "house", "rancho"],
+    dateRange: "2020s",
+    citation:
+      "Dana Adobe, History page gallery photograph of the adobe and ox cart.",
+    url: "https://www.danaadobe.org/history/",
+    license: "Used from Dana Adobe (partner site)",
+  },
+  {
     id: "img-adobe-restored",
     src: commonsFileUrl("Rancho_Nipomo_Dana_Adobe_(7816869126).jpg"),
     caption:

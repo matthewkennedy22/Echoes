@@ -208,7 +208,7 @@ export const williamGDanaSources: SourceChunk[] = [
   },
   {
     id: "chumash-nipomo-village",
-    text: "The Dana Adobe history page states that Chumash people lived along more than 160 miles of the Central Coast from Malibu to Avila Bay, and that indigenous people have lived in the area for about 10,000 years. Nipomo was once a Chumash village. The site notes at least two camps on the Dana Adobe property about 2,000 and 9,000 years old, and that the last Chumash tribal member recorded at the Nipomo village departed in 1804 after being baptized and brought to Mission La Purísima Concepción. A 1956 article Dana Adobe publishes (Gladys Norton) says the residence was built by Indian labor of adobe bricks with walls two feet thick. Do not invent tribal names or ceremonies; label labor as the partner article states it, incomplete in detail.",
+    text: "The Dana Adobe history page states that Chumash people lived along more than 160 miles of the Central Coast from Malibu to Avila Bay, and that indigenous people have lived in the area for about 10,000 years. Nipomo was once a Chumash village. The site notes at least two camps on the Dana Adobe property about 2,000 and 9,000 years old, and that the last Chumash tribal member recorded at the Nipomo village departed in 1804 after being baptized and brought to Mission La Purísima Concepción. If asked whether Chumash people built the 1839 adobe: do not answer yes. A 1956 article Dana Adobe publishes (Gladys Norton) says the residence was built by Indian labor of adobe bricks with walls two feet thick. That article does not name a tribe or a crew. Say Indian labor as the partner article states it, incomplete in detail — not 'the Chumash built my house.'",
     topics: [
       "chumash",
       "nipomo village",
@@ -337,6 +337,10 @@ export const williamGDanaSources: SourceChunk[] = [
       "pablo de la guerra",
       "politics",
       "carrillo governor",
+      "public office",
+      "offices",
+      "alcalde",
+      "elected",
     ],
     dateRange: "1830s-1849",
     sourceType: "secondary",
@@ -383,7 +387,7 @@ export const williamGDanaSources: SourceChunk[] = [
   },
   {
     id: "children-tally",
-    text: "Captain and Mrs. Dana were the parents of twenty-one children, of whom eight died in infancy. Angel, writing in 1883, names one adult daughter already dead (Mrs. S. A. Pollard, María Josefa Dana, 1878) and lists living sons and daughters then on the Nipomo estate. The Dana Adobe history page states 21 children of whom 13 reached adulthood. That completed tally belongs to the later family record, not to a closed count in 1850.",
+    text: "Captain and Mrs. Dana were the parents of twenty-one children, of whom eight died in infancy. Angel, writing in 1883, names one adult daughter already dead (Mrs. S. A. Pollard, María Josefa Dana, 1878) and lists living sons and daughters then on the Nipomo estate: Charles W., William C., John F., Henry C., Frank, Edward G., Fred A., Adelina E., David A., Eliseo C., and Samuel A. The Dana Adobe history page states 21 children of whom 13 reached adulthood. That completed tally and the 1883 name-list belong to the later family record, not to a closed count in 1850. Names this pack can use in 1850: William C. Dana (born Santa Barbara 6 May 1836), John Francis Dana (born Santa Barbara 22 June 1837), and a daughter María Josefa Dana already married to Henry Amos Tefft by 1850. Do not recite the full 1883 estate list as the 1850 household.",
     topics: [
       "children",
       "family",
@@ -552,6 +556,8 @@ export const williamGDanaSources: SourceChunk[] = [
       "la purisima",
       "prefecto",
       "1849",
+      "public office",
+      "offices",
     ],
     dateRange: "1835-1851",
     sourceType: "secondary",
@@ -607,6 +613,25 @@ export const williamGDanaSources: SourceChunk[] = [
     sourceType: "secondary",
     citation: "Dana Adobe, Dana Family page, portraits of Captain Dana and María Josefa.",
     url: DANA_FAMILY,
+    reliability: "high",
+  },
+  {
+    id: "partner-diseno",
+    text: "Dana Adobe publishes a 'Plan of the Rancho of Nipomo' on its history page: area 37,887 91/100 acres, claimant William G. Dana. That figure matches Angel and the California landmark. Their home page still says the rancho was initially more than 48,000 acres — contested. Prefer ~38,000 / 37,887.91 and say the partner home page uses a larger first figure.",
+    topics: [
+      "acres",
+      "acreage",
+      "37887",
+      "diseno",
+      "map",
+      "plan of the rancho",
+      "grant size",
+    ],
+    dateRange: "1837-1850",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, History page gallery, Plan of the Rancho of Nipomo (37,887.91 acres, William G. Dana claimant).",
+    url: DANA_HISTORY,
     reliability: "high",
   },
 ];

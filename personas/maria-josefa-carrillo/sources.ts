@@ -153,7 +153,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "nipomo-name-chumash",
-    text: "Nipomo, in the partner history and in Angel, comes from a local Indian expression meaning at the foot of the hill. Chumash people lived on this coast for millennia; the last recorded member of the Nipomo village was baptized and taken to Mission La Purísima in 1804. The grant occupies former mission lands after secularization. A 1956 article Dana Adobe publishes (Gladys Norton) says the residence was built by Indian labor of adobe bricks with walls two feet thick. Do not invent tribal names or ceremonies; label labor as the partner article states it, incomplete in detail.",
+    text: "Nipomo, in the partner history and in Angel, comes from a local Indian expression meaning at the foot of the hill. Chumash people lived on this coast for millennia; the last recorded member of the Nipomo village was baptized and taken to Mission La Purísima in 1804. The grant occupies former mission lands after secularization. If asked whether Chumash people built the adobe: do not answer yes. A 1956 article Dana Adobe publishes (Gladys Norton) says the residence was built by Indian labor of adobe bricks with walls two feet thick. That article does not name a tribe or a crew. Say Indian labor as the partner article states it, incomplete in detail — not 'the Chumash built this house.'",
     topics: [
       "nipomo",
       "chumash",
@@ -251,7 +251,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "children-tally",
-    text: "Captain and Mrs. Dana were the parents of twenty-one children, of whom eight died in infancy and thirteen reached adulthood (Dana Adobe history page; Angel 1883). Angel, writing in 1883 after her death year, lists living children then on the estate and notes Mrs. S. A. Pollard (María Josefa Dana) died in 1878. The completed tally is a later family record; in 1855 the family is still growing. Handle infant deaths briefly and without graphic detail.",
+    text: "Captain and Mrs. Dana were the parents of twenty-one children, of whom eight died in infancy and thirteen reached adulthood (Dana Adobe history page; Angel 1883). Angel, writing in 1883 after her death year, lists living children then on the estate and notes Mrs. S. A. Pollard (María Josefa Dana) died in 1878: Charles W., William C., John F., Henry C., Frank, Edward G., Fred A., Adelina E., David A., Eliseo C., and Samuel A. The completed tally and that name-list are later family record. In 1855 names this pack can use: William C. Dana (born Santa Barbara 6 May 1836), John Francis Dana (born Santa Barbara 22 June 1837), and a daughter María Josefa Dana already married to Henry Amos Tefft. Do not recite the full 1883 estate list as the 1855 household. Handle infant deaths briefly and without graphic detail.",
     topics: ["children", "family", "twenty-one", "thirteen", "infancy"],
     dateRange: "1829-1883",
     sourceType: "biographical",
@@ -347,7 +347,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "sister-encarnacion-robbins",
-    text: "Encarnación Carrillo, María Josefa's sister, married Capt. Thomas M. Robbins, former mate of Dana's Waverly and later commander of the schooner Santa Barbara that Dana built at Goleta. Robbins became a Santa Barbara resident, owner of Las Positas Rancho, and grantee of Santa Catalina Island. That is documented kin, not a later Encarnación-at-Nipomo anecdote from an uncorroborated essay.",
+    text: "Encarnación Carrillo, María Josefa's sister, married Capt. Thomas M. Robbins, former mate of Dana's brig Waverly and later commander of the schooner Santa Barbara that Dana built at Goleta. Do not say Robbins was mate of the Santa Barbara — he was mate of the Waverly first. Robbins became a Santa Barbara resident, owner of Las Positas Rancho, and grantee of Santa Catalina Island. That is documented kin, not a later Encarnación-at-Nipomo anecdote from an uncorroborated essay.",
     topics: [
       "encarnacion",
       "robbins",
@@ -482,6 +482,24 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
     sourceType: "secondary",
     citation: "Dana Adobe, Dana Family page, portraits of Captain Dana and María Josefa.",
     url: DANA_FAMILY,
+    reliability: "high",
+  },
+  {
+    id: "thin-daily-life",
+    text: "No daily household schedule, menu, or diary of chores survives in this pack. If asked what a typical day looked like, stay with what is documented: the U-shaped adobe (kitchen in one wing, storehouse in the other, younger children in the upper dormitory, patio fig trees), travelers on El Camino Real, and the rancho's soap, looms, and cattle work. Do not invent a well, a vegetable list (beans, pumpkins), or a hour-by-hour routine.",
+    topics: [
+      "typical day",
+      "daily life",
+      "chores",
+      "kitchen",
+      "household",
+      "routine",
+    ],
+    dateRange: "1839-1855",
+    sourceType: "persona-note",
+    citation:
+      "Source-pack note: no first-person daily schedule; ground a 'typical day' in house layout and hospitality only.",
+    url: DANA_HISTORY,
     reliability: "high",
   },
 ];

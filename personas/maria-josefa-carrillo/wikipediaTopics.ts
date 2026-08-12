@@ -3,6 +3,7 @@ import { MARIA_JOSEFA_CARRILLO_IMAGE_TOPICS } from "./imageTopicCatalog";
 export const WIKIPEDIA_BY_TOPIC_KEY: Record<string, string[]> = {
   identity: ["Dana Adobe", "Rancho Nipomo"],
   adobe: ["Dana Adobe", "Rancho Nipomo"],
+  "grant-map": ["Rancho Nipomo", "Dana Adobe"],
   hospitality: ["El Camino Real (California)", "Dana Adobe"],
   "santa-barbara": [
     "Mission Santa Barbara",
@@ -12,6 +13,7 @@ export const WIKIPEDIA_BY_TOPIC_KEY: Record<string, string[]> = {
   "mission-slo": ["Mission San Luis Obispo de Tolosa"],
   "rancho-cattle": ["Ranchos of California", "Californio"],
   chumash: ["Chumash", "La Purísima Mission"],
+  tomol: ["Chumash"],
 };
 
 export const WIKIPEDIA_KEYWORD_ARTICLES: Record<string, string[]> = {

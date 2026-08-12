@@ -415,6 +415,36 @@ async function routeChecks() {
     ok++;
   }
 
+  const dana = await fetchText("/p/dana-adobe");
+  if (dana.status !== 200 || !/Dana Adobe/.test(dana.text)) {
+    fail(`Dana Adobe landing HTTP ${dana.status}`);
+    bad++;
+  } else if (/william-g-dana/.test(home.text) || /maria-josefa-carrillo/.test(home.text)) {
+    fail("Dana figures listed on California Speaks");
+    bad++;
+  } else {
+    pass("Dana Adobe landing; figures not on California Speaks");
+    ok++;
+  }
+
+  const capt = await fetchText("/p/dana-adobe/william-g-dana");
+  if (capt.status !== 200 || !/William G\. Dana/.test(capt.text)) {
+    fail(`Capt. Dana chat HTTP ${capt.status}`);
+    bad++;
+  } else {
+    pass("Capt. Dana partner chat");
+    ok++;
+  }
+
+  const maria = await fetchText("/p/dana-adobe/maria-josefa-carrillo");
+  if (maria.status !== 200 || !/María Josefa|Maria Josefa/.test(maria.text)) {
+    fail(`María Josefa chat HTTP ${maria.status}`);
+    bad++;
+  } else {
+    pass("María Josefa partner chat");
+    ok++;
+  }
+
   return { ok, bad };
 }
 
