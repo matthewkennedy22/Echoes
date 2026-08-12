@@ -34,7 +34,7 @@ import {
 } from "@/lib/imageMatching";
 import { IMAGE_ACCURACY_PROMPT } from "@/lib/imageAccuracy";
 import { chatJSON, embed, embedMany, EMBED_DIM } from "@/lib/llm";
-import { withPersona } from "@/lib/activePersona";
+import { getActivePersona, withPersona } from "@/lib/activePersona";
 import {
   applySemanticAnnotations,
   detectQueryIntent,
@@ -578,9 +578,32 @@ export async function rankSourcesForQuery(
 }
 
 function isIdentityQuery(query: string): boolean {
-  return /\b(?:who (?:are|were) you|introduce yourself|tell me about yourself|why does .+ matter to you)\b/i.test(
-    query
-  );
+  const q = query.trim();
+  if (
+    /\b(?:who (?:are|were) you|what(?:'s| is) your name|introduce yourself|tell me about yourself|why does .+ matter to you)\b/i.test(
+      q
+    )
+  ) {
+    return true;
+  }
+  // Starter-style: "Introduce yourself — who is August Hemme?"
+  if (/\bintroduce yourself\b/i.test(q)) return true;
+  try {
+    const name = getActivePersona().public.name;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // "who is John Muir", "who was Anita Loos", short name forms
+    if (new RegExp(`\\bwho (?:is|was)\\s+${escaped}\\b`, "i").test(q)) {
+      return true;
+    }
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      const last = parts[parts.length - 1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp(`\\bwho (?:is|was)\\s+${last}\\b`, "i").test(q)) return true;
+    }
+  } catch {
+    /* no active persona in this call path */
+  }
+  return false;
 }
 
 function isBirthOrParentageQuery(query: string): boolean {
@@ -803,16 +826,12 @@ async function retrieveContext(
   );
 
   const pid = portraitId(pack);
-  if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
-    if (isIdentityQuery(userQuery)) {
-      const portrait = library.find((img) => img.id === pid);
-      localCandidates = portrait ? [portrait] : [];
-    } else {
-      const wantsPortrait = isPersonPortraitRequest(userQuery);
-      localCandidates = wantsPortrait
-        ? localCandidates.filter((img) => img.id === pid)
-        : [];
-    }
+  // Identity / intro: only the portrait is a candidate — never thematic stand-ins.
+  if (isIdentityQuery(userQuery) || isAppearanceQuery(userQuery)) {
+    const portrait = library.find((img) => img.id === pid);
+    localCandidates = portrait ? [portrait] : [];
+  } else if (isIntroOrMetaQuery(userQuery) && !isImageFollowUp) {
+    localCandidates = [];
   }
 
   const seen = new Set<string>();
@@ -1376,8 +1395,9 @@ async function answerQuestionForPack(
     }
   }
 
-  // Appearance questions must show the portrait, never a landmark the model picked.
-  if (isAppearanceQuery(userQuery)) {
+  // Appearance / identity: always show the portrait — never a thematic stand-in
+  // (e.g. Gold Rush engraving because the bio mentions 1849).
+  if (isAppearanceQuery(userQuery) || isIdentityQuery(userQuery)) {
     const portrait =
       candidateImages.find((img) => img.id === pid) ??
       getAvailableLibraryImages().find((img) => img.id === pid);
@@ -1404,7 +1424,7 @@ async function answerQuestionForPack(
     }
   }
 
-  // "Who are you" / self-introduction: always show the portrait / landmark image.
+  // Safety: if identity somehow still has no image, pin portrait from the library.
   if (images.length === 0 && isIdentityQuery(userQuery)) {
     const portrait =
       candidateImages.find((img) => img.id === pid) ??
@@ -1554,7 +1574,7 @@ async function answerQuestionForPack(
       const portrait =
         candidateImages.find((img) => img.id === pid) ??
         getAvailableLibraryImages().find((img) => img.id === pid);
-      if (portrait && (isAppearanceQuery(userQuery) || images.length === 0)) {
+      if (portrait) {
         images = [portrait];
       }
     }

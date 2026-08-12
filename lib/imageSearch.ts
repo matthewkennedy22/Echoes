@@ -177,7 +177,7 @@ export function buildImageSearchQueries(
 
 /** Intro / meta questions should not trigger a broad image search. */
 export function isIntroOrMetaQuery(userQuery: string): boolean {
-  return /\b(?:who are you|introduce yourself|why does .+ matter|what are you|tell me about yourself|how do you work|are you real|are you ai|what is echoes|your (?:childhood|family|wife|husband|children|private life|personal life)|what year is it)\b/i.test(
+  return /\b(?:who (?:are|were) you|introduce yourself|why does .+ matter|what are you|tell me about yourself|how do you work|are you real|are you ai|what is echoes|what(?:'s| is) your name|your (?:childhood|family|wife|husband|children|private life|personal life)|what year is it)\b/i.test(
     userQuery
   );
 }
