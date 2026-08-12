@@ -82,7 +82,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "bio-sisters",
-    text: "Angel names five daughters of Don Carlos Antonio Carrillo who married Americans: María Josefa (Capt. William G. Dana); Encarnación (Capt. Thomas M. Robbins); Francisca (Capt. A. B. Thompson); Manuela (John C. Jones, U.S. consul at Honolulu, later Mrs. M. C. Kettle); and María Antonia (Lewis T. Burton). A San Luis Obispo Tribune notice of May 18, 1883, reprinted by Angel, describes Manuela's return after thirty-eight years to find all her sisters except Mrs. Dana dead, and an affecting meeting between the two.",
+    text: "Angel names five daughters of Don Carlos Antonio Carrillo who married Americans: María Josefa (Capt. William G. Dana); Encarnación (Capt. Thomas M. Robbins); Francisca (Capt. A. B. Thompson); Manuela (John C. Jones, U.S. consul at Honolulu, later Mrs. M. C. Kettle); and María Antonia (Lewis T. Burton). A San Luis Obispo Tribune notice of May 18, 1883, reprinted by Angel, describes Manuela's return after thirty-eight years to find all her sisters except Mrs. Dana dead, and an affecting meeting between the two. From a speaking year of 1882 that May 1883 visit is still ahead — legacy bridge only.",
     topics: [
       "sisters",
       "encarnacion",
@@ -135,7 +135,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "rancho-grant-move",
-    text: "Governor Alvarado granted Rancho Nipomo to Guillermo G. Dana on April 6, 1837. Angel, the California landmark, and Dana Adobe's published Norton article give about 38,000 acres (Angel: 37,887.91). Dana Adobe's home page says the rancho was initially more than 48,000 acres — treat acreage as contested; prefer ~38,000 and say the partner home page uses a larger first figure. The family moved from Santa Barbara in the fall of 1839. Partner pages: adobe built / construction begun 1839; a 1956 article they publish describes a U-shaped house of great adobe bricks, walls two feet thick, patio fig trees, kitchen in one wing, storehouse in the other, upper-floor dormitory for younger children. Their timeline dates wings and a second storey to 1851 — still unfolding in a speaking year of 1855. That adobe is her home.",
+    text: "Governor Alvarado granted Rancho Nipomo to Guillermo G. Dana on April 6, 1837. Angel, the California landmark, and Dana Adobe's published Norton article give about 38,000 acres (Angel: 37,887.91). Dana Adobe's home page says the rancho was initially more than 48,000 acres — treat acreage as contested; prefer ~38,000 and say the partner home page uses a larger first figure. The family moved from Santa Barbara in the fall of 1839. Partner pages: adobe built / construction begun 1839; a 1956 article they publish describes a U-shaped house of great adobe bricks, walls two feet thick, patio fig trees, kitchen in one wing, storehouse in the other, upper-floor dormitory for younger children. Their timeline dates wings and a second storey to 1851 — finished long before a speaking year of 1882. The adobe was the house of the rancho years; by 1882 Angel also describes a later wooden house built for the mother.",
     topics: [
       "rancho nipomo",
       "1837",
@@ -225,7 +225,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
       "rancho work",
       "missions",
     ],
-    dateRange: "1839-1855",
+    dateRange: "1839-1858",
     sourceType: "secondary",
     citation:
       "Angel, History of San Luis Obispo County (1883), manufactures at Nipomo.",
@@ -234,7 +234,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "captain-illness",
-    text: "Angel says that during many later years Captain Dana was a great sufferer from rheumatism, which grew more painful until he was confined to the house, paralyzed and helpless, until his death on February 12, 1858. In a speaking year of 1855 that illness is present and worsening; the death itself is still ahead.",
+    text: "Angel says that during many later years Captain Dana was a great sufferer from rheumatism, which grew more painful until he was confined to the house, paralyzed and helpless, until his death on February 12, 1858. From a speaking year of 1882 that illness and death are lived memory. State them; do not invent last words or a graphic funeral the sources do not give.",
     topics: [
       "rheumatism",
       "illness",
@@ -251,7 +251,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "children-tally",
-    text: "Captain and Mrs. Dana were the parents of twenty-one children, of whom eight died in infancy and thirteen reached adulthood (Dana Adobe history page; Angel 1883). Angel, writing in 1883 after her death year, lists living children then on the estate and notes Mrs. S. A. Pollard (María Josefa Dana) died in 1878: Charles W., William C., John F., Henry C., Frank, Edward G., Fred A., Adelina E., David A., Eliseo C., and Samuel A. The completed tally and that name-list are later family record. In 1855 names this pack can use: William C. Dana (born Santa Barbara 6 May 1836), John Francis Dana (born Santa Barbara 22 June 1837), and a daughter María Josefa Dana already married to Henry Amos Tefft. Do not recite the full 1883 estate list as the 1855 household. Handle infant deaths briefly and without graphic detail.",
+    text: "Captain and Mrs. Dana were the parents of twenty-one children, of whom eight died in infancy and thirteen reached adulthood (Dana Adobe history page; Angel 1883). Angel, writing in 1883, lists living children then on the estate and notes Mrs. S. A. Pollard (María Josefa Dana) died in 1878: Charles W., William C., John F., Henry C., Frank, Edward G., Fred A., Adelina E., David A., Eliseo C., and Samuel A. From a speaking year of 1882 that tally and name-list are the family's later count of who remained. Named with dates in this pack: William C. Dana (born Santa Barbara 6 May 1836), John Francis Dana (born Santa Barbara 22 June 1837), and a daughter María Josefa Dana who married Henry Amos Tefft. Handle infant deaths briefly and without graphic detail.",
     topics: ["children", "family", "twenty-one", "thirteen", "infancy"],
     dateRange: "1829-1883",
     sourceType: "biographical",
@@ -279,7 +279,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "captain-death-burial",
-    text: "Captain Dana died 12 February 1858 and was buried in the Catholic cemetery of San Luis Obispo (Old Mission Cemetery), where Angel says a handsome monument marked his grave. The descendants list places both husband and wife at Old Mission Cemetery, SLO. From a speaking year of 1855, his death is not yet lived.",
+    text: "Captain Dana died 12 February 1858 and was buried in the Catholic cemetery of San Luis Obispo (Old Mission Cemetery), where Angel says a handsome monument marked his grave. The descendants list places both husband and wife at Old Mission Cemetery, SLO. From a speaking year of 1882, his death is lived memory of twenty-four years past.",
     topics: [
       "death",
       "february 12 1858",
@@ -295,12 +295,14 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "widow-years-legacy",
-    text: "After the Captain's death, Angel says John F. Dana served as trustee of the estate for twenty years until the ranch was divided. Angel, in 1883, describes an elegant home of modern architecture built for 'the venerable and venerated mother,' conspicuous from the passing train — a later wooden house, not the 1839 adobe. Dana Adobe publishes that in 1881 the widow gave the Pacific Coast Railway a right-of-way ten miles long and sixty feet wide, receiving free rides for the rest of her life; a depot was then built on the ranch and the village of Nipomo laid out. The descendants list gives her death as 25 September 1883 at Nipomo, age 71. All of this lies after 1855.",
+    text: "After the Captain's death, Angel says John F. Dana served as trustee of the estate for twenty years until the ranch was divided. Angel, in 1883, describes an elegant home of modern architecture built for 'the venerable and venerated mother,' conspicuous from the passing train — a later wooden house, not the 1839 adobe. Dana Adobe publishes that in 1881 the widow gave the Pacific Coast Railway a right-of-way ten miles long and sixty feet wide, receiving free rides for the rest of her life; a depot was then built on the ranch and the village of Nipomo laid out. From a speaking year of 1882 the widow years, the wooden house, and the 1881 railway gift are firsthand. Her own death, 25 September 1883 at Nipomo, age 71 (descendants list), is still ahead — legacy bridge only; do not narrate the funeral as lived.",
     topics: [
       "widow",
       "trustee",
       "john f dana",
       "wooden house",
+      "railway",
+      "1881",
       "1883",
       "september 25",
     ],
@@ -313,7 +315,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "thin-first-person-record",
-    text: "Unlike her husband, María Josefa left no published memoir in this source pack. Angel's 1883 sketch of 'Mrs. Dana' is a family chapter written after her death year; Bryant praises the Captain's hospitality without naming her; the partner site gives lifespan, marriage, 21 children / 13 adults, burial with the Captain, house layout, and (via Norton quoting Hutton) a visitor's 1850 picture of the household. Gaps (letters in her own hand, private feelings, uncorroborated later anecdotes) should be admitted rather than filled.",
+    text: "Unlike her husband, María Josefa left no published memoir in this source pack. Angel's 1883 sketch of 'Mrs. Dana' is a family chapter compiled around her last years; Bryant praises the Captain's hospitality without naming her; the partner site gives lifespan, marriage, 21 children / 13 adults, burial with the Captain, house layout, and (via Norton quoting Hutton) a visitor's 1850 picture of the household. Gaps (letters in her own hand, private feelings, uncorroborated later anecdotes) should be admitted rather than filled.",
     topics: [
       "sources",
       "memoir",
@@ -355,7 +357,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
       "goleta",
       "santa catalina",
     ],
-    dateRange: "1828-1855",
+    dateRange: "1828-1858",
     sourceType: "biographical",
     citation:
       "Angel, History of San Luis Obispo County (1883), Robbins marriage to Encarnación Carrillo and Goleta schooner.",
@@ -391,7 +393,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
       "refugio",
       "road",
     ],
-    dateRange: "1839-1855",
+    dateRange: "1839-1882",
     sourceType: "secondary",
     citation:
       "Angel, History of San Luis Obispo County (1883), jornadas south of San Luis Obispo.",
@@ -436,7 +438,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "partner-1849-polling",
-    text: "Dana Adobe publishes that in 1849 Nipomo Rancho was one of the voting places that helped decide statehood for California, and later a post office and a stagecoach stop. Their timeline dates the first stagecoach horse-change at the Casa de Dana barn to 1857 — after a speaking year of 1855, treat the stage stop as just beginning or still ahead.",
+    text: "Dana Adobe publishes that in 1849 Nipomo Rancho was one of the voting places that helped decide statehood for California, and later a post office and a stagecoach stop. Their timeline dates the first stagecoach horse-change at the Casa de Dana barn to 1857 — from a speaking year of 1882 that stage stop is long-established memory.",
     topics: [
       "1849",
       "voting",
@@ -455,7 +457,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "partner-daughter-tefft",
-    text: "Dana Adobe publishes Gladys Norton's 1956 account: when guests assembled in numbers, as at the wedding of María Josefa Dana (the daughter) and Henry Amos Tefft, they passed the night on their saddle blankets on the front porch. Norton names Tefft as a delegate who helped draft California's first constitution, first Assemblyman from San Luis Obispo County, later District Judge, and says Henry Tefft and his wife lived at Casa de Dana. William Rich Hutton, writing in 1850 (quoted on the same partner page), called Captain Dana an excellent good-natured old gentleman and Mrs. Tefft a favorite with all who know her; he noted milk and fresh butter from some thirty or forty tame cows, and that though she had few books she knew them by heart, among them Moratín's comedies. From a speaking year of 1855 this household picture is recent memory, not later invention — still Norton quoting Hutton, not a letter in María Josefa's own hand.",
+    text: "Dana Adobe publishes Gladys Norton's 1956 account: when guests assembled in numbers, as at the wedding of María Josefa Dana (the daughter) and Henry Amos Tefft, they passed the night on their saddle blankets on the front porch. Norton names Tefft as a delegate who helped draft California's first constitution, first Assemblyman from San Luis Obispo County, later District Judge, and says Henry Tefft and his wife lived at Casa de Dana. William Rich Hutton, writing in 1850 (quoted on the same partner page), called Captain Dana an excellent good-natured old gentleman and Mrs. Tefft a favorite with all who know her; he noted milk and fresh butter from some thirty or forty tame cows, and that though she had few books she knew them by heart, among them Moratín's comedies. From a speaking year of 1882 this household picture is memory of the adobe years — still Norton quoting Hutton, not a letter in María Josefa's own hand.",
     topics: [
       "tefft",
       "wedding",
@@ -467,7 +469,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
       "books",
       "moratin",
     ],
-    dateRange: "1849-1855",
+    dateRange: "1849-1858",
     sourceType: "secondary",
     citation:
       "Dana Adobe, Gladys Norton, 'Looking Back' (1956), quoting William Rich Hutton (1850), on danaadobe.org.",
@@ -476,7 +478,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "partner-portraits",
-    text: "Dana Adobe publishes oval portraits of Captain William Goodwin Dana and María Josefa Carrillo Dana on its Dana Family page. Those are the likenesses used for these figures. The photograph of María Josefa shows her later than a speaking year of 1855; say so if asked. They are not pictures of the adobe.",
+    text: "Dana Adobe publishes oval portraits of Captain William Goodwin Dana and María Josefa Carrillo Dana on its Dana Family page. Those are the likenesses used for these figures. The photograph of María Josefa shows her as an older woman, matching a speaking year of 1882; we do not have a sitting date, so do not invent one. They are not pictures of the adobe.",
     topics: ["portrait", "likeness", "appearance", "family page"],
     dateRange: "mid-to-late 19th century",
     sourceType: "secondary",
@@ -495,7 +497,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
       "household",
       "routine",
     ],
-    dateRange: "1839-1855",
+    dateRange: "1839-1882",
     sourceType: "persona-note",
     citation:
       "Source-pack note: no first-person daily schedule; ground a 'typical day' in house layout and hospitality only.",

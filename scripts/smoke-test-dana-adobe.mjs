@@ -164,7 +164,7 @@ const MARIA = [
   {
     id: "children",
     q: "How many children do you have?",
-    expect: /twenty-one|21|thirteen|13|still growing|later record|family/i,
+    expect: /twenty-one|21|thirteen|13|family/i,
   },
   {
     id: "tefft",
@@ -173,9 +173,8 @@ const MARIA = [
   },
   {
     id: "illness",
-    q: "How is the Captain's health in 1855?",
-    expect: /rheumatism|ailing|ill|health|pain|1855/i,
-    forbid: /he (?:already )?died in 1858/i,
+    q: "How was the Captain's health in his last years?",
+    expect: /rheumatism|ailing|ill|health|pain|1858|died|death/i,
   },
   {
     id: "spanish-only",
@@ -196,12 +195,12 @@ const MARIA = [
   {
     id: "widow-rail",
     q: "Tell me about giving the Pacific Coast Railway a right of way across the rancho.",
-    expect: /after|beyond|1855|1881|widow|later|record|legacy|ahead|not yet/i,
+    expect: /1881|railway|right.of.way|widow|depot|nipomo|free rid/i,
   },
   {
     id: "death-1883",
     q: "Describe your funeral in 1883.",
-    expect: /after|beyond|1855|not yet|record|cannot|alive|speaking from|legacy/i,
+    expect: /after|beyond|1882|1883|not yet|record|cannot|alive|speaking from|legacy/i,
     forbid: /i was buried at old mission cemetery in 1883 after a long illness/i,
   },
   {

@@ -12,8 +12,8 @@ export const mariaJosefaCarrilloPublic: PersonaPublic = {
   portrait: "🕯️",
   portraitImage: "/portraits/maria-josefa-carrillo.jpg",
   tagline:
-    "Californio ranchera of Nipomo — Carrillo daughter, partner in the adobe, and hostess on El Camino Real",
-  era: "Speaking from the adobe at Nipomo in 1855, while the Captain is ailing and the rancho still runs as a stopping place",
+    "Californio ranchera of Nipomo — Carrillo daughter, widow of Captain Dana, and hostess of the adobe years",
+  era: "Speaking from Rancho Nipomo in 1882, a widow of about seventy, as the railway reaches the grant",
   disclosure:
     "You are speaking with an AI simulation of María Josefa Carrillo de Dana, based on historical sources. It is not the real person, and it can be mistaken. Every answer is labeled by how well the sources support it, and you can view the evidence behind any reply.",
   starters: [

@@ -11,7 +11,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-portrait",
     src: "/portraits/maria-josefa-carrillo.jpg",
     caption:
-      "María Josefa Carrillo de Dana — the portrait published by Dana Adobe. Lace mantilla, white collar, hoop earring; a later photograph of her as an older woman.",
+      "María Josefa Carrillo de Dana — the portrait published by Dana Adobe. Lace mantilla, white collar, hoop earring; how she looked in later life. We do not have a sitting date.",
     alt: "Historical oval portrait of María Josefa Carrillo de Dana in a lace mantilla",
     topics: [
       "portrait",
@@ -44,7 +44,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-adobe-1900",
     src: "/images/william-g-dana/dana-adobe-ca1900.jpg",
     caption:
-      "The Nipomo adobe about 1900 — after my lifetime. Whitewashed walls and a wooden walk to the door; a later photograph of the house, not of 1855.",
+      "The Nipomo adobe about 1900 — after my lifetime. Whitewashed walls and a wooden walk to the door; a later photograph of the house, not of 1882.",
     alt: "Historic photograph of the Dana Adobe at Nipomo, about 1900",
     topics: ["adobe", "nipomo", "house", "1900", "casa de dana"],
     dateRange: "c. 1900",
@@ -57,7 +57,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-adobe-1900-porch",
     src: "/images/william-g-dana/dana-adobe-ca1900-porch.jpg",
     caption:
-      "Another view of the Nipomo adobe about 1900, with a long porch of wooden posts — after my lifetime, not a picture of 1855.",
+      "Another view of the Nipomo adobe about 1900, with a long porch of wooden posts — after my lifetime, not a picture of 1882.",
     alt: "Historic photograph of the Dana Adobe porch, about 1900",
     topics: ["adobe", "house", "porch", "nipomo", "casa de dana"],
     dateRange: "c. 1900",
@@ -70,7 +70,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-diseno",
     src: "/images/william-g-dana/nipomo-diseno.jpg",
     caption:
-      "Plan of the Rancho of Nipomo — the grant map Dana Adobe publishes, giving 37,887.91 acres. A later archival copy, not a sketch from 1855.",
+      "Plan of the Rancho of Nipomo — the grant map Dana Adobe publishes, giving 37,887.91 acres. A later archival copy, not a sketch from 1882.",
     alt: "Archival map titled Plan of the Rancho of Nipomo, 37,887.91 acres",
     topics: ["acres", "acreage", "grant", "map", "diseno", "rancho nipomo"],
     dateRange: "19th-century diseño (archival copy)",
@@ -83,7 +83,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-adobe-vineyard",
     src: "/images/william-g-dana/dana-adobe-vineyard.jpg",
     caption:
-      "The adobe and a later Mission-grape vineyard on the historic park — a modern view of the house, not a picture from 1855.",
+      "The adobe and a later Mission-grape vineyard on the historic park — a modern view of the house, not a picture from 1882.",
     alt: "Modern photograph of the restored Dana Adobe behind a vineyard",
     topics: ["adobe", "vineyard", "estate", "house", "nipomo"],
     dateRange: "2020s",
@@ -96,7 +96,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-adobe-oxcart",
     src: "/images/william-g-dana/dana-adobe-oxcart.jpg",
     caption:
-      "The restored adobe with an ox cart in the grass — a later view of the house and grounds, not a picture from 1855.",
+      "The restored adobe with an ox cart in the grass — a later view of the house and grounds, not a picture from 1882.",
     alt: "Modern photograph of the restored Dana Adobe with a wooden ox cart",
     topics: ["adobe", "ox cart", "estate", "house", "rancho"],
     dateRange: "2020s",
@@ -142,7 +142,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-mission-slo-front",
     src: "/images/myron-angel/mission-front-1880.jpg",
     caption:
-      "Mission San Luis Obispo de Tolosa, about 1875–1880 — the mission north of us on El Camino Real, photographed after my speaking year.",
+      "Mission San Luis Obispo de Tolosa, about 1875–1880 — the mission north of us on El Camino Real, photographed in these later years of my life.",
     alt: "Historic photograph of Mission San Luis Obispo de Tolosa",
     topics: [
       "mission",
@@ -159,7 +159,7 @@ export const mariaJosefaCarrilloImages: ImageAsset[] = [
     id: "img-vaqueros",
     src: commonsFileUrl("California_Vaqueros,_1854.jpg"),
     caption:
-      "“California Vaqueros, Returned from the Chase” (1854) — horsemen and families of the rancho years, close to 1855, though not a picture of our own vaqueros at Nipomo.",
+      "“California Vaqueros, Returned from the Chase” (1854) — horsemen and families of the rancho years, memory of the Captain's time, though not a picture of our own vaqueros at Nipomo.",
     alt: "1854 engraving of California vaqueros",
     topics: [
       "vaquero",

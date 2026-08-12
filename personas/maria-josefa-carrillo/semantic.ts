@@ -91,6 +91,11 @@ export const mariaJosefaCarrilloVocab: PersonaSemanticVocab = {
       label: "U.S. mail exchange 1847",
       aliases: ["mail route", "1847 mail", "kearny mail"],
     },
+    {
+      id: "railway-1881",
+      label: "Pacific Coast Railway right-of-way 1881",
+      aliases: ["railway", "right of way", "1881", "depot"],
+    },
   ],
   periods: [
     {
@@ -106,6 +111,13 @@ export const mariaJosefaCarrilloVocab: PersonaSemanticVocab = {
       yearStart: 1839,
       yearEnd: 1858,
       aliases: ["rancho years"],
+    },
+    {
+      id: "widow-years",
+      label: "Widow years at Nipomo",
+      yearStart: 1858,
+      yearEnd: 1883,
+      aliases: ["after the captain", "railway years"],
     },
   ],
 };
@@ -164,13 +176,22 @@ export const mariaJosefaCarrilloSourceAnnotations: SourceSemanticAnnotations = {
     ],
     places: ["dana-adobe"],
     yearStart: 1849,
-    yearEnd: 1855,
+    yearEnd: 1858,
     period: "adobe-years",
   },
   "partner-portraits": {
     people: ["maria-josefa-carrillo", "william-g-dana"],
-    yearStart: 1855,
+    yearStart: 1870,
     yearEnd: 1883,
+    period: "widow-years",
+  },
+  "widow-years-legacy": {
+    people: ["maria-josefa-carrillo", "john-f-dana"],
+    places: ["rancho-nipomo"],
+    events: ["railway-1881"],
+    yearStart: 1858,
+    yearEnd: 1883,
+    period: "widow-years",
   },
   "captain-illness": {
     people: ["william-g-dana", "maria-josefa-carrillo"],
