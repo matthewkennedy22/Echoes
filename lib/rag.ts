@@ -578,7 +578,7 @@ export async function rankSourcesForQuery(
 }
 
 function isIdentityQuery(query: string): boolean {
-  return /\b(?:who are you|introduce yourself|tell me about yourself|why does .+ matter to you)\b/i.test(
+  return /\b(?:who (?:are|were) you|introduce yourself|tell me about yourself|why does .+ matter to you)\b/i.test(
     query
   );
 }
@@ -1013,9 +1013,10 @@ Rules for images:
   match what you are actually describing.
 - Prefer at most ONE image. Do not invent image ids; use only the ids listed above.
 - **Integration rule (critical):** If image_ids is not empty, the image renders **above**
-  your answer text. Write as though the visitor is already looking at it — one unified
-  moment. Never offer to show an image you are simultaneously including. Never end with
-  "if you wish" when the image is already in image_ids.
+  your answer text — once, at the top. Write as though the visitor is already looking at
+  it. **NEVER** paste ![...] markdown, image ids, blank mid-answer "slots," or extra blank
+  lines meant for a second picture. Never offer to show an image you are simultaneously including.
+  Never end with "if you wish" when the image is already in image_ids.
 - Good example (mission history with img-mission-1883 listed): "Observe here the Mission
   as it stood in my day — the adobe walls weathered by decades of faithful labor…"
 - Bad example: "...If you wish, I can show you a likeness." (while also setting image_ids)
@@ -1195,7 +1196,8 @@ function unwrapParagraphEmphasis(answer: string): string {
 function sanitizeAnswerText(answer: string): string {
   return unwrapParagraphEmphasis(
     answer
-      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      // Full markdown images, bare ![img-id] placeholders, and HTML <img>.
+      .replace(/!\[[^\]]*\](?:\([^)]*\))?/g, "")
       .replace(/<img\b[^>]*>/gi, "")
       .replace(
         /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
@@ -1205,6 +1207,11 @@ function sanitizeAnswerText(answer: string): string {
         /^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim,
         ""
       )
+      // Models often emit typewriter double-spaces after periods; bubbles use
+      // pre-wrap so those show as awkward gaps between sentences.
+      .replace(/[^\S\n]+/g, " ")
+      // Spaces on "blank" lines break \n{3,} collapse and leave image-sized gaps.
+      .replace(/ ?\n ?/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .trim()
   );

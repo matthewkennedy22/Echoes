@@ -102,9 +102,20 @@ function FormattedText({ text }: { text: string }) {
       nodes.push(text.slice(last, match.index));
     }
     if (match[1] != null) {
-      nodes.push(<strong key={key++}>{match[1]}</strong>);
+      // Models sometimes wrap whole sentences in **bold** — keep as plain prose.
+      if (match[1].length > 48) {
+        nodes.push(match[1]);
+      } else {
+        nodes.push(<strong key={key++}>{match[1]}</strong>);
+      }
     } else {
-      nodes.push(<em key={key++}>{match[2] ?? match[3]}</em>);
+      const emphasized = match[2] ?? match[3] ?? "";
+      // Models sometimes wrap whole sentences/paragraphs; keep that as plain prose.
+      if (emphasized.length > 48) {
+        nodes.push(emphasized);
+      } else {
+        nodes.push(<em key={key++}>{emphasized}</em>);
+      }
     }
     last = match.index + match[0].length;
   }
@@ -150,6 +161,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
   const chatAbortRef = useRef<AbortController | null>(null);
   const mediaSourceRef = useRef<MediaSource | null>(null);
   const aliveRef = useRef(true);
+  const voiceOnRef = useRef(true);
   const playPromiseRef = useRef<Promise<void> | null>(null);
   const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -350,7 +362,16 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
     await safePlay(audio);
   }
 
-  async function speak(text: string, index: number) {
+  async function speak(
+    text: string,
+    index: number,
+    opts?: { force?: boolean }
+  ) {
+    if (!aliveRef.current) return;
+    // Auto-play respects Voice off; manual "Hear this" can force playback.
+    const forced = opts?.force === true;
+    if (!forced && !voiceOnRef.current) return;
+
     stopAudio();
     setVoiceError(null);
     setSpeakingIndex(index);
@@ -358,6 +379,8 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    const mayContinue = () =>
+      aliveRef.current && (forced || voiceOnRef.current);
 
     try {
       const audio = getPlayer();
@@ -384,7 +407,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
           return;
         }
         const { url } = (await res.json()) as { url: string };
-        if (!aliveRef.current) return;
+        if (!mayContinue()) return;
         await playFromUrl(audio, url, index);
         return;
       }
@@ -409,6 +432,8 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
         return;
       }
 
+      if (!mayContinue()) return;
+
       const mime = "audio/mpeg";
 
       // Desktop / Android: progressive playback via MediaSource.
@@ -431,7 +456,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
               let hasBuffered = false;
 
               const tryPlay = () => {
-                if (playStarted || !hasBuffered) return;
+                if (playStarted || !hasBuffered || !mayContinue()) return;
                 playStarted = true;
                 void safePlay(audio).catch(() => {
                   playStarted = false;
@@ -460,6 +485,14 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
               void (async () => {
                 try {
                   while (true) {
+                    if (!mayContinue() || controller.signal.aborted) {
+                      try {
+                        await reader.cancel();
+                      } catch {
+                        /* ignore */
+                      }
+                      break;
+                    }
                     const { value, done: streamDone } = await reader.read();
                     if (streamDone) break;
                     if (value) queue.push(value);
@@ -483,13 +516,13 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
           );
         });
 
-        if (!aliveRef.current) return;
+        if (!mayContinue()) return;
         if (audio.paused) await safePlay(audio);
         return;
       }
 
       // Fallback: wait for the full file, then play.
-      if (!aliveRef.current) return;
+      if (!mayContinue()) return;
       await playBlob(audio, await res.blob(), index);
       setVoicePreparingIndex(null);
     } catch (err) {
@@ -561,7 +594,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
             : undefined,
         },
       ]);
-      if (voiceOn && data.answer && aliveRef.current) {
+      if (voiceOnRef.current && data.answer && aliveRef.current) {
         speak(stripInlineMarkdown(data.answer), assistantIndex);
       }
     } catch (err) {
@@ -608,7 +641,8 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
           className="voice-toggle"
           onClick={() => {
             unlockAudio();
-            const next = !voiceOn;
+            const next = !voiceOnRef.current;
+            voiceOnRef.current = next;
             setVoiceOn(next);
             if (!next) stopAudio();
           }}
@@ -638,9 +672,11 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                 </div>
               )}
               {m.role === "assistant" ? (
-                <FormattedText text={m.content} />
+                <div className="bubble-text">
+                  <FormattedText text={m.content} />
+                </div>
               ) : (
-                m.content
+                <div className="bubble-text">{m.content}</div>
               )}
             </div>
 
@@ -657,7 +693,9 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                     } else {
                       stopAudio();
                       unlockAudio();
-                      void speak(stripInlineMarkdown(m.content), i);
+                      void speak(stripInlineMarkdown(m.content), i, {
+                        force: true,
+                      });
                     }
                   }}
                 >

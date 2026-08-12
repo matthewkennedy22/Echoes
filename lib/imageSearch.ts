@@ -251,9 +251,15 @@ export function extractImageYear(...texts: string[]): number | null {
 /** True when an image plausibly dates from a historical era (roughly pre-1930s). */
 export function isHistoricalImageAsset(img: ImageAsset): boolean {
   const metaHay = `${img.dateRange ?? ""} ${img.caption} ${img.alt}`;
-  // Explicit modern library tags / contemporary photo dates.
-  if (/\bmodern\b/i.test(img.dateRange ?? "")) return false;
-  if (/\b(?:20(?:0[1-9]|[1-9]\d)|19[5-9]\d)\b/.test(img.dateRange ?? "")) {
+  const dateRange = img.dateRange ?? "";
+  // Reject contemporary photos unless the subject era is also dated historically.
+  if (
+    /\bmodern\b/i.test(dateRange) &&
+    !/\b(?:c\.?\s*)?(?:1[89]\d{2}|19[0-3]\d)\b/.test(dateRange)
+  ) {
+    return false;
+  }
+  if (/\b(?:20(?:0[1-9]|[1-9]\d)|19[5-9]\d)\b/.test(dateRange)) {
     return false;
   }
 
