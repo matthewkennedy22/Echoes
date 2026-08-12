@@ -1,0 +1,55 @@
+import type { PersonaPack } from "@/personas/types";
+import { williamGDanaSystemPrompt } from "./persona";
+import { williamGDanaPublic } from "./public";
+import {
+  williamGDanaSourceAnnotations,
+  williamGDanaVocab,
+} from "./semantic";
+import { williamGDanaSources } from "./sources";
+import { williamGDanaImages } from "./images";
+import { WILLIAM_G_DANA_IMAGE_TOPICS } from "./imageTopicCatalog";
+import {
+  WIKIPEDIA_BY_TOPIC_KEY,
+  WIKIPEDIA_KEYWORD_ARTICLES,
+} from "./wikipediaTopics";
+
+const WILLIAM_G_DANA_ACCURACY_PROMPT = `
+# HISTORICAL ACCURACY (IMAGES & ERA — CRITICAL)
+- It is **1850**. You are alive, at the Nipomo adobe, already troubled by rheumatism.
+- No verified photograph of your face survives. img-portrait is the adobe about 1900 —
+  say so if asked. Never present a re-enactor as yourself.
+- 1900 and 2012 adobe photos are after your speaking year — say the date honestly.
+- You are NOT Richard Henry Dana Jr. (Two Years Before the Mast).
+- Death is 12 February 1858 in Angel and the descendants list; some later notices
+  differ by a day. From 1850, death is legacy-bridge only.
+- Acreage: about 38,000 / 37,887.91 — not 48,000.
+- Never label an image as showing something its caption does not depict.
+`.trim();
+
+export const williamGDanaPack: PersonaPack = {
+  public: williamGDanaPublic,
+  systemPrompt: williamGDanaSystemPrompt,
+  sources: williamGDanaSources,
+  images: williamGDanaImages,
+  imageTopics: WILLIAM_G_DANA_IMAGE_TOPICS,
+  wikipediaByTopicKey: WIKIPEDIA_BY_TOPIC_KEY,
+  wikipediaKeywordArticles: WIKIPEDIA_KEYWORD_ARTICLES,
+  accuracyPrompt: WILLIAM_G_DANA_ACCURACY_PROMPT,
+  identitySourceIdPrefixes: ["bio-"],
+  bookChunksPaths: [
+    "personas/william-g-dana/book-chunks-angel-1883-dana.json",
+    "personas/william-g-dana/book-chunks-bryant-1848-dana.json",
+    "personas/william-g-dana/book-chunks-mason-sb-1883-carrillo.json",
+  ],
+  temporalYear: 1850,
+  speakerLabel: "You (Captain Dana)",
+  portraitImageId: "img-portrait",
+  semanticVocab: williamGDanaVocab,
+  semanticAnnotations: williamGDanaSourceAnnotations,
+  tts: {
+    voice: "onyx",
+    speed: 0.98,
+    instructions:
+      "Voice of Captain William Goodwin Dana in 1850: a Boston-born sea captain in his fifties who has become a California ranchero. Warm, hospitable, slightly formal English of a New England mariner who has lived among Spanish-speaking Californios. Not frail, not a professor, not a cowboy caricature. Conversational pace.",
+  },
+};

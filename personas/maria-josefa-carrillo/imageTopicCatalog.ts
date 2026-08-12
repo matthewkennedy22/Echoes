@@ -1,0 +1,96 @@
+import type { ImageTopic } from "@/personas/types";
+
+export const MARIA_JOSEFA_CARRILLO_IMAGE_TOPICS: ImageTopic[] = [
+  {
+    key: "identity",
+    label: "María Josefa — who she is (the house, not a face portrait)",
+    buzzwords: [
+      "who are you",
+      "introduce yourself",
+      "maria josefa",
+      "carrillo",
+      "portrait",
+      "likeness",
+      "biography",
+      "myself",
+      "i am",
+    ],
+    imageIds: ["img-portrait"],
+  },
+  {
+    key: "adobe",
+    label: "The Nipomo adobe",
+    buzzwords: [
+      "adobe",
+      "house",
+      "salon",
+      "home",
+      "thirteen rooms",
+      "nipomo",
+    ],
+    imageIds: ["img-portrait", "img-adobe-1900", "img-adobe-restored"],
+  },
+  {
+    key: "hospitality",
+    label: "Hostess on El Camino Real",
+    buzzwords: [
+      "hospitality",
+      "travelers",
+      "welcome",
+      "el camino real",
+      "bryant",
+      "mail",
+      "hostess",
+    ],
+    imageIds: ["img-portrait", "img-adobe-restored"],
+  },
+  {
+    key: "santa-barbara",
+    label: "Santa Barbara and the Carrillos",
+    buzzwords: [
+      "santa barbara",
+      "carrillo",
+      "birth",
+      "marriage",
+      "presidio",
+      "mission santa barbara",
+      "father",
+    ],
+    imageIds: ["img-mission-sb"],
+  },
+  {
+    key: "mission-slo",
+    label: "Mission San Luis Obispo",
+    buzzwords: [
+      "mission san luis obispo",
+      "san luis obispo",
+      "tolosa",
+      "el camino",
+    ],
+    imageIds: ["img-mission-slo-front"],
+  },
+  {
+    key: "rancho-cattle",
+    label: "Rancho life",
+    buzzwords: [
+      "rancho",
+      "cattle",
+      "vaquero",
+      "horses",
+      "californio",
+    ],
+    imageIds: ["img-vaqueros"],
+  },
+  {
+    key: "chumash",
+    label: "Chumash people and Nipomo",
+    buzzwords: [
+      "chumash",
+      "nipomo village",
+      "indigenous",
+      "la purisima",
+      "tomol",
+    ],
+    imageIds: ["img-chumash-tomol", "img-chumash-cave"],
+  },
+];

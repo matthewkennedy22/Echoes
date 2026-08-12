@@ -235,6 +235,14 @@ body {
   line-height: 1.55;
   color: var(--ink-soft);
 }
+.partner-landing-note {
+  margin: 18px auto 0;
+  max-width: 36em;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
 .partner-cta {
   display: inline-block;
   font-family: Georgia, serif;

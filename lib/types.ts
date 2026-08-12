@@ -61,6 +61,9 @@ export interface ImageAsset {
   license: string;
 }
 
+/** Where a figure appears. Omitted = public California Speaks gallery. */
+export type PersonaVisibility = "public" | "partner";
+
 /** Public, client-safe display info for a persona. */
 export interface PersonaPublic {
   slug: string;
@@ -74,6 +77,11 @@ export interface PersonaPublic {
   era: string;
   disclosure: string;
   starters: string[];
+  /**
+   * `partner` figures are omitted from California Speaks and live on a
+   * partner landing (`/p/...`). Default is `public`.
+   */
+  visibility?: PersonaVisibility;
 }
 
 /** Chat message exchanged with the API. */

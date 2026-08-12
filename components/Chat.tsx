@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { MAX_INLINE_EMPHASIS } from "@/lib/answerFormat";
 import type {
   EvidenceLabel,
   ImageAsset,
@@ -103,7 +104,7 @@ function FormattedText({ text }: { text: string }) {
     }
     if (match[1] != null) {
       // Models sometimes wrap whole sentences in **bold** — keep as plain prose.
-      if (match[1].length > 48) {
+      if (match[1].length > MAX_INLINE_EMPHASIS) {
         nodes.push(match[1]);
       } else {
         nodes.push(<strong key={key++}>{match[1]}</strong>);
@@ -111,7 +112,7 @@ function FormattedText({ text }: { text: string }) {
     } else {
       const emphasized = match[2] ?? match[3] ?? "";
       // Models sometimes wrap whole sentences/paragraphs; keep that as plain prose.
-      if (emphasized.length > 48) {
+      if (emphasized.length > MAX_INLINE_EMPHASIS) {
         nodes.push(emphasized);
       } else {
         nodes.push(<em key={key++}>{emphasized}</em>);

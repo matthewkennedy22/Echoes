@@ -6,6 +6,7 @@ import type { PersonaPublic } from "@/lib/types";
  */
 export const spreckelsPublic: PersonaPublic = {
   slug: "john-d-spreckels",
+  visibility: "partner",
   region: "Coronado",
   name: "John D. Spreckels",
   years: "1853 – 1926",

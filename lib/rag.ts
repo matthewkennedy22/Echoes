@@ -10,6 +10,7 @@ import {
   verifyGroundedAnswer,
   verifierRewritePrompt,
 } from "@/lib/answerVerifier";
+import { sanitizeAnswerText } from "@/lib/answerFormat";
 import {
   isContextualFollowUp,
   isHistoricalImageAsset,
@@ -1178,62 +1179,6 @@ function parseModelAnswer(raw: string): {
     return { answer: "" };
   }
   return { answer: raw };
-}
-
-/**
- * Models sometimes wrap every paragraph (or the whole answer) in *italics* /
- * _underscores_, which renders as an all-italic bubble. Keep short emphasis;
- * unwrap paragraph-scale wrapping.
- */
-function unwrapParagraphEmphasis(answer: string): string {
-  return answer
-    .split(/\n\n+/)
-    .map((block) => {
-      const t = block.trim();
-      if (t.length <= 40) return block;
-      // Whole-paragraph *wrap* with no inner asterisks.
-      if (
-        t.startsWith("*") &&
-        t.endsWith("*") &&
-        !t.slice(1, -1).includes("*")
-      ) {
-        return t.slice(1, -1);
-      }
-      if (
-        t.startsWith("_") &&
-        t.endsWith("_") &&
-        !t.slice(1, -1).includes("_")
-      ) {
-        return t.slice(1, -1);
-      }
-      return block;
-    })
-    .join("\n\n");
-}
-
-/** Strip markdown/HTML image embeds the model sometimes adds despite image_ids. */
-function sanitizeAnswerText(answer: string): string {
-  return unwrapParagraphEmphasis(
-    answer
-      // Full markdown images, bare ![img-id] placeholders, and HTML <img>.
-      .replace(/!\[[^\]]*\](?:\([^)]*\))?/g, "")
-      .replace(/<img\b[^>]*>/gi, "")
-      .replace(
-        /^\s*https?:\/\/(?:upload\.)?wikimedia\.org\/[^\s]+\s*$/gim,
-        ""
-      )
-      .replace(
-        /^\s*https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?\s*$/gim,
-        ""
-      )
-      // Models often emit typewriter double-spaces after periods; bubbles use
-      // pre-wrap so those show as awkward gaps between sentences.
-      .replace(/[^\S\n]+/g, " ")
-      // Spaces on "blank" lines break \n{3,} collapse and leave image-sized gaps.
-      .replace(/ ?\n ?/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim()
-  );
 }
 
 export async function answerQuestion(

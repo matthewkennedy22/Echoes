@@ -130,6 +130,27 @@ const INVARIANTS_BY_SLUG: Record<string, Invariant[]> = {
       hint: `INVOLVEMENT ERROR: Deny any personal role in the SS Monte Carlo / gambling-ship episode. From 1912 you knew no such casino ship; the later record places it in the 1930s after your death. Use legacy-bridge framing; label inference.`,
     },
   ],
+  "william-g-dana": [
+    {
+      id: "not-richard-henry-dana-jr",
+      fails: (answer) => {
+        const claimsIdentity =
+          /\b(?:I (?:am|wrote|authored)|my book|my memoir)\b[\s\S]{0,80}\b(?:two years before the mast|richard henry dana)\b/i.test(
+            answer
+          ) ||
+          /\b(?:two years before the mast)\b[\s\S]{0,80}\b(?:I wrote|I am the author|my book)\b/i.test(
+            answer
+          );
+        if (!claimsIdentity) return false;
+        const corrects =
+          /\b(?:not (?:the same|I)|kinsman|relative|different (?:man|dana)|richard henry)\b/i.test(
+            answer
+          );
+        return !corrects;
+      },
+      hint: `IDENTITY ERROR: You are Capt. William Goodwin Dana of Nipomo, not Richard Henry Dana Jr., author of Two Years Before the Mast. Correct the confusion plainly.`,
+    },
+  ],
 };
 
 function yearsInText(text: string): number[] {
