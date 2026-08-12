@@ -5,9 +5,10 @@ import type { SourceChunk } from "@/lib/types";
  *
  * Grounding: Angel 1883 (marriage and Carrillo family chapter; Dana
  * biography); Bryant 1848 (visitor to the house); OHP landmark #1033;
- * Dana Adobe history page and descendants list. No Find a Grave, Wikipedia,
+ * Dana Adobe partner site (home, history, family, descendants list, and
+ * the Gladys Norton 1956 article they publish). No Find a Grave, Wikipedia,
  * Blond Ranchero, or uncorroborated volunteer-essay beats (Ojai petition,
- * "Spanish only," Chumash adobe labor).
+ * "Spanish only").
  */
 
 const ANGEL_1883 =
@@ -17,6 +18,10 @@ const BRYANT_1848 =
 const OHP_1033 =
   "https://ohp.parks.ca.gov/ListedResources/Detail/1033";
 const DANA_HISTORY = "https://www.danaadobe.org/history/";
+const DANA_HOME = "https://www.danaadobe.org/";
+const DANA_FAMILY = "https://www.danaadobe.org/family/";
+const DANA_NORTON =
+  "https://www.danaadobe.org/2021/09/22/looking-back-a-story-by-gladys-norton-in-1956/";
 const DANA_DESCENDANTS =
   "https://www.danaadobe.org/wp-content/uploads/2023/11/Dana-Descendants.pdf";
 
@@ -130,7 +135,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "rancho-grant-move",
-    text: "Governor Alvarado granted Rancho Nipomo to Guillermo G. Dana on April 6, 1837 — almost 38,000 acres (Angel: 37,887.91). The family moved from Santa Barbara to the grant in the fall of 1839. Dana erected a large adobe of thirteen rooms on an elevation overlooking the valley. That adobe is her home in the 1850s.",
+    text: "Governor Alvarado granted Rancho Nipomo to Guillermo G. Dana on April 6, 1837. Angel, the California landmark, and Dana Adobe's published Norton article give about 38,000 acres (Angel: 37,887.91). Dana Adobe's home page says the rancho was initially more than 48,000 acres — treat acreage as contested; prefer ~38,000 and say the partner home page uses a larger first figure. The family moved from Santa Barbara in the fall of 1839. Partner pages: adobe built / construction begun 1839; a 1956 article they publish describes a U-shaped house of great adobe bricks, walls two feet thick, patio fig trees, kitchen in one wing, storehouse in the other, upper-floor dormitory for younger children. Their timeline dates wings and a second storey to 1851 — still unfolding in a speaking year of 1855. That adobe is her home.",
     topics: [
       "rancho nipomo",
       "1837",
@@ -142,13 +147,13 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
     dateRange: "1837-1839",
     sourceType: "biographical",
     citation:
-      "Angel, History of San Luis Obispo County (1883); California Historical Landmark #1033; Dana Adobe, History page.",
-    url: OHP_1033,
+      "Angel, History of San Luis Obispo County (1883); California Historical Landmark #1033; Dana Adobe, Home page (initially more than 48,000 acres; built 1839); Dana Adobe, Gladys Norton, 'Looking Back' (1956), and site timeline (wings/second storey 1851).",
+    url: DANA_HOME,
     reliability: "high",
   },
   {
     id: "nipomo-name-chumash",
-    text: "Nipomo, in the partner history and in Angel, comes from a local Indian expression meaning at the foot of the hill. Chumash people lived on this coast for millennia; the last recorded member of the Nipomo village was baptized and taken to Mission La Purísima in 1804. The grant occupies former mission lands after secularization. These sources do not document who supplied the labor to build the 1839 adobe.",
+    text: "Nipomo, in the partner history and in Angel, comes from a local Indian expression meaning at the foot of the hill. Chumash people lived on this coast for millennia; the last recorded member of the Nipomo village was baptized and taken to Mission La Purísima in 1804. The grant occupies former mission lands after secularization. A 1956 article Dana Adobe publishes (Gladys Norton) says the residence was built by Indian labor of adobe bricks with walls two feet thick. Do not invent tribal names or ceremonies; label labor as the partner article states it, incomplete in detail.",
     topics: [
       "nipomo",
       "chumash",
@@ -160,7 +165,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
     dateRange: "to 1839",
     sourceType: "secondary",
     citation:
-      "Dana Adobe, History page, Chumash Era and Rancho Era; Angel, History of San Luis Obispo County (1883), Nipomo name.",
+      "Dana Adobe, History page, Chumash Era and Rancho Era; Angel, History of San Luis Obispo County (1883), Nipomo name; Dana Adobe, Gladys Norton, 'Looking Back' (1956), on danaadobe.org.",
     url: DANA_HISTORY,
     reliability: "medium",
   },
@@ -200,13 +205,13 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "mail-1847",
-    text: "In 1847 the Dana ranch became one of four designated exchange points on California's first U.S. mail route.",
+    text: "In 1847 the Dana ranch became an exchange point on California's first U.S. mail route. Dana Adobe publishes Gladys Norton's 1956 account of General S. W. Kearny's order of April 19, 1847: mail carried on horseback by two soldiers, starting every other Monday from San Diego and San Francisco, the parties to meet at Captain Dana's ranch the next Sunday to exchange mails. The California landmark text also names the 1847 U.S. mail exchange.",
     topics: ["mail", "1847", "postal", "exchange point"],
     dateRange: "1847",
     sourceType: "reference",
     citation:
-      "California Historical Landmark #1033.",
-    url: OHP_1033,
+      "California Historical Landmark #1033; Dana Adobe, Gladys Norton, 'Looking Back' (1956), quoting Kearny's 19 April 1847 mail order.",
+    url: DANA_NORTON,
     reliability: "high",
   },
   {
@@ -290,7 +295,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
   },
   {
     id: "widow-years-legacy",
-    text: "After the Captain's death, Angel says John F. Dana served as trustee of the estate for twenty years until the ranch was divided. Angel, in 1883, describes an elegant home of modern architecture built for 'the venerable and venerated mother,' conspicuous from the passing train — a later wooden house, not the 1839 adobe. The descendants list gives her death as 25 September 1883 at Nipomo, age 71. All of this lies after 1855.",
+    text: "After the Captain's death, Angel says John F. Dana served as trustee of the estate for twenty years until the ranch was divided. Angel, in 1883, describes an elegant home of modern architecture built for 'the venerable and venerated mother,' conspicuous from the passing train — a later wooden house, not the 1839 adobe. Dana Adobe publishes that in 1881 the widow gave the Pacific Coast Railway a right-of-way ten miles long and sixty feet wide, receiving free rides for the rest of her life; a depot was then built on the ranch and the village of Nipomo laid out. The descendants list gives her death as 25 September 1883 at Nipomo, age 71. All of this lies after 1855.",
     topics: [
       "widow",
       "trustee",
@@ -302,13 +307,13 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
     dateRange: "1858-1883",
     sourceType: "biographical",
     citation:
-      "Angel, History of San Luis Obispo County (1883), John F. Dana trustee and later house for Mrs. Dana; Dana Adobe, History page and Descendants list.",
-    url: DANA_DESCENDANTS,
+      "Angel, History of San Luis Obispo County (1883), John F. Dana trustee and later house for Mrs. Dana; Dana Adobe, Gladys Norton, 'Looking Back' (1956) (1881 railway right-of-way); Dana Adobe, Descendants list.",
+    url: DANA_NORTON,
     reliability: "high",
   },
   {
     id: "thin-first-person-record",
-    text: "Unlike her husband, María Josefa left no published memoir in this source pack. Angel's 1883 sketch of 'Mrs. Dana' is a family chapter written after her death year; Bryant praises the Captain's hospitality without naming her; the partner site gives lifespan, marriage into the Carrillo family, 21 children / 13 adults, and burial with the Captain. Gaps (private letters, daily voice, uncorroborated later anecdotes) should be admitted rather than filled.",
+    text: "Unlike her husband, María Josefa left no published memoir in this source pack. Angel's 1883 sketch of 'Mrs. Dana' is a family chapter written after her death year; Bryant praises the Captain's hospitality without naming her; the partner site gives lifespan, marriage, 21 children / 13 adults, burial with the Captain, house layout, and (via Norton quoting Hutton) a visitor's 1850 picture of the household. Gaps (letters in her own hand, private feelings, uncorroborated later anecdotes) should be admitted rather than filled.",
     topics: [
       "sources",
       "memoir",
@@ -319,7 +324,7 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
     dateRange: "1812-1883",
     sourceType: "persona-note",
     citation:
-      "Source-pack note: first-person published material is thin; grounding is Angel 1883, Bryant 1848, Landmark #1033, and Dana Adobe history / descendants list.",
+      "Source-pack note: first-person published material is thin; grounding is Angel 1883, Bryant 1848, Landmark #1033, and Dana Adobe (home, history, family, Norton 1956, descendants).",
     url: DANA_HISTORY,
     reliability: "high",
   },
@@ -391,6 +396,92 @@ export const mariaJosefaCarrilloSources: SourceChunk[] = [
     citation:
       "Angel, History of San Luis Obispo County (1883), jornadas south of San Luis Obispo.",
     url: ANGEL_1883,
+    reliability: "high",
+  },
+  {
+    id: "partner-landscape",
+    text: "Dana Adobe's history page places the house at the eastern edge of ancient sand dunes that stretch six miles from the coast, with adobe clay from the Temetatte Hills washing into Nipomo Creek to the east. Much of the property, they say, is like it was nearly 200 years ago when Captain Dana first arrived in Nipomo. The home page notes an original tallow vat still on the historic park, along with a Mission grape vineyard and gardens — later park features except the vat, which belongs to the hide-and-tallow work of the rancho.",
+    topics: [
+      "landscape",
+      "sand dunes",
+      "temetatte",
+      "nipomo creek",
+      "tallow vat",
+      "nature",
+    ],
+    dateRange: "1839-1858",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, History page; Dana Adobe, Home page (tallow vat, vineyard, gardens).",
+    url: DANA_HISTORY,
+    reliability: "high",
+  },
+  {
+    id: "partner-spanish-mexican",
+    text: "Dana Adobe's history page: the first Spanish ship along this coast in 1542; in 1769 Spain established the first of 21 California missions, bringing Catholicism, new animals, disease, and agricultural change that dramatically affected indigenous peoples. Mexico's independence from Spain is dated 1821; under Mexican rule, efforts to increase California's population led to the ranchos. Twelve years after independence, secularization confiscated former mission lands and, from the 1830s, distributed them to select Mexican citizens — the setting for the 1835 application and 1837 grant.",
+    topics: [
+      "spanish era",
+      "1769",
+      "missions",
+      "mexico",
+      "1821",
+      "secularization",
+      "ranchos",
+    ],
+    dateRange: "1542-1837",
+    sourceType: "secondary",
+    citation: "Dana Adobe, History page, Spanish Era and Rancho Era.",
+    url: DANA_HISTORY,
+    reliability: "high",
+  },
+  {
+    id: "partner-1849-polling",
+    text: "Dana Adobe publishes that in 1849 Nipomo Rancho was one of the voting places that helped decide statehood for California, and later a post office and a stagecoach stop. Their timeline dates the first stagecoach horse-change at the Casa de Dana barn to 1857 — after a speaking year of 1855, treat the stage stop as just beginning or still ahead.",
+    topics: [
+      "1849",
+      "voting",
+      "statehood",
+      "polling place",
+      "post office",
+      "stagecoach",
+      "1857",
+    ],
+    dateRange: "1849-1857",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, Gladys Norton, 'Looking Back' (1956), and site timeline, on danaadobe.org.",
+    url: DANA_NORTON,
+    reliability: "medium",
+  },
+  {
+    id: "partner-daughter-tefft",
+    text: "Dana Adobe publishes Gladys Norton's 1956 account: when guests assembled in numbers, as at the wedding of María Josefa Dana (the daughter) and Henry Amos Tefft, they passed the night on their saddle blankets on the front porch. Norton names Tefft as a delegate who helped draft California's first constitution, first Assemblyman from San Luis Obispo County, later District Judge, and says Henry Tefft and his wife lived at Casa de Dana. William Rich Hutton, writing in 1850 (quoted on the same partner page), called Captain Dana an excellent good-natured old gentleman and Mrs. Tefft a favorite with all who know her; he noted milk and fresh butter from some thirty or forty tame cows, and that though she had few books she knew them by heart, among them Moratín's comedies. From a speaking year of 1855 this household picture is recent memory, not later invention — still Norton quoting Hutton, not a letter in María Josefa's own hand.",
+    topics: [
+      "tefft",
+      "wedding",
+      "daughter",
+      "henry amos tefft",
+      "hutton",
+      "1850",
+      "porch",
+      "books",
+      "moratin",
+    ],
+    dateRange: "1849-1855",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, Gladys Norton, 'Looking Back' (1956), quoting William Rich Hutton (1850), on danaadobe.org.",
+    url: DANA_NORTON,
+    reliability: "medium",
+  },
+  {
+    id: "partner-portraits",
+    text: "Dana Adobe publishes oval portraits of Captain William Goodwin Dana and María Josefa Carrillo Dana on its Dana Family page. Those are the likenesses used for these figures. The photograph of María Josefa shows her later than a speaking year of 1855; say so if asked. They are not pictures of the adobe.",
+    topics: ["portrait", "likeness", "appearance", "family page"],
+    dateRange: "mid-to-late 19th century",
+    sourceType: "secondary",
+    citation: "Dana Adobe, Dana Family page, portraits of Captain Dana and María Josefa.",
+    url: DANA_FAMILY,
     reliability: "high",
   },
 ];

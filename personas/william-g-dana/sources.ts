@@ -5,8 +5,9 @@ import type { SourceChunk } from "@/lib/types";
  *
  * Grounding: Myron Angel, History of San Luis Obispo County (1883) Dana
  * biography; Edwin Bryant, What I Saw in California (1848); California
- * Historical Landmark #1033; Dana Adobe (partner) history page and
- * descendants list. Wikipedia / Find a Grave / Blond Ranchero are not used.
+ * Historical Landmark #1033; Dana Adobe (partner) home, history, family,
+ * descendants list, and the Gladys Norton 1956 article they publish.
+ * Wikipedia / Find a Grave / Blond Ranchero are not used.
  */
 
 const ANGEL_1883 =
@@ -16,6 +17,10 @@ const BRYANT_1848 =
 const OHP_1033 =
   "https://ohp.parks.ca.gov/ListedResources/Detail/1033";
 const DANA_HISTORY = "https://www.danaadobe.org/history/";
+const DANA_HOME = "https://www.danaadobe.org/";
+const DANA_FAMILY = "https://www.danaadobe.org/family/";
+const DANA_NORTON =
+  "https://www.danaadobe.org/2021/09/22/looking-back-a-story-by-gladys-norton-in-1956/";
 const DANA_DESCENDANTS =
   "https://www.danaadobe.org/wp-content/uploads/2023/11/Dana-Descendants.pdf";
 
@@ -167,7 +172,7 @@ export const williamGDanaSources: SourceChunk[] = [
   },
   {
     id: "rancho-grant-1837",
-    text: "In 1835, having become a naturalized citizen of the Mexican Republic and thereby entitled to hold land, Dana applied for Rancho Nipomo. Governor Alvarado granted the request on April 6, 1837. Angel gives the grant as 37,887.91 acres, among the earlier grants, stretching from near the Pacific shore to the base of the Santa Lucia Mountains in the southern part of San Luis Obispo County. The California landmark text describes the rancho as almost 38,000 acres, granted in 1837.",
+    text: "In 1835, having become a naturalized citizen of the Mexican Republic and thereby entitled to hold land, Dana applied for Rancho Nipomo. Governor Alvarado granted the request on April 6, 1837. Angel and the California landmark give about 38,000 acres (Angel: 37,887.91). Dana Adobe's home page says the rancho was initially more than 48,000 acres. Treat the acreage as contested: prefer ~38,000 from the 1883 county history and the state landmark, and say the partner site uses a larger first figure.",
     topics: [
       "rancho nipomo",
       "land grant",
@@ -180,8 +185,8 @@ export const williamGDanaSources: SourceChunk[] = [
     dateRange: "1835-1837",
     sourceType: "biographical",
     citation:
-      "Angel, History of San Luis Obispo County (1883), 'Obtains the Nipomo Grant'; California Historical Landmark #1033; Dana Adobe, History page.",
-    url: OHP_1033,
+      "Angel, History of San Luis Obispo County (1883); California Historical Landmark #1033; Dana Adobe, History page and Home page (home page: initially more than 48,000 acres).",
+    url: DANA_HISTORY,
     reliability: "high",
   },
   {
@@ -203,7 +208,7 @@ export const williamGDanaSources: SourceChunk[] = [
   },
   {
     id: "chumash-nipomo-village",
-    text: "The Dana Adobe history page states that Chumash people lived along more than 160 miles of the Central Coast from Malibu to Avila Bay, and that indigenous people have lived in the area for about 10,000 years. Nipomo was once a Chumash village. The site notes at least two camps on the Dana Adobe property about 2,000 and 9,000 years old, and that the last Chumash tribal member recorded at the Nipomo village departed in 1804 after being baptized and brought to Mission La Purísima Concepción. How labor on the later adobe was organized is not documented in these sources.",
+    text: "The Dana Adobe history page states that Chumash people lived along more than 160 miles of the Central Coast from Malibu to Avila Bay, and that indigenous people have lived in the area for about 10,000 years. Nipomo was once a Chumash village. The site notes at least two camps on the Dana Adobe property about 2,000 and 9,000 years old, and that the last Chumash tribal member recorded at the Nipomo village departed in 1804 after being baptized and brought to Mission La Purísima Concepción. A 1956 article Dana Adobe publishes (Gladys Norton) says the residence was built by Indian labor of adobe bricks with walls two feet thick. Do not invent tribal names or ceremonies; label labor as the partner article states it, incomplete in detail.",
     topics: [
       "chumash",
       "nipomo village",
@@ -215,13 +220,13 @@ export const williamGDanaSources: SourceChunk[] = [
     dateRange: "to 1804",
     sourceType: "secondary",
     citation:
-      "Dana Adobe, History page, 'Chumash Era.'",
+      "Dana Adobe, History page, 'Chumash Era'; Dana Adobe, Gladys Norton, 'Looking Back' (1956), on danaadobe.org.",
     url: DANA_HISTORY,
     reliability: "medium",
   },
   {
     id: "rancho-move-1839-adobe",
-    text: "After the grant, Dana continued business in Santa Barbara while carrying on the rancho until the fall of 1839, when he moved the family to Nipomo. He erected a large adobe house of thirteen rooms on an elevation overlooking a large area of the grant. Angel, writing in 1883, still called the venerable casa de Dana a conspicuous object on that rise.",
+    text: "After the grant, Dana continued business in Santa Barbara while carrying on the rancho until the fall of 1839, when he moved the family to Nipomo. Dana Adobe's home page and timeline say the family's residence, the Dana Adobe, was built in 1839 (construction begun 1839). Angel describes a large adobe of thirteen rooms on an elevation. A 1956 article Dana Adobe publishes describes a U-shaped house of great adobe bricks, walls two feet thick, a patio with fig trees, kitchen in one wing, storehouse in the other, and an upper-floor dormitory for younger children. Their timeline dates wings and a second storey to 1851 — just after a speaking year of 1850.",
     topics: [
       "1839",
       "adobe",
@@ -233,8 +238,8 @@ export const williamGDanaSources: SourceChunk[] = [
     dateRange: "1839",
     sourceType: "biographical",
     citation:
-      "Angel, History of San Luis Obispo County (1883), move to Nipomo and adobe of thirteen rooms.",
-    url: ANGEL_1883,
+      "Angel, History of San Luis Obispo County (1883); Dana Adobe, Home page (built 1839); Dana Adobe, Gladys Norton, 'Looking Back' (1956), and site timeline (begun 1839; wings/second storey 1851).",
+    url: DANA_HOME,
     reliability: "high",
   },
   {
@@ -276,18 +281,18 @@ export const williamGDanaSources: SourceChunk[] = [
   },
   {
     id: "mail-route-1847",
-    text: "In 1847 the Dana ranch became one of four designated exchange points on California's first U.S. mail route.",
+    text: "In 1847 the Dana ranch became an exchange point on California's first U.S. mail route. Dana Adobe publishes Gladys Norton's 1956 account of General S. W. Kearny's order of April 19, 1847: mail carried on horseback by two soldiers, starting every other Monday from San Diego and San Francisco, the parties to meet at Captain Dana's ranch the next Sunday to exchange mails. The California landmark text also names the 1847 U.S. mail exchange.",
     topics: ["mail", "1847", "postal", "exchange point", "united states mail"],
     dateRange: "1847",
     sourceType: "reference",
     citation:
-      "California Historical Landmark #1033, Rancho Nipomo (Cpt. William G. Dana Rancho).",
-    url: OHP_1033,
+      "California Historical Landmark #1033; Dana Adobe, Gladys Norton, 'Looking Back' (1956), quoting Kearny's 19 April 1847 mail order.",
+    url: DANA_NORTON,
     reliability: "high",
   },
   {
     id: "edith-wreck-1848",
-    text: "In 1848 the United States steamship Edith went ashore between Point Arguello and Point Sal. Angel records that Captain Dana took the officers and crew to his home, entertained them two or three weeks, then provided horses, saddles, and guides to Monterey. Several officers remained some months at the rancho.",
+    text: "In 1848 the United States steamship Edith went ashore between Point Arguello and Point Sal. Angel records that Captain Dana took the officers and crew to his home, entertained them two or three weeks, then provided horses, saddles, and guides to Monterey. Several officers remained some months at the rancho. A 1956 article Dana Adobe publishes (Norton) retells the wreck as 1849 and Point Arguello; prefer Angel's 1848 and say the partner article differs by a year if asked.",
     topics: [
       "edith",
       "shipwreck",
@@ -480,5 +485,128 @@ export const williamGDanaSources: SourceChunk[] = [
       "Angel, History of San Luis Obispo County (1883), siting of the house and Tulare Valley raids.",
     url: ANGEL_1883,
     reliability: "medium",
+  },
+  {
+    id: "partner-landscape",
+    text: "Dana Adobe's history page places the house at the eastern edge of ancient sand dunes that stretch six miles from the coast, with adobe clay from the Temetatte Hills washing into Nipomo Creek to the east. Much of the property, they say, is like it was nearly 200 years ago when Captain Dana first arrived in Nipomo. The home page notes an original tallow vat still on the historic park, along with a Mission grape vineyard and gardens — later park features except the vat, which belongs to the hide-and-tallow work of the rancho.",
+    topics: [
+      "landscape",
+      "sand dunes",
+      "temetatte",
+      "nipomo creek",
+      "tallow vat",
+      "nature",
+    ],
+    dateRange: "1839-1858",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, History page; Dana Adobe, Home page (tallow vat, vineyard, gardens).",
+    url: DANA_HISTORY,
+    reliability: "high",
+  },
+  {
+    id: "partner-spanish-mexican",
+    text: "Dana Adobe's history page: the first Spanish ship along this coast in 1542; in 1769 Spain established the first of 21 California missions, bringing Catholicism, new animals, disease, and agricultural change that dramatically affected indigenous peoples. Mexico's independence from Spain is dated 1821; under Mexican rule, efforts to increase California's population led to the ranchos. Twelve years after independence, secularization confiscated former mission lands and, from the 1830s, distributed them to select Mexican citizens — the setting for Dana's 1835 application and 1837 grant.",
+    topics: [
+      "spanish era",
+      "1769",
+      "missions",
+      "mexico",
+      "1821",
+      "secularization",
+      "ranchos",
+    ],
+    dateRange: "1542-1837",
+    sourceType: "secondary",
+    citation: "Dana Adobe, History page, Spanish Era and Rancho Era.",
+    url: DANA_HISTORY,
+    reliability: "high",
+  },
+  {
+    id: "partner-youth-timeline",
+    text: "Dana Adobe's published timeline: William G. Dana born Boston 1797; orphaned 1806 and goes to live with uncle and shipmaster William Heath Davis; 1815 sails from Boston to Honolulu with his uncle; 1822 inherits $5,000 from his uncle Davis in Honolulu and buys a ship; 1825 visits Santa Barbara for the first time as master of the Waverly. Angel independently records the $5,000 bequest from William H. Davis (1822 will) and the Santa Barbara / Waverly years.",
+    topics: [
+      "orphaned",
+      "william heath davis",
+      "honolulu",
+      "1815",
+      "1822",
+      "inheritance",
+      "youth",
+    ],
+    dateRange: "1806-1825",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, Gladys Norton, 'Looking Back' (1956), timeline on danaadobe.org; Angel, History of San Luis Obispo County (1883), Davis will and Waverly.",
+    url: DANA_NORTON,
+    reliability: "medium",
+  },
+  {
+    id: "partner-sb-offices",
+    text: "Dana Adobe's 1956 Norton article, drawing on Bancroft, says that after naturalization in 1835 and while still in Santa Barbara, Dana served as appraiser at La Purísima mission, as Captain of the Port of Santa Barbara, and in 1836 as alcalde. At Nipomo he later held Prefecto (1849) and, after statehood, County Treasurer (1851).",
+    topics: [
+      "alcalde",
+      "1836",
+      "santa barbara",
+      "port captain",
+      "la purisima",
+      "prefecto",
+      "1849",
+    ],
+    dateRange: "1835-1851",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, Gladys Norton, 'Looking Back' (1956), citing Bancroft, on danaadobe.org.",
+    url: DANA_NORTON,
+    reliability: "medium",
+  },
+  {
+    id: "partner-1849-polling",
+    text: "Dana Adobe publishes that in 1849 Nipomo Rancho was one of the voting places that helped decide statehood for California, and later a post office and a stagecoach stop. Their timeline dates the first stagecoach horse-change at the Casa de Dana barn to 1857 — after a speaking year of 1850.",
+    topics: [
+      "1849",
+      "voting",
+      "statehood",
+      "polling place",
+      "post office",
+      "stagecoach",
+      "1857",
+    ],
+    dateRange: "1849-1857",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, Gladys Norton, 'Looking Back' (1956), and site timeline, on danaadobe.org.",
+    url: DANA_NORTON,
+    reliability: "medium",
+  },
+  {
+    id: "partner-hutton-1850",
+    text: "Dana Adobe publishes Gladys Norton quoting William Rich Hutton's 1850 letter from Nipomo: he found Captain Dana an excellent good-natured old gentleman; they treated him kindly and lived very comfortably; the farm about ten miles long and nearly as broad, a third hilly; air filled with fragrance of clover, oats four feet high in places; about thirty or forty tame cows, lots of milk and fresh butter. Hutton was surveying the rancho (partner timeline: first survey 1850). He also wrote that Mrs. Tefft (the daughter María Josefa Dana, married to Henry Amos Tefft) was a favorite with all who know her. Norton notes that when guests assembled in numbers, as at that wedding, they passed the night on saddle blankets on the front porch. Do not treat Norton's later Fremont / San Marcos Pass story (from Juan Francisco Dana, 1931) as firsthand in this pack.",
+    topics: [
+      "hutton",
+      "1850",
+      "survey",
+      "cows",
+      "butter",
+      "tefft",
+      "hospitality",
+      "character",
+    ],
+    dateRange: "1850",
+    sourceType: "secondary",
+    citation:
+      "Dana Adobe, Gladys Norton, 'Looking Back' (1956), quoting William Rich Hutton (1850), on danaadobe.org.",
+    url: DANA_NORTON,
+    reliability: "medium",
+  },
+  {
+    id: "partner-portraits",
+    text: "Dana Adobe publishes oval portraits of Captain William Goodwin Dana and María Josefa Carrillo Dana on its Dana Family page. Those are the likenesses used for these figures. The photographs show them later than a speaking year of 1850; say so if asked. They are not pictures of the adobe.",
+    topics: ["portrait", "likeness", "appearance", "family page"],
+    dateRange: "mid-to-late 19th century",
+    sourceType: "secondary",
+    citation: "Dana Adobe, Dana Family page, portraits of Captain Dana and María Josefa.",
+    url: DANA_FAMILY,
+    reliability: "high",
   },
 ];

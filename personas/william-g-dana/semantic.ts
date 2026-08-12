@@ -51,6 +51,21 @@ export const williamGDanaVocab: PersonaSemanticVocab = {
       label: "John Francis Dana",
       aliases: ["john f. dana", "juan francisco dana"],
     },
+    {
+      id: "henry-tefft",
+      label: "Henry Amos Tefft",
+      aliases: ["tefft", "henry tefft", "mrs. tefft"],
+    },
+    {
+      id: "william-rich-hutton",
+      label: "William Rich Hutton",
+      aliases: ["hutton"],
+    },
+    {
+      id: "william-heath-davis",
+      label: "William Heath Davis",
+      aliases: ["uncle davis", "william h. davis"],
+    },
   ],
   places: [
     {
@@ -110,7 +125,12 @@ export const williamGDanaVocab: PersonaSemanticVocab = {
     {
       id: "us-mail-1847",
       label: "U.S. mail exchange 1847",
-      aliases: ["mail route", "1847 mail"],
+      aliases: ["mail route", "1847 mail", "kearny mail"],
+    },
+    {
+      id: "hutton-survey-1850",
+      label: "Hutton survey of Nipomo 1850",
+      aliases: ["hutton", "survey 1850"],
     },
   ],
   periods: [
@@ -180,6 +200,25 @@ export const williamGDanaSourceAnnotations: SourceSemanticAnnotations = {
     events: ["us-mail-1847"],
     yearStart: 1847,
     yearEnd: 1847,
+  },
+  "partner-landscape": {
+    places: ["dana-adobe", "rancho-nipomo"],
+    yearStart: 1839,
+    yearEnd: 1858,
+    period: "adobe-years",
+  },
+  "partner-hutton-1850": {
+    people: ["william-g-dana", "william-rich-hutton", "henry-tefft"],
+    places: ["rancho-nipomo", "dana-adobe"],
+    events: ["hutton-survey-1850"],
+    yearStart: 1850,
+    yearEnd: 1850,
+    period: "adobe-years",
+  },
+  "partner-portraits": {
+    people: ["william-g-dana", "maria-josefa-carrillo"],
+    yearStart: 1850,
+    yearEnd: 1883,
   },
   "rheumatism-and-death": {
     people: ["william-g-dana"],

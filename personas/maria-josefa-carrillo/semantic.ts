@@ -41,6 +41,16 @@ export const mariaJosefaCarrilloVocab: PersonaSemanticVocab = {
       label: "John Francis Dana",
       aliases: ["john f. dana", "juan francisco"],
     },
+    {
+      id: "henry-tefft",
+      label: "Henry Amos Tefft",
+      aliases: ["tefft", "henry tefft", "son-in-law"],
+    },
+    {
+      id: "maria-josefa-dana-tefft",
+      label: "María Josefa Dana Tefft",
+      aliases: ["mrs. tefft", "daughter josefa"],
+    },
   ],
   places: [
     {
@@ -75,6 +85,11 @@ export const mariaJosefaCarrilloVocab: PersonaSemanticVocab = {
       id: "move-1839",
       label: "Move to Nipomo 1839",
       aliases: ["1839", "left santa barbara"],
+    },
+    {
+      id: "us-mail-1847",
+      label: "U.S. mail exchange 1847",
+      aliases: ["mail route", "1847 mail", "kearny mail"],
     },
   ],
   periods: [
@@ -132,6 +147,30 @@ export const mariaJosefaCarrilloSourceAnnotations: SourceSemanticAnnotations = {
     yearStart: 1839,
     yearEnd: 1858,
     period: "adobe-years",
+  },
+  "mail-1847": {
+    people: ["maria-josefa-carrillo", "william-g-dana"],
+    places: ["rancho-nipomo"],
+    events: ["us-mail-1847"],
+    yearStart: 1847,
+    yearEnd: 1847,
+  },
+  "partner-daughter-tefft": {
+    people: [
+      "maria-josefa-carrillo",
+      "henry-tefft",
+      "maria-josefa-dana-tefft",
+      "william-g-dana",
+    ],
+    places: ["dana-adobe"],
+    yearStart: 1849,
+    yearEnd: 1855,
+    period: "adobe-years",
+  },
+  "partner-portraits": {
+    people: ["maria-josefa-carrillo", "william-g-dana"],
+    yearStart: 1855,
+    yearEnd: 1883,
   },
   "captain-illness": {
     people: ["william-g-dana", "maria-josefa-carrillo"],

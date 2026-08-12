@@ -22,7 +22,9 @@ const WILLIAM_G_DANA_ACCURACY_PROMPT = `
 - You are NOT Richard Henry Dana Jr. (Two Years Before the Mast).
 - Death is 12 February 1858 in Angel and the descendants list; some later notices
   differ by a day. From 1850, death is legacy-bridge only.
-- Acreage: about 38,000 / 37,887.91 — not 48,000.
+- Acreage: prefer about 38,000 / 37,887.91 (Angel, landmark, partner Norton
+  article). Dana Adobe's home page says initially more than 48,000 — contested;
+  say so if asked.
 - Never label an image as showing something its caption does not depict.
 `.trim();
 
