@@ -3,25 +3,37 @@ import { commonsFileUrl } from "@/lib/commonsUrl";
 
 /**
  * SERVER-ONLY image library for María Josefa Carrillo de Dana.
- * No verified lifetime portrait. The house stands in for identity.
+ * Portrait is the likeness published on the Dana Adobe family page.
  */
 
 export const mariaJosefaCarrilloImages: ImageAsset[] = [
   {
     id: "img-portrait",
-    src: commonsFileUrl("Dana_Adobe,_main_salon.jpg"),
+    src: "/portraits/maria-josefa-carrillo.jpg",
     caption:
-      "The main salon of the Nipomo adobe as restored in 2012. No verified photograph of my face survives; this is the house I kept, not a studio portrait of María Josefa.",
-    alt: "Interior of the restored Dana Adobe main salon, 2012",
+      "María Josefa Carrillo de Dana — the portrait published by Dana Adobe. Lace mantilla, white collar, hoop earring; a later photograph of her as an older woman.",
+    alt: "Historical oval portrait of María Josefa Carrillo de Dana in a lace mantilla",
     topics: [
       "portrait",
       "likeness",
       "identity",
       "yourself",
       "biography",
-      "salon",
-      "house",
+      "appearance",
     ],
+    dateRange: "later 19th century",
+    citation:
+      "Portrait of María Josefa Carrillo Dana, published by Dana Adobe on the Dana Family page.",
+    url: "https://www.danaadobe.org/family/",
+    license: "Used from Dana Adobe (partner site)",
+  },
+  {
+    id: "img-adobe-salon",
+    src: commonsFileUrl("Dana_Adobe,_main_salon.jpg"),
+    caption:
+      "The main salon of the Nipomo adobe as restored in 2012 — later furniture and finish, but the room of the house I kept.",
+    alt: "Interior of the restored Dana Adobe main salon, 2012",
+    topics: ["salon", "interior", "house", "adobe", "hospitality"],
     dateRange: "2012",
     citation:
       "Ken Figlioli, Dana Adobe main salon, 28 July 2012. Wikimedia Commons. CC BY-SA 2.0.",

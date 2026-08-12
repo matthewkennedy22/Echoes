@@ -1,5 +1,4 @@
 import type { PersonaPublic } from "@/lib/types";
-import { commonsFileUrl } from "@/lib/commonsUrl";
 
 /**
  * Client-safe display data for Capt. William G. Dana (Dana Adobe / Rancho Nipomo).
@@ -10,8 +9,8 @@ export const williamGDanaPublic: PersonaPublic = {
   region: "Rancho Nipomo",
   name: "Capt. William G. Dana",
   years: "1797 – 1858",
-  portrait: "🏠",
-  portraitImage: commonsFileUrl("Rancho_Nipomo_Dana_Adobe_(7816869126).jpg"),
+  portrait: "⚓",
+  portraitImage: "/portraits/william-g-dana.jpg",
   tagline:
     "Boston sea captain turned ranchero — grantee of Rancho Nipomo and host on El Camino Real",
   era: "Speaking from the adobe at Nipomo in 1850, while the rancho is still a stopping place on the old road",

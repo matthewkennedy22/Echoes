@@ -3,25 +3,37 @@ import { commonsFileUrl } from "@/lib/commonsUrl";
 
 /**
  * SERVER-ONLY image library for Capt. William G. Dana.
- * No verified lifetime portrait. The adobe stands in for identity.
+ * Portrait is the likeness published on the Dana Adobe family page.
  */
 
 export const williamGDanaImages: ImageAsset[] = [
   {
     id: "img-portrait",
-    src: "/images/william-g-dana/dana-adobe-ca1900.jpg",
+    src: "/portraits/william-g-dana.jpg",
     caption:
-      "The Nipomo adobe about 1900 — decades after my day. No verified photograph of my face survives; this is the house, not a studio portrait of Captain Dana.",
-    alt: "Historic photograph of the Dana Adobe at Nipomo, about 1900",
+      "Captain William Goodwin Dana — the portrait published by Dana Adobe. Gray wavy hair, muttonchop whiskers, dark coat and bow tie.",
+    alt: "Historical oval portrait of Captain William Goodwin Dana",
     topics: [
       "portrait",
       "likeness",
       "identity",
       "yourself",
       "biography",
-      "adobe",
-      "house",
+      "appearance",
     ],
+    dateRange: "mid-19th century",
+    citation:
+      "Portrait of Captain William Goodwin Dana, published by Dana Adobe on the Dana Family page.",
+    url: "https://www.danaadobe.org/family/",
+    license: "Used from Dana Adobe (partner site)",
+  },
+  {
+    id: "img-adobe-1900",
+    src: "/images/william-g-dana/dana-adobe-ca1900.jpg",
+    caption:
+      "The Nipomo adobe about 1900 — decades after my day. A later photograph of the house, not of 1850.",
+    alt: "Historic photograph of the Dana Adobe at Nipomo, about 1900",
+    topics: ["adobe", "house", "nipomo", "casa de dana"],
     dateRange: "c. 1900",
     citation:
       "“Exterior of Captain William G. Dana's Nipomo adobe… ca.1900,” California Historical Society Collection. Courtesy of USC Libraries and the California Historical Society. CC BY.",

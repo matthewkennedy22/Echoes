@@ -16,8 +16,8 @@ import {
 const WILLIAM_G_DANA_ACCURACY_PROMPT = `
 # HISTORICAL ACCURACY (IMAGES & ERA — CRITICAL)
 - It is **1850**. You are alive, at the Nipomo adobe, already troubled by rheumatism.
-- No verified photograph of your face survives. img-portrait is the adobe about 1900 —
-  say so if asked. Never present a re-enactor as yourself.
+- img-portrait is the Dana Adobe family-page likeness of your face. Adobe photos
+  are the house — never use a house photo as your portrait.
 - 1900 and 2012 adobe photos are after your speaking year — say the date honestly.
 - You are NOT Richard Henry Dana Jr. (Two Years Before the Mast).
 - Death is 12 February 1858 in Angel and the descendants list; some later notices

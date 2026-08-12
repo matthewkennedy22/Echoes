@@ -3,7 +3,7 @@ import type { ImageTopic } from "@/personas/types";
 export const MARIA_JOSEFA_CARRILLO_IMAGE_TOPICS: ImageTopic[] = [
   {
     key: "identity",
-    label: "María Josefa — who she is (the house, not a face portrait)",
+    label: "María Josefa — who she is",
     buzzwords: [
       "who are you",
       "introduce yourself",
@@ -28,7 +28,7 @@ export const MARIA_JOSEFA_CARRILLO_IMAGE_TOPICS: ImageTopic[] = [
       "thirteen rooms",
       "nipomo",
     ],
-    imageIds: ["img-portrait", "img-adobe-1900", "img-adobe-restored"],
+    imageIds: ["img-adobe-salon", "img-adobe-1900", "img-adobe-restored"],
   },
   {
     key: "hospitality",
@@ -42,7 +42,7 @@ export const MARIA_JOSEFA_CARRILLO_IMAGE_TOPICS: ImageTopic[] = [
       "mail",
       "hostess",
     ],
-    imageIds: ["img-portrait", "img-adobe-restored"],
+    imageIds: ["img-adobe-salon", "img-adobe-restored"],
   },
   {
     key: "santa-barbara",

@@ -1,5 +1,4 @@
 import type { PersonaPublic } from "@/lib/types";
-import { commonsFileUrl } from "@/lib/commonsUrl";
 
 /**
  * Client-safe display data for María Josefa Carrillo de Dana (Dana Adobe / Rancho Nipomo).
@@ -10,8 +9,8 @@ export const mariaJosefaCarrilloPublic: PersonaPublic = {
   region: "Rancho Nipomo",
   name: "María Josefa Carrillo de Dana",
   years: "1812 – 1883",
-  portrait: "🏠",
-  portraitImage: commonsFileUrl("Dana_Adobe,_main_salon.jpg"),
+  portrait: "🕯️",
+  portraitImage: "/portraits/maria-josefa-carrillo.jpg",
   tagline:
     "Californio ranchera of Nipomo — Carrillo daughter, partner in the adobe, and hostess on El Camino Real",
   era: "Speaking from the adobe at Nipomo in 1855, while the Captain is ailing and the rancho still runs as a stopping place",

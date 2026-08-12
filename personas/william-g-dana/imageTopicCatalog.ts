@@ -3,7 +3,7 @@ import type { ImageTopic } from "@/personas/types";
 export const WILLIAM_G_DANA_IMAGE_TOPICS: ImageTopic[] = [
   {
     key: "identity",
-    label: "Captain Dana — who he is (the adobe, not a face portrait)",
+    label: "Captain Dana — who he is",
     buzzwords: [
       "who are you",
       "introduce yourself",
@@ -28,7 +28,7 @@ export const WILLIAM_G_DANA_IMAGE_TOPICS: ImageTopic[] = [
       "nipomo adobe",
       "home",
     ],
-    imageIds: ["img-adobe-restored", "img-portrait", "img-adobe-salon", "img-adobe-side"],
+    imageIds: ["img-adobe-restored", "img-adobe-1900", "img-adobe-salon", "img-adobe-side"],
   },
   {
     key: "hospitality",
