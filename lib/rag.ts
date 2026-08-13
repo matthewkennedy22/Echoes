@@ -11,6 +11,7 @@ import {
   verifierRewritePrompt,
 } from "@/lib/answerVerifier";
 import { sanitizeAnswerText } from "@/lib/answerFormat";
+import { buildEvidenceItems, parseUsedSourceEntries } from "@/lib/evidenceDisplay";
 import {
   isContextualFollowUp,
   isHistoricalImageAsset,
@@ -907,6 +908,23 @@ function asStringIds(raw: unknown): string[] {
     .filter(Boolean);
 }
 
+function collectCitations(parsed: {
+  used_source_ids?: string[];
+  used_sources?: unknown;
+}): { usedIds: string[]; usedForById: Map<string, string> } {
+  const entries = parseUsedSourceEntries(parsed.used_sources);
+  const usedForById = new Map<string, string>();
+  for (const e of entries) {
+    if (e.usedFor) usedForById.set(e.id, e.usedFor);
+  }
+  const fromEntries = entries.map((e) => e.id);
+  const fromIds = asStringIds(parsed.used_source_ids);
+  return {
+    usedIds: fromEntries.length > 0 ? fromEntries : fromIds,
+    usedForById,
+  };
+}
+
 function collectPreviouslyShownImageIds(history: ChatMessage[]): Set<string> {
   const shown = new Set<string>();
   for (const m of history) {
@@ -1111,9 +1129,17 @@ Labeling rules (important):
 - When the label is "unknown": do NOT invent biographies, roles, or local deeds. Say
   plainly that this name/topic is not in the sources before you, then offer a nearby
   topic you CAN document (a place, industry, or figure that is in the retrieved sources).
-- ALWAYS populate "used_source_ids" with the ids you actually relied on. If your label is
-  "documented", "inference", or "contested", this array must NOT be empty. Only "unknown"
-  may have an empty array.
+- ALWAYS populate "used_sources" with the ids you actually relied on, and a short
+  "used_for" phrase naming the claim each source supports (e.g. "Southern California
+  Mountain Water Company" or "San Diego and Coronado Ferry Company"). One claim per
+  source. Do not paste the book page into used_for.
+- Do **not** cite sources for conversational closings or follow-up offers
+  ("If you are interested…", "Would you like to hear about…", "Shall I tell you more…").
+  Those lines need no evidence card.
+- Prefer **short curated source ids** (ferry-system, water-company, bio-…) over a long
+  book-page id when both appear in SOURCES and the curated chunk already states the fact.
+- If your label is "documented", "inference", or "contested", used_sources must NOT be
+  empty. Only "unknown" may have an empty array.
 - Conversational framing, your feelings, or polite asides do not need a source and should
   not push you toward "unknown" — judge the label by the historical facts you assert.
 
@@ -1122,6 +1148,7 @@ Respond with a single JSON object, nothing else:
 {
   "answer": "<reply — light **bold** / *italic* OK for short names & emphasis only; NEVER wrap whole paragraphs or the entire answer in italics; NO image links, NO picture URLs>",
   "evidence_label": "documented" | "inference" | "contested" | "unknown",
+  "used_sources": [{ "id": "<id>", "used_for": "<claim this source supports>" }],
   "used_source_ids": ["<id>", ...],
   "image_ids": ["<img-id>", ...]
 }
@@ -1142,6 +1169,7 @@ function parseModelAnswer(raw: string): {
   answer?: string;
   evidence_label?: string;
   used_source_ids?: string[];
+  used_sources?: unknown;
   image_ids?: string[];
 } {
   try {
@@ -1260,7 +1288,7 @@ async function answerQuestionForPack(
 
   // The model sometimes drops the zero-padding (e.g. "book-88" vs "book-0088"),
   // so match on a normalized form rather than exact string equality.
-  let usedIds = asStringIds(parsed.used_source_ids);
+  let { usedIds, usedForById } = collectCitations(parsed);
   const usedNorm = new Set(usedIds.map(normId).filter(Boolean));
   const usedSources = retrieved.filter((s) => usedNorm.has(normId(s.id)));
 
@@ -1463,9 +1491,10 @@ async function answerQuestionForPack(
     )
       ? (parsed.evidence_label as EvidenceLabel)
       : evidenceLabel;
-    const rewriteIds = asStringIds(parsed.used_source_ids);
-    if (rewriteIds.length > 0) {
-      usedIds = rewriteIds;
+    const rewriteCite = collectCitations(parsed);
+    if (rewriteCite.usedIds.length > 0) {
+      usedIds = rewriteCite.usedIds;
+      usedForById = rewriteCite.usedForById;
     }
     const rewriteNorm = new Set(usedIds.map(normId).filter(Boolean));
     const rewriteUsed = retrieved.filter((s) => rewriteNorm.has(normId(s.id)));
@@ -1538,11 +1567,32 @@ async function answerQuestionForPack(
     if (cited.length > 0) displaySources = cited;
   }
 
+  const curatedIds = new Set(pack.sources.map((s) => s.id));
+  const citedForEvidence =
+    displaySources.length > 6 ? [] : displaySources;
+  const evidence =
+    evidenceLabel === "unknown"
+      ? []
+      : buildEvidenceItems({
+          answer: verified.answer,
+          cited: citedForEvidence,
+          retrieved,
+          curatedIds,
+          usedForById,
+        });
+  if (evidence.length > 0) {
+    const byId = new Map(retrieved.map((s) => [s.id, s]));
+    displaySources = evidence
+      .map((e) => byId.get(e.id))
+      .filter((s): s is (typeof retrieved)[number] => !!s);
+  }
+
   return {
     answer: verified.answer,
     evidenceLabel,
     usedSourceIds: verified.usedSourceIds,
     sources: displaySources,
+    evidence,
     images: filterServeableImages(images),
   };
 }

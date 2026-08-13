@@ -518,6 +518,38 @@ body {
 .source .scite {
   font-style: italic;
 }
+.evidence-card {
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+.evidence-card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.sused {
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.sused-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 6px 0 2px;
+}
+.sused .sused-label {
+  margin-top: 0;
+}
+.sexcerpt {
+  margin: 6px 0 8px;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--line);
+  font-style: italic;
+  color: var(--ink);
+}
 
 /* ---------- Figures (historical images) ---------- */
 .figures {

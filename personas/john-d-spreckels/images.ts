@@ -66,6 +66,85 @@ export const spreckelsImages: ImageAsset[] = [
     license: "Public domain",
   },
   {
+    id: "img-cha-mansion-1910",
+    src: "/images/john-d-spreckels/spreckels-home-1910.jpg",
+    caption:
+      "My house on Glorietta Bay, 1910 — two years before I speak with you. Italian Renaissance lines, palms, and the drive. Courtesy of the Coronado Historical Association Collection.",
+    alt: "Spreckels home on Glorietta Boulevard, 1910",
+    topics: [
+      "mansion",
+      "glorietta",
+      "glorietta bay",
+      "home",
+      "residence",
+      "coronado",
+    ],
+    dateRange: "1910",
+    citation:
+      "Spreckels Home 1910, catalog 1900.09.01-114. Courtesy of the Coronado Historical Association Collection.",
+    url: "https://coronadohistory.pastperfectonline.com/photo/6E408E83-F587-4E1F-9D9A-487132719351",
+    license: "Courtesy of the Coronado Historical Association Collection",
+  },
+  {
+    id: "img-cha-ferry-landing",
+    src: "/images/john-d-spreckels/ferry-landing-orange.jpg",
+    caption:
+      "The foot of Orange Avenue toward the ferry landing — Oxford Hotel, the harbor, and a tall ship. Courtesy of the Coronado Historical Association Collection.",
+    alt: "Coronado ferry landing at the foot of Orange Avenue",
+    topics: [
+      "ferry",
+      "orange avenue",
+      "landing",
+      "harbor",
+      "coronado",
+    ],
+    dateRange: "late 19th / early 20th century",
+    citation:
+      "Coronado ferry landing at the foot of Orange Avenue, catalog 1900.11.01-81. Courtesy of the Coronado Historical Association Collection.",
+    url: "https://coronadohistory.pastperfectonline.com/photo/D68A5337-6CB8-4281-ACD7-108269121865",
+    license: "Courtesy of the Coronado Historical Association Collection",
+  },
+  {
+    id: "img-cha-tent-city-ferry-1901",
+    src: "/images/john-d-spreckels/tent-city-ferry-silvergate-1901.jpg",
+    caption:
+      "Tent City in 1901, with the ferry Silver Gate at the landing and the Hotel del Coronado beyond the tents. Courtesy of the Coronado Historical Association Collection.",
+    alt: "Tent City, the ferry Silver Gate, and Hotel del Coronado, 1901",
+    topics: [
+      "tent city",
+      "ferry",
+      "silver gate",
+      "hotel del coronado",
+      "strand",
+      "coronado",
+    ],
+    dateRange: "1901",
+    citation:
+      "Tent City showing the ferry Silver Gate, 1901, catalog 1900.37.02-68A. Courtesy of the Coronado Historical Association Collection.",
+    url: "https://coronadohistory.pastperfectonline.com/photo/381C4083-7FA4-4495-B84C-681466110270",
+    license: "Courtesy of the Coronado Historical Association Collection",
+  },
+  {
+    id: "img-cha-tent-city-promenade",
+    src: "/images/john-d-spreckels/tent-city-promenade.jpg",
+    caption:
+      "The Tent City boardwalk and beach — visitors in street clothes along the railing, thatched roofs at the left. Courtesy of the Coronado Historical Association Collection.",
+    alt: "Promenade on the Tent City boardwalk at Coronado Beach",
+    topics: [
+      "tent city",
+      "boardwalk",
+      "promenade",
+      "beach",
+      "strand",
+      "coronado",
+    ],
+    dateRange: "c. early 1900s",
+    citation:
+      "Coronado Tent City boardwalk promenade, catalog 1900.19.03-02. Courtesy of the Coronado Historical Association Collection.",
+    url: "https://coronadohistory.pastperfectonline.com/photo/3917CB42-4C1B-46CB-BE25-998625463538",
+    license: "Courtesy of the Coronado Historical Association Collection",
+  },
+  {
     id: "img-hotel-del",
     src: commonsFileUrl("Hotel_Del_c1900b.jpg"),
     caption:

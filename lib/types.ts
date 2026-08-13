@@ -98,5 +98,18 @@ export interface GroundedAnswer {
   evidenceLabel: EvidenceLabel;
   usedSourceIds: string[];
   sources: SourceChunk[];
+  /** Per-source cards for Show evidence (excerpt + what it was used for). */
+  evidence: EvidenceItem[];
   images: ImageAsset[];
+}
+
+/** One cited source as shown to the visitor. */
+export interface EvidenceItem {
+  id: string;
+  /** Which claim in the answer this source supports. */
+  usedFor: string;
+  /** Short quote cut from the actual chunk — never model-invented. */
+  excerpt: string;
+  citation: string;
+  url?: string;
 }

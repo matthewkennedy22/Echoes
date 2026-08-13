@@ -21,6 +21,7 @@
     "test:images": "npx tsx scripts/test-image-matching-static.ts",
     "test:verifier": "npx tsx scripts/test-answer-verifier.ts",
     "test:format": "npx tsx scripts/test-answer-format.ts",
+    "test:evidence": "npx tsx scripts/test-evidence-display.ts",
     "test:identity-portraits": "npx tsx scripts/test-identity-portraits.ts",
     "enrich:semantic": "npx tsx scripts/enrich-persona-semantic.ts",
     "audit:semantic": "npx tsx scripts/audit-semantic-tags.ts",

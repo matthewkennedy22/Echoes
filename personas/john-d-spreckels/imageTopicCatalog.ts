@@ -50,6 +50,8 @@ export const SPRECKELS_IMAGE_TOPICS: ImageTopic[] = [
       "thatched",
     ],
     imageIds: [
+      "img-cha-tent-city-ferry-1901",
+      "img-cha-tent-city-promenade",
       "img-tent-city-rows",
       "img-tent-city-postcard",
       "img-tent-city-promenade",
@@ -69,7 +71,7 @@ export const SPRECKELS_IMAGE_TOPICS: ImageTopic[] = [
       "inn",
       "albright",
     ],
-    imageIds: ["img-mansion-1915"],
+    imageIds: ["img-cha-mansion-1910", "img-mansion-1915"],
   },
   {
     key: "ferry-transit",
@@ -82,6 +84,10 @@ export const SPRECKELS_IMAGE_TOPICS: ImageTopic[] = [
       "electric railway",
       "bay crossing",
     ],
-    imageIds: ["img-tent-city-promenade"],
+    imageIds: [
+      "img-cha-ferry-landing",
+      "img-cha-tent-city-ferry-1901",
+      "img-tent-city-promenade",
+    ],
   },
 ];

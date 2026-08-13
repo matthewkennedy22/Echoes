@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MAX_INLINE_EMPHASIS } from "@/lib/answerFormat";
 import type {
   EvidenceLabel,
+  EvidenceItem,
   ImageAsset,
   PersonaPublic,
   SourceChunk,
@@ -14,6 +15,7 @@ interface UiMessage {
   content: string;
   evidenceLabel?: EvidenceLabel;
   sources?: SourceChunk[];
+  evidence?: EvidenceItem[];
   images?: ImageAsset[];
   imageIds?: string[];
   showEvidence?: boolean;
@@ -584,6 +586,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
           content: data.answer,
           evidenceLabel: data.evidenceLabel,
           sources: data.sources,
+          evidence: Array.isArray(data.evidence) ? data.evidence : undefined,
           images: data.images,
           imageIds: Array.isArray(data.images)
             ? data.images
@@ -706,15 +709,48 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                       : "■ Stop"
                     : "🔊 Hear this"}
                 </button>
-                {m.sources && m.sources.length > 0 && (
+                {(m.evidence && m.evidence.length > 0) ||
+                (m.sources && m.sources.length > 0) ? (
                   <button
                     className="evidence-toggle"
                     onClick={() => toggleEvidence(i)}
                   >
                     {m.showEvidence ? "Hide evidence" : "Show evidence"}
                   </button>
+                ) : null}
+                {m.showEvidence && m.evidence && m.evidence.length > 0 && (
+                  <div className="sources">
+                    {m.evidence.map((e) => (
+                      <div key={e.id} className="source evidence-card">
+                        <div className="sused">
+                          <span className="sused-label">Used for</span>
+                          {e.usedFor}
+                        </div>
+                        {e.excerpt ? (
+                          <>
+                            <span className="sused-label">From the source</span>
+                            <blockquote className="sexcerpt">
+                              {e.excerpt}
+                            </blockquote>
+                          </>
+                        ) : null}
+                        <span className="sused-label">Citation</span>
+                        <span className="scite">{e.citation}</span>
+                        {e.url && (
+                          <>
+                            {" "}
+                            <a href={e.url} target="_blank" rel="noreferrer">
+                              [source]
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
-                {m.showEvidence && m.sources && (
+                {m.showEvidence &&
+                  !(m.evidence && m.evidence.length > 0) &&
+                  m.sources && (
                   <div className="sources">
                     {m.sources.map((s) => (
                       <div key={s.id} className="source">
