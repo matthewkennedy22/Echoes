@@ -499,12 +499,10 @@ body {
   font-family: Georgia, serif;
 }
 .sources {
-  margin-top: 8px;
-  border-left: 3px solid var(--line);
-  padding: 6px 0 6px 12px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .source {
   font-size: 12.5px;
@@ -517,19 +515,20 @@ body {
 }
 .source .scite {
   font-style: italic;
+  color: var(--ink-soft);
 }
 .evidence-card {
-  padding: 8px 0 10px;
-  border-bottom: 1px solid var(--line);
-}
-.evidence-card:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
 }
 .sused {
   color: var(--ink);
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  font-size: 13px;
 }
 .sused-label {
   display: block;
@@ -538,17 +537,20 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
-  margin: 6px 0 2px;
+  margin: 8px 0 2px;
 }
 .sused .sused-label {
   margin-top: 0;
 }
 .sexcerpt {
-  margin: 6px 0 8px;
-  padding: 0 0 0 10px;
-  border-left: 2px solid var(--line);
+  margin: 4px 0 2px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--line);
+  background: rgba(0, 0, 0, 0.03);
   font-style: italic;
+  font-weight: 400;
   color: var(--ink);
+  border-radius: 0 4px 4px 0;
 }
 
 /* ---------- Figures (historical images) ---------- */

@@ -277,6 +277,44 @@ export function preferCuratedSources(
   return out.slice(0, MAX_ITEMS);
 }
 
+/**
+ * Rank sources for the evidence panel: prefer curated / short over long OCR,
+ * then answer overlap. Always caps at MAX_ITEMS so the UI never gets a book dump.
+ */
+export function rankSourcesForDisplay(
+  answer: string,
+  sources: SourceChunk[],
+  curatedIds: Set<string>,
+  max = MAX_ITEMS
+): SourceChunk[] {
+  const factual = factualAnswerText(answer) || answer;
+  const seen = new Set<string>();
+  const ranked = [...sources]
+    .filter((s) => {
+      if (!s?.id || seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    })
+    .map((s) => ({
+      s,
+      curated: curatedIds.has(s.id) ? 1 : 0,
+      book: isBookChunkId(s.id) ? 1 : 0,
+      short: s.text.length < 700 ? 1 : 0,
+      score: overlapWithAnswer(factual, s),
+    }))
+    .sort(
+      (a, b) =>
+        b.curated - a.curated ||
+        a.book - b.book ||
+        b.short - a.short ||
+        b.score - a.score
+    );
+  // Prefer anything with real overlap; if nothing overlaps, still keep top curated/short.
+  const withOverlap = ranked.filter((x) => x.score >= 0.08);
+  const pool = withOverlap.length > 0 ? withOverlap : ranked;
+  return pool.slice(0, max).map((x) => x.s);
+}
+
 export function selectEvidenceChunks(opts: {
   answer: string;
   cited: SourceChunk[];
@@ -292,17 +330,7 @@ export function selectEvidenceChunks(opts: {
       opts.curatedIds
     );
   }
-  const ranked = [...opts.retrieved]
-    .map((s) => ({
-      s,
-      score: overlapWithAnswer(factual, s),
-      curated: opts.curatedIds.has(s.id) ? 1 : 0,
-    }))
-    .filter((x) => x.score >= 0.12)
-    .sort((a, b) => b.curated - a.curated || b.score - a.score)
-    .slice(0, MAX_ITEMS)
-    .map((x) => x.s);
-  return ranked;
+  return rankSourcesForDisplay(factual, opts.retrieved, opts.curatedIds);
 }
 
 export function buildEvidenceItems(opts: {
@@ -321,14 +349,32 @@ export function buildEvidenceItems(opts: {
       opts.usedForById.get(chunk.id) ||
       opts.usedForById.get(chunk.id.toLowerCase()) ||
       "";
-    const usedFor = stripMarkdownMarkers(
+    let usedFor = stripMarkdownMarkers(
       sanitizeUsedFor(raw, opts.answer) ||
         fallbackUsedFor(opts.answer, chunk)
     );
-    if (!usedFor || isFollowUpOffer(usedFor)) continue;
+    if (isFollowUpOffer(usedFor)) usedFor = "";
 
     const excerpt = excerptFromSource(chunk.text, factual);
-    if (!evidenceSupportsClaim(usedFor, excerpt, chunk)) continue;
+    if (!excerpt) continue;
+
+    if (!usedFor || !evidenceSupportsClaim(usedFor, excerpt, chunk)) {
+      // Keep only if the chunk still overlaps the factual answer on distinctive words.
+      const distinctive = tokens(factual).filter(
+        (w) => !GENERIC_CLAIM.has(w) && w.length > 4
+      );
+      if (distinctive.length >= 1) {
+        const pool = chunk.text.toLowerCase();
+        const covered = distinctive.filter((w) => pool.includes(w)).length;
+        if (covered / distinctive.length < 0.25) continue;
+      } else if (overlapWithAnswer(factual, chunk) < 0.12) {
+        continue;
+      }
+      const topic = chunk.topics.find((t) => t.length > 3 && t.length < 48);
+      usedFor = topic
+        ? topic.charAt(0).toUpperCase() + topic.slice(1)
+        : "Facts in this answer";
+    }
 
     items.push({
       id: chunk.id,
@@ -338,6 +384,74 @@ export function buildEvidenceItems(opts: {
       ...(chunk.url ? { url: chunk.url } : {}),
     });
   }
+
+  // Last resort: cited sources that still back distinctive answer words
+  // become cards (never dump full OCR pages in the UI).
+  if (items.length === 0 && opts.cited.length > 0) {
+    const distinctive = tokens(factual).filter(
+      (w) => !GENERIC_CLAIM.has(w) && w.length > 4
+    );
+    for (const chunk of opts.cited.slice(0, MAX_ITEMS)) {
+      if (distinctive.length >= 1) {
+        const pool = chunk.text.toLowerCase();
+        const covered = distinctive.filter((w) => pool.includes(w)).length;
+        if (covered / distinctive.length < 0.25) continue;
+      } else if (overlapWithAnswer(factual, chunk) < 0.12) {
+        continue;
+      }
+      const excerpt = excerptFromSource(chunk.text, factual);
+      if (!excerpt) continue;
+      const topic = chunk.topics.find((t) => t.length > 3 && t.length < 48);
+      items.push({
+        id: chunk.id,
+        usedFor: topic
+          ? topic.charAt(0).toUpperCase() + topic.slice(1)
+          : "Facts in this answer",
+        excerpt,
+        citation: chunk.citation,
+        ...(chunk.url ? { url: chunk.url } : {}),
+      });
+    }
+  }
+
+  // Absolute last resort: emit short cards from the best cited/retrieved hits
+  // so the API never returns empty evidence while still shipping long OCR pages.
+  if (items.length === 0) {
+    const distinctive = tokens(factual).filter(
+      (w) => !GENERIC_CLAIM.has(w) && w.length > 4
+    );
+    const pool = rankSourcesForDisplay(
+      factual,
+      [...opts.cited, ...opts.retrieved],
+      opts.curatedIds
+    );
+    for (const chunk of pool) {
+      if (distinctive.length >= 1) {
+        const textPool = chunk.text.toLowerCase();
+        const covered = distinctive.filter((w) => textPool.includes(w)).length;
+        if (covered / distinctive.length < 0.25) continue;
+      } else if (overlapWithAnswer(factual, chunk) < 0.12) {
+        continue;
+      }
+      const excerpt = excerptFromSource(chunk.text, factual);
+      if (!excerpt) continue;
+      const fromAnswer = deriveUsedForFromAnswer(opts.answer, chunk);
+      const topic = chunk.topics.find((t) => t.length > 3 && t.length < 48);
+      items.push({
+        id: chunk.id,
+        usedFor:
+          fromAnswer ||
+          (topic
+            ? topic.charAt(0).toUpperCase() + topic.slice(1)
+            : "Facts in this answer"),
+        excerpt,
+        citation: chunk.citation,
+        ...(chunk.url ? { url: chunk.url } : {}),
+      });
+      if (items.length >= MAX_ITEMS) break;
+    }
+  }
+
   return items;
 }
 

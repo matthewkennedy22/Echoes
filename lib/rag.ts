@@ -11,7 +11,11 @@ import {
   verifierRewritePrompt,
 } from "@/lib/answerVerifier";
 import { sanitizeAnswerText } from "@/lib/answerFormat";
-import { buildEvidenceItems, parseUsedSourceEntries } from "@/lib/evidenceDisplay";
+import {
+  buildEvidenceItems,
+  parseUsedSourceEntries,
+  rankSourcesForDisplay,
+} from "@/lib/evidenceDisplay";
 import {
   isContextualFollowUp,
   isHistoricalImageAsset,
@@ -1119,6 +1123,12 @@ Choose exactly one "evidence_label", judged by the MAIN factual claims of your a
 - "unknown": the sources contain NOTHING that supports your answer.
 
 Labeling rules (important):
+- Prefer **"documented"** whenever the core historical facts appear in the sources above —
+  even if you paraphrase, speak in first person, or add brief in-character color.
+- Use **"inference"** only when you are bridging beyond what the sources state, combining
+  sources into a conclusion they do not draw, or summarizing history after your speaking year.
+- Do **not** choose "inference" merely because the reply is conversational, scenic, or
+  written as lived memory of a place the sources describe.
 - If ANY factual claim in your answer is supported by a source above, you must NOT use
   "unknown". Label by your most-supported core claims (usually "documented").
 - For **legacy-bridge** answers about history after your speaking year: use **"inference"**
@@ -1568,30 +1578,64 @@ async function answerQuestionForPack(
   }
 
   const curatedIds = new Set(pack.sources.map((s) => s.id));
-  const citedForEvidence =
-    displaySources.length > 6 ? [] : displaySources;
-  const evidence =
+  // Never hand the UI a pile of book OCR pages. Rank + cap first, prefer curated.
+  const evidencePool = rankSourcesForDisplay(
+    verified.answer,
+    [...displaySources, ...retrieved, ...pack.sources],
+    curatedIds,
+    4
+  );
+  let evidence =
     evidenceLabel === "unknown"
       ? []
       : buildEvidenceItems({
           answer: verified.answer,
-          cited: citedForEvidence,
+          cited: evidencePool,
           retrieved,
           curatedIds,
           usedForById,
         });
+  if (
+    evidence.length === 0 &&
+    evidenceLabel !== "unknown" &&
+    evidencePool.length > 0
+  ) {
+    evidence = buildEvidenceItems({
+      answer: verified.answer,
+      cited: evidencePool,
+      retrieved: evidencePool,
+      curatedIds,
+      usedForById: new Map(),
+    });
+  }
+  const byId = new Map<string, SourceChunk>();
+  for (const s of [...retrieved, ...displaySources, ...pack.sources, ...evidencePool]) {
+    byId.set(s.id, s);
+  }
   if (evidence.length > 0) {
-    const byId = new Map(retrieved.map((s) => [s.id, s]));
     displaySources = evidence
       .map((e) => byId.get(e.id))
-      .filter((s): s is (typeof retrieved)[number] => !!s);
+      .filter((s): s is SourceChunk => !!s)
+      .slice(0, 4);
+  } else if (evidenceLabel !== "unknown") {
+    // Cap even when cards could not be built — Chat must never receive a book dump.
+    displaySources = evidencePool.slice(0, 4);
+  } else {
+    displaySources = [];
   }
 
   return {
     answer: verified.answer,
     evidenceLabel,
     usedSourceIds: verified.usedSourceIds,
-    sources: displaySources,
+    // Truncate page text so older clients cannot dump full OCR in Show evidence.
+    sources: displaySources.map((s) => ({
+      ...s,
+      text:
+        s.text.length > 320
+          ? `${s.text.slice(0, 320).replace(/\s+\S*$/, "")}…`
+          : s.text,
+    })),
     evidence,
     images: filterServeableImages(images),
   };

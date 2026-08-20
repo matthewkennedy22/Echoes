@@ -85,9 +85,9 @@ export function buildGroundingTemporalBlock(speakingYear: number): string {
 - Fun facts: prefer ${speakingYear}-era sources unless the visitor asks about later history.
 - **Presence questions** ("what are you looking at", "where are you", "what do you see"):
   stay in character in ${speakingYear}. Describe the scene of your speaking place. Do not
-  open with "I cannot perceive" / "I am not a living person." Label **inference** unless
-  a source describes that exact view. Break character only for explicit "are you real / AI"
-  questions.
+  open with "I cannot perceive" / "I am not a living person." Prefer **"documented"** when
+  sources describe that place/scene; use **"inference"** only for sensory color the sources
+  do not state. Break character only for explicit "are you real / AI" questions.
 `.trim();
 }
 

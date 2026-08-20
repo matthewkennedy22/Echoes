@@ -255,11 +255,36 @@ export function verifyGroundedAnswer(input: VerifierInput): VerifierResult {
   }
 
   // --- 3. Lexical grounding for "documented" ---
-  if (evidenceLabel === "documented" && groundingPool.length > 0) {
-    const ratio = overlapRatio(answer, groundingPool);
-    if (ratio < 0.18) {
+  // Score against cited sources AND the retrieved pool. Citing one short curated
+  // chunk while paraphrasing a fuller answer used to fail the threshold and
+  // cascade every Spreckels reply into "inference".
+  if (evidenceLabel === "documented" && (usedSources.length > 0 || retrieved.length > 0)) {
+    const ratio = Math.max(
+      usedSources.length ? overlapRatio(answer, usedSources) : 0,
+      retrieved.length ? overlapRatio(answer, retrieved) : 0
+    );
+    if (ratio < 0.14) {
       evidenceLabel = "inference";
       issues.push(`weak-source-overlap(${ratio.toFixed(2)})→inference`);
+    }
+  }
+
+  // --- 3b. Upgrade over-cautious "inference" when citations clearly support ---
+  if (evidenceLabel === "inference" && usedSources.length > 0) {
+    const laterYears = yearsInText(answer).filter((y) => y > speakingYear);
+    const bridgedLater =
+      hasLegacyBridgeFraming(answer) &&
+      laterYears.length > 0 &&
+      yearsSupportedBySources(laterYears, groundingPool).length < laterYears.length;
+    if (!bridgedLater) {
+      const ratio = Math.max(
+        overlapRatio(answer, usedSources),
+        retrieved.length ? overlapRatio(answer, retrieved) : 0
+      );
+      if (ratio >= 0.2) {
+        evidenceLabel = "documented";
+        issues.push(`inference-strong-overlap(${ratio.toFixed(2)})→documented`);
+      }
     }
   }
 

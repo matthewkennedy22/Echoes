@@ -28,6 +28,73 @@ const LABEL_TEXT: Record<EvidenceLabel, string> = {
   unknown: "Not in the sources",
 };
 
+const MAX_EVIDENCE_CARDS = 4;
+const MAX_EXCERPT = 320;
+
+/** Normalize API evidence + sources into card-shaped items for every figure. */
+function evidenceCardsForMessage(m: UiMessage): EvidenceItem[] {
+  if (m.evidence && m.evidence.length > 0) {
+    return m.evidence.slice(0, MAX_EVIDENCE_CARDS).map((e) => ({
+      ...e,
+      usedFor: (e.usedFor || "Facts in this answer").replace(/[*_]/g, "").trim(),
+      excerpt: e.excerpt
+        ? e.excerpt.length > MAX_EXCERPT
+          ? `${e.excerpt.slice(0, MAX_EXCERPT).replace(/\s+\S*$/, "")}…`
+          : e.excerpt
+        : "",
+    }));
+  }
+  if (!m.sources?.length) return [];
+  return m.sources.slice(0, MAX_EVIDENCE_CARDS).map((s) => {
+    const topic = s.topics?.[0];
+    const excerpt =
+      s.text.length > MAX_EXCERPT
+        ? `${s.text.slice(0, MAX_EXCERPT).replace(/\s+\S*$/, "")}…`
+        : s.text;
+    return {
+      id: s.id,
+      usedFor: topic
+        ? topic.charAt(0).toUpperCase() + topic.slice(1)
+        : "Facts in this answer",
+      excerpt,
+      citation: s.citation,
+      ...(s.url ? { url: s.url } : {}),
+    };
+  });
+}
+
+function EvidenceCards({ items }: { items: EvidenceItem[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="sources">
+      {items.map((e) => (
+        <div key={e.id} className="source evidence-card">
+          <div className="sused">
+            <span className="sused-label">Used for</span>
+            {e.usedFor}
+          </div>
+          {e.excerpt ? (
+            <>
+              <span className="sused-label">From the source</span>
+              <blockquote className="sexcerpt">{e.excerpt}</blockquote>
+            </>
+          ) : null}
+          <span className="sused-label">Citation</span>
+          <span className="scite">{e.citation}</span>
+          {e.url && (
+            <>
+              {" "}
+              <a href={e.url} target="_blank" rel="noreferrer">
+                [source]
+              </a>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AssistantRoleTag({
   name,
   portraitImage,
@@ -709,8 +776,7 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                       : "■ Stop"
                     : "🔊 Hear this"}
                 </button>
-                {(m.evidence && m.evidence.length > 0) ||
-                (m.sources && m.sources.length > 0) ? (
+                {evidenceCardsForMessage(m).length > 0 ? (
                   <button
                     className="evidence-toggle"
                     onClick={() => toggleEvidence(i)}
@@ -718,57 +784,9 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
                     {m.showEvidence ? "Hide evidence" : "Show evidence"}
                   </button>
                 ) : null}
-                {m.showEvidence && m.evidence && m.evidence.length > 0 && (
-                  <div className="sources">
-                    {m.evidence.map((e) => (
-                      <div key={e.id} className="source evidence-card">
-                        <div className="sused">
-                          <span className="sused-label">Used for</span>
-                          {e.usedFor}
-                        </div>
-                        {e.excerpt ? (
-                          <>
-                            <span className="sused-label">From the source</span>
-                            <blockquote className="sexcerpt">
-                              {e.excerpt}
-                            </blockquote>
-                          </>
-                        ) : null}
-                        <span className="sused-label">Citation</span>
-                        <span className="scite">{e.citation}</span>
-                        {e.url && (
-                          <>
-                            {" "}
-                            <a href={e.url} target="_blank" rel="noreferrer">
-                              [source]
-                            </a>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {m.showEvidence &&
-                  !(m.evidence && m.evidence.length > 0) &&
-                  m.sources && (
-                  <div className="sources">
-                    {m.sources.map((s) => (
-                      <div key={s.id} className="source">
-                        <span className="stitle">{s.text}</span>
-                        <br />
-                        <span className="scite">{s.citation}</span>
-                        {s.url && (
-                          <>
-                            {" "}
-                            <a href={s.url} target="_blank" rel="noreferrer">
-                              [source]
-                            </a>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {m.showEvidence ? (
+                  <EvidenceCards items={evidenceCardsForMessage(m)} />
+                ) : null}
               </div>
             )}
           </div>

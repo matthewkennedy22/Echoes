@@ -218,6 +218,58 @@ const cases: Case[] = [
       assert(r.images.length === 0, "tent city image stripped from ferry answer");
     },
   },
+  {
+    name: "Inference with strong citations → documented",
+    run: () => {
+      const pack = mockPack("john-d-spreckels", 1912);
+      const r = verifyGroundedAnswer({
+        answer:
+          "Yes, I own the Hotel del Coronado, having acquired it through the Coronado Beach Company after the founders Babcock and Story opened the hotel in 1888.",
+        evidenceLabel: "inference",
+        usedSourceIds: ["del-full-ownership", "del-opened-1888"],
+        retrieved: [
+          chunk(
+            "del-full-ownership",
+            "Through the Coronado Beach Company Spreckels came into possession of the Hotel del Coronado."
+          ),
+          chunk(
+            "del-opened-1888",
+            "The Hotel del Coronado was built by founders including E. S. Babcock and Hampton L. Story; the hotel opened in 1888."
+          ),
+        ],
+        images: [],
+        userQuery: "Did you own the Hotel del Coronado?",
+        pack,
+      });
+      assert(r.evidenceLabel === "documented", "upgraded to documented");
+      assert(
+        r.issues.some((i) => i.includes("inference-strong-overlap")),
+        "upgrade logged"
+      );
+    },
+  },
+  {
+    name: "Legacy-bridge inference stays inference",
+    run: () => {
+      const pack = mockPack("john-d-spreckels", 1912);
+      const r = verifyGroundedAnswer({
+        answer:
+          "From 1912 I could not yet know it; after my time, the record tells us the Panama-California Exposition opened in 1915.",
+        evidenceLabel: "inference",
+        usedSourceIds: ["bio-spreckels"],
+        retrieved: [
+          chunk(
+            "bio-spreckels",
+            "John D. Spreckels owned the Hotel del Coronado by 1912 and lived on Glorietta Bay."
+          ),
+        ],
+        images: [],
+        userQuery: "What about the 1915 exposition?",
+        pack,
+      });
+      assert(r.evidenceLabel === "inference", "stays inference for later-record bridge");
+    },
+  },
 ];
 
 console.log("Answer verifier static tests\n");

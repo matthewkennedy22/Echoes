@@ -315,6 +315,42 @@ function genericProblems(r, { wantPortrait, banPortrait } = {}) {
   if (r.evidenceLabel === "documented" && !(r.sources || []).length) {
     probs.push("documented but no sources returned");
   }
+  // Every grounded reply must use card-shaped evidence (not raw OCR dumps).
+  if (r.evidenceLabel && r.evidenceLabel !== "unknown") {
+    const ev = Array.isArray(r.evidence) ? r.evidence : [];
+    const src = Array.isArray(r.sources) ? r.sources : [];
+    if (ev.length === 0 && src.length === 0) {
+      // inference with nothing to show is allowed; documented without cards is not
+      if (r.evidenceLabel === "documented") {
+        probs.push("documented but no evidence cards");
+      }
+    } else if (ev.length === 0 && src.length > 0) {
+      probs.push("sources returned without evidence cards");
+    }
+    if (ev.length > 4) probs.push(`too many evidence cards (${ev.length})`);
+    if (src.length > 4) probs.push(`too many sources (${src.length})`);
+    for (const e of ev) {
+      if (!e || typeof e !== "object") {
+        probs.push("malformed evidence card");
+        continue;
+      }
+      if (!e.usedFor || String(e.usedFor).length < 3) {
+        probs.push(`evidence card missing usedFor: ${e.id || "?"}`);
+      }
+      if (!e.excerpt || String(e.excerpt).length < 20) {
+        probs.push(`evidence card missing excerpt: ${e.id || "?"}`);
+      }
+      if (String(e.excerpt || "").length > 400) {
+        probs.push(`evidence excerpt too long (${String(e.excerpt).length}): ${e.id || "?"}`);
+      }
+      if (!e.citation) probs.push(`evidence card missing citation: ${e.id || "?"}`);
+    }
+    for (const s of src) {
+      if (String(s?.text || "").length > 400) {
+        probs.push(`source text dump too long (${String(s.text).length}): ${s.id || "?"}`);
+      }
+    }
+  }
   probs.push(...formatProblems(a));
   return probs;
 }
