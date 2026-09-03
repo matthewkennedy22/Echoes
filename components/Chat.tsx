@@ -687,19 +687,28 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
     );
   }
 
+  const askedQuestions = new Set(
+    messages.filter((m) => m.role === "user").map((m) => m.content.trim())
+  );
+  const conversationStarted = messages.length > 0;
+
+  function sendStarter(question: string) {
+    if (loading) return;
+    stopAudio();
+    unlockAudio();
+    void send(question);
+  }
+
   return (
     <>
-      {messages.length === 0 && (
-        <div className="starters">
+      {!conversationStarted && (
+        <div className="starters" aria-label="Suggested questions">
           {persona.starters.map((s) => (
             <button
               key={s}
+              type="button"
               className="starter"
-              onClick={() => {
-                stopAudio();
-                unlockAudio();
-                void send(s);
-              }}
+              onClick={() => sendStarter(s)}
             >
               {s}
             </button>
@@ -806,6 +815,29 @@ export default function Chat({ persona }: { persona: PersonaPublic }) {
         {voiceError && <div className="error">{voiceError}</div>}
         <div ref={bottomRef} />
       </div>
+
+      {conversationStarted && (
+        <div
+          className="starters starters-compact"
+          aria-label="Suggested questions"
+        >
+          {persona.starters.map((s) => {
+            const used = askedQuestions.has(s.trim());
+            return (
+              <button
+                key={s}
+                type="button"
+                className={`starter${used ? " starter-used" : ""}`}
+                disabled={loading || used}
+                onClick={() => sendStarter(s)}
+                title={used ? "Already asked" : s}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="composer">
         <textarea

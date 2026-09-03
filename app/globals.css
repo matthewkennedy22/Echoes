@@ -634,11 +634,39 @@ body {
   border-radius: 999px;
   padding: 7px 13px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
 }
-.starter:hover {
+.starter:hover:not(:disabled) {
   background: var(--paper);
   border-color: var(--accent-soft);
+}
+.starter:disabled {
+  cursor: default;
+}
+
+/* Stay available after the conversation starts — compact strip above the composer */
+.starters-compact {
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.starters-compact .starter {
+  flex: 0 0 auto;
+  max-width: 280px;
+  white-space: normal;
+  overflow: visible;
+  font-size: 12px;
+  padding: 6px 11px;
+  line-height: 1.35;
+  text-align: left;
+  border-radius: 12px;
+}
+.starters-compact .starter-used {
+  opacity: 0.45;
 }
 
 /* ---------- Composer ---------- */
@@ -779,13 +807,13 @@ body {
     margin: 12px 0;
   }
 
-  .starters {
+  .starters:not(.starters-compact) {
     flex-direction: column;
     gap: 10px;
     margin: 6px 0 12px;
   }
 
-  .starter {
+  .starters:not(.starters-compact) .starter {
     width: 100%;
     text-align: left;
     font-size: 15px;
@@ -793,6 +821,19 @@ body {
     border-radius: 12px;
     padding: 12px 14px;
     min-height: 48px;
+  }
+
+  .starters-compact {
+    margin: 0;
+    padding: 6px 0 0;
+  }
+
+  .starters-compact .starter {
+    max-width: 220px;
+    font-size: 12.5px;
+    min-height: 0;
+    padding: 7px 12px;
+    border-radius: 12px;
   }
 
   .voicebar {
